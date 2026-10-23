@@ -63,13 +63,19 @@ export interface ChatStore {
 export interface ProjectStore {
   projects: import('../api/types').ProjectSummary[]
   currentProjectId: number | null
+  /** 当前项目的详情（含 status 与计数；导入轮询期间实时更新）。 */
+  currentDetail: import('../api/types').ProjectDetail | null
   files: import('../api/types').FileEntry[]
   symbols: import('../api/types').SymbolListItem[]
   loading: boolean
   error: string
+  /** 导入项目进行中（对话框按钮的禁用态与状态行共用）。 */
+  importing: boolean
+  importError: string
 
   init: () => Promise<void>
   selectProject: (id: number) => Promise<void>
+  importProject: (rootPath: string, name?: string, ref?: string) => Promise<void>
 }
 
 // ─── 工作台（当前选中什么、右栏显示什么） ─────────────────────
