@@ -1,0 +1,20 @@
+id: decorator
+name: 装饰器：在定义时包装行为
+category: pattern
+summary: 装饰器在函数或类定义时接收对象，再返回替代或增强后的对象。它常用于注册路由、缓存、日志和权限检查。表面的 @ 很短，背后可能改变调用行为；读代码时要知道包装发生在何时、实际调用的是哪个对象。
+principles: '@decorate 放在 def 上方大致相当于定义后执行 f=decorate(f)。多个装饰器按嵌套顺序组合。带参数的装饰器通常先调用工厂得到装饰器。functools.wraps
+  有助于保留名称等元数据，但并不会自动保证包装函数与原函数在所有语义上相同。'
+tradeoffs: 横切逻辑集中可减少重复，但过多包装会隐藏控制流。对重要权限和事务，应保持约定可见并验证顺序。组合、显式调用和中间件也可能更清楚，选择应基于调用边界。
+alternatives: 显式包装函数、组合对象或框架中间件。
+detection:
+  import_names:
+  - functools
+  call_names:
+  - functools.wraps
+  attribute_names: []
+  decorator_names:
+  - functools.wraps
+  base_classes: []
+  string_markers: []
+references:
+- https://docs.python.org/3.13/tutorial/

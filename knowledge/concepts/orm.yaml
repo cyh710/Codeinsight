@@ -1,0 +1,21 @@
+id: orm
+name: ORM：对象与关系数据之间的映射
+category: db
+summary: ORM 把数据库中的表和记录映射为程序中的类与对象，让部分数据操作用对象接口表达。它能减少重复 SQL 和对象装配代码，但底层仍然执行数据库查询，事务、索引和数据约束依然存在。
+principles: 映射定义列、键和关系，Session 等工作单元跟踪对象状态并组织持久化。读取对象可能触发查询，访问关联也可能产生额外 SQL。flush 把变更发送到数据库，commit 提交事务；两者不能混为一谈。读
+  ORM 代码时，应同时理解对象行为和实际生成的 SQL。
+tradeoffs: ORM 提高常规 CRUD 的表达力，但复杂查询和性能分析仍要懂 SQL。原生 SQL 更直接，却需要手工维护映射与参数。可在同一工程中按职责混合使用，只要事务与连接边界清楚。
+alternatives: 参数化原生 SQL、查询构建器或简单数据访问层。
+detection:
+  import_names:
+  - sqlalchemy.orm
+  call_names:
+  - sqlalchemy.orm.mapped_column
+  - sqlalchemy.orm.sessionmaker
+  attribute_names: []
+  decorator_names: []
+  base_classes:
+  - sqlalchemy.orm.DeclarativeBase
+  string_markers: []
+references:
+- https://docs.sqlalchemy.org/en/20/intro.html

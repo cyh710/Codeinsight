@@ -1,0 +1,23 @@
+id: config-env
+name: 环境配置：把部署差异移出代码
+category: config
+summary: 配置描述程序在不同环境下使用什么地址、路径和选项。环境变量允许同一份代码在本地、测试和部署环境使用不同值。配置不是随处读取字符串的借口，应集中定义类型、默认值和必需项。
+principles: 进程启动时获得环境，配置层读取并校验，再把明确值交给业务模块。环境变量原始值通常是字符串，因此数字、布尔和路径需要解析。密钥应避免写入版本库、日志或索引。默认值应能说明适用条件，不能把测试默认地址误当生产地址。
+tradeoffs: 集中配置便于审计和测试，但过多开关会形成难以覆盖的组合。能从其他配置可靠推导的值不必重复维护。敏感配置、公开默认值和用户业务数据需要分开管理。
+alternatives: 明确的配置文件、命令行参数或受控配置服务。
+detection:
+  import_names:
+  - pydantic_settings
+  - dotenv
+  call_names:
+  - os.getenv
+  - os.environ.get
+  - dotenv.load_dotenv
+  attribute_names: []
+  decorator_names: []
+  base_classes:
+  - pydantic_settings.BaseSettings
+  string_markers: []
+references:
+- https://docs.python.org/3.13/tutorial/
+- https://fastapi.tiangolo.com/tutorial/dependencies/

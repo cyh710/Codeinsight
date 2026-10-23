@@ -1,0 +1,18 @@
+id: dependency-injection
+name: 依赖注入：把需要的能力交进来
+category: pattern
+summary: 依赖注入让函数或对象接收所需服务，而不是在内部固定创建所有依赖。例如，保存消息的服务接收数据库访问对象，测试时可以换成临时实现。它让依赖关系更显式，也便于控制生命周期。
+principles: 最简单的注入就是参数。框架可以根据声明建立依赖图，解析请求参数、创建会话并在结束时清理。依赖注入不要求庞大容器，也不能自动保证接口语义一致。作用域决定依赖是每次调用、每个请求还是整个进程复用。
+tradeoffs: 显式参数简单、透明，复杂依赖图可以交给框架。但过度抽象每个小函数会增加装配成本。先在外部边界注入难替换或有副作用的依赖，通常能以较小成本获得测试与维护收益。
+alternatives: 构造函数参数、工厂函数、显式模块装配或框架依赖系统。
+detection:
+  import_names:
+  - fastapi
+  call_names:
+  - fastapi.Depends
+  attribute_names: []
+  decorator_names: []
+  base_classes: []
+  string_markers: []
+references:
+- https://fastapi.tiangolo.com/tutorial/dependencies/

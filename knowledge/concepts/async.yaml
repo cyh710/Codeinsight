@@ -1,0 +1,21 @@
+id: async
+name: 异步编程：等待期间让出执行机会
+category: async
+summary: 异步编程让程序在等待 I/O 时处理其他工作。Python 中 async def 定义协程函数，await 在合适位置等待结果并让出执行机会。它适合大量等待型任务，不会自动把 CPU
+  密集工作变成并行计算。
+principles: 事件循环调度协程。协程应在可等待的操作处配合调度，阻塞的同步调用可能卡住整个循环。取消需要沿任务传播并执行清理。并发发起多个请求与串行等待之间存在吞吐、资源和失败策略的取舍。
+tradeoffs: 异步适合网络和流式服务，线程更适合某些阻塞库，进程可用于部分 CPU 工作。选择依据应是实际等待与计算比例。项目应跟踪后台任务、超时、取消和关闭流程，避免用户离开页面就丢失任务归属。
+alternatives: 同步流程、线程池、进程池或任务队列。
+detection:
+  import_names:
+  - asyncio
+  call_names:
+  - asyncio.create_task
+  - asyncio.gather
+  - asyncio.to_thread
+  attribute_names: []
+  decorator_names: []
+  base_classes: []
+  string_markers: []
+references:
+- https://docs.python.org/3.13/tutorial/

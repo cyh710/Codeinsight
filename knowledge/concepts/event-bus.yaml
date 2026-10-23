@@ -1,0 +1,19 @@
+id: event-bus
+name: 事件总线：发布事件与订阅处理
+category: pattern
+summary: 事件总线让产生事件的一方发布消息，由订阅者决定怎样响应，减少双方直接调用的耦合。例如，索引完成后可以通知界面更新或记录统计。事件发生、事件送达和处理成功是不同阶段，不能只看发布动作就认定所有响应已经完成。
+principles: 发布者约定事件名称与载荷，订阅者注册处理函数。进程内信号系统可能同步调用订阅者，也可能由应用封装为异步队列；具体实现决定顺序、异常和交付保证。持久消息队列进一步涉及重投、去重和消费确认，不应与简单回调列表混为一谈。
+tradeoffs: 事件适合一对多通知与松耦合扩展；必须立即得到返回值的业务调用，直接函数接口往往更清楚。涉及关键状态时，应明确是否需要持久化、重放和幂等。知识解释应依据实际总线实现描述保证。
+alternatives: 直接调用、回调接口、观察者或持久消息队列。
+detection:
+  import_names:
+  - blinker
+  call_names:
+  - blinker.signal
+  - blinker.Signal
+  attribute_names: []
+  decorator_names: []
+  base_classes: []
+  string_markers: []
+references:
+- https://blinker.readthedocs.io/en/stable/

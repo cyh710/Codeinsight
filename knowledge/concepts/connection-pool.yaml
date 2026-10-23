@@ -1,0 +1,19 @@
+id: connection-pool
+name: 连接池：复用连接并限制并发
+category: db
+summary: 数据库连接往往包含建立网络连接、认证和分配服务端资源等成本。连接池保存一组可复用连接，使用者借出连接完成工作后归还。它既是性能机制，也是限制数据库同时承受多少请求的一道容量边界。
+principles: 连接池管理空闲、借出、失效与等待。归还前通常需要清理未完成事务，避免下一个使用者继承脏状态。池大小、额外溢出连接和等待超时共同影响并发与延迟。某些 SQLite 场景使用不同池策略，应依据库版本与数据库类型确认。
+tradeoffs: 复用降低建立成本，却增加生命周期和健康检查复杂度。短脚本可能无需复杂池配置，长期服务则需要关注等待、泄漏和数据库上限。应根据实际工作负载测量，而不是复制一个看起来很大的 pool_size。
+alternatives: 短连接、受控单连接或数据库代理池；按实际进程模型选择。
+detection:
+  import_names:
+  - sqlalchemy.pool
+  call_names:
+  - sqlalchemy.pool.QueuePool
+  - sqlalchemy.create_engine
+  attribute_names: []
+  decorator_names: []
+  base_classes: []
+  string_markers: []
+references:
+- https://docs.sqlalchemy.org/en/20/intro.html

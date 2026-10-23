@@ -1,0 +1,18 @@
+id: generator
+name: 生成器：按需产生一串值
+category: pattern
+summary: 生成器通过 yield 逐步产生值，让调用方需要一项时再继续计算。它适合处理大数据流或分阶段遍历，不必先构造完整列表。函数暂停时仍保留局部状态，因此也有资源生命周期需要管理。
+principles: 含 yield 的函数被调用时返回生成器对象。每次迭代运行到下一个 yield，结束时表示没有更多项。yield from 可以委托另一个可迭代对象。一次性迭代器消费后通常不能自动从头再来，重复遍历可能需要重新创建。
+tradeoffs: 按需计算降低峰值内存并改善首项延迟，但错误时机与重复读取更复杂。需要随机访问或多次遍历时，列表可能更简单。对流式 API，应明确结束、取消和失败事件，而不能把“已经开始流”当作“成功完成”。
+alternatives: 列表、迭代器类、异步生成器或分页读取。
+detection:
+  import_names: []
+  call_names:
+  - builtins.iter
+  - builtins.next
+  attribute_names: []
+  decorator_names: []
+  base_classes: []
+  string_markers: []
+references:
+- https://docs.python.org/3.13/tutorial/

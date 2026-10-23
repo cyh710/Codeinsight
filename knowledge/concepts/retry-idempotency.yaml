@@ -1,0 +1,23 @@
+id: retry-idempotency
+name: 重试与幂等：失败后怎样安全再来一次
+category: concurrency
+summary: 重试是在可能暂时失败时重新尝试，幂等是相同操作重复执行仍保持约定结果。两者经常一起设计：没有收到响应时，服务器可能已经完成写入，盲目再做一次可能产生重复副作用。检测到重试代码，不等于已经证明业务幂等。
+principles: 重试需要限定可恢复错误、次数或总时间，并设置退避与抖动。幂等通常使用稳定业务键、唯一约束或执行记录识别重复请求；同键不同内容还应检查冲突。查询通常较容易安全重试，支付、发送消息和启动任务则需要明确去重机制。
+tradeoffs: 幂等记录增加存储与过期管理，却让失败恢复更可控。退避降低冲突但增加最坏延迟。对外部工具，应记录请求、领取与结果边界，并保留未知状态，不应在没有结果时声称执行成功。
+alternatives: 状态查询、去重账本、事务约束或补偿流程。
+detection:
+  import_names:
+  - tenacity
+  call_names:
+  - tenacity.Retrying
+  - tenacity.AsyncRetrying
+  attribute_names: []
+  decorator_names:
+  - tenacity.retry
+  base_classes: []
+  string_markers:
+  - idempotency_key
+  - client_message_id
+references:
+- https://tenacity.readthedocs.io/en/latest/
+- https://www.postgresql.org/docs/18/tutorial.html

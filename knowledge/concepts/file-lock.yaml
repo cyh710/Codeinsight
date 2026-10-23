@@ -1,0 +1,23 @@
+id: file-lock
+name: 文件锁：协调对共享文件的访问
+category: concurrency
+summary: 文件锁用于协调可能同时访问某个共享资源的参与者，常见于多进程写文件或本地缓存。锁只有在所有相关写入方遵守同一协议时才有效。它与 Python 线程锁、数据库事务解决的范围不同。
+principles: 调用方取得锁后进入临界区，完成后释放。等待超时避免无限卡住。锁文件的存在与操作系统锁是否仍被持有不一定相同，具体行为取决于库和平台。进程崩溃、网络文件系统和可重入需求都影响选择。
+tradeoffs: 文件锁适合本地跨进程协调，数据库事务更适合数据库内部一致性，分布式锁还涉及租约与失效。优先缩小临界区，明确超时与失败提示。不要在没有平台验证时宣称跨所有文件系统可靠。
+alternatives: 原子替换、数据库事务、进程间通信或受控单写者。
+detection:
+  import_names:
+  - filelock
+  - fcntl
+  - msvcrt
+  call_names:
+  - filelock.FileLock
+  - fcntl.flock
+  - msvcrt.locking
+  attribute_names: []
+  decorator_names: []
+  base_classes: []
+  string_markers: []
+references:
+- https://py-filelock.readthedocs.io/en/latest/
+- https://docs.python.org/3.13/tutorial/
