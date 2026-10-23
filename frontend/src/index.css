@@ -1,0 +1,766 @@
+@import "tailwindcss";
+
+/*
+ * 设计令牌层（Tailwind v4 CSS-first 配置）
+ *
+ * 配色纪律（天蓝方案，用户确认；ADR 0009/0013）：
+ * - 单屏只出现一种品牌强调色；经典天蓝为默认，用户可在「设置 → 全局外观」
+ *   切换到官方七主题之一（唯一目录：src/theme/palettes.ts）
+ * - 白字实色底一律 --color-accent（经典 #0369a1, sky-700），对比度 5.9:1；
+ *   不用 sky-500/600 做白字底（3~4.1:1 不达标）
+ * - 危险操作用 --color-danger (red-600)，禁止 rose/pink 粉调
+ * - 组件内禁止硬编码品牌色值，一律引用本层令牌（bg-accent / text-accent 等）
+ *
+ * 注意：下方 accent 系经典值只是构建期首帧默认；运行期由 themeStore 依据
+ * palettes.ts 在根节点覆盖同名内联变量，七套主题 HEX 只维护在 TS 一处。
+ */
+@theme {
+  /* 语义色（品牌强调；随主题切换，语义色独立不随动） */
+  --color-accent: #0369a1;            /* 经典天蓝主强调：实色按钮/链接/选中态（白字安全） */
+  --color-accent-hover: #075985;      /* 实底 hover（比 accent 深，白字同样安全） */
+  --color-accent-soft: #e0f2fe;       /* 浅色块：选中底/悬停底（配 accent 文字） */
+  --color-accent-bright: #0ea5e9;     /* 点缀/描边/光晕：仅装饰，不承载白字 */
+  --color-accent-foreground: #ffffff; /* 实底上的文字色（全部主题为白） */
+  --color-focus-ring: #0369a1;        /* 键盘焦点指示（非文本对比度 ≥3:1） */
+  --color-danger: #dc2626;            /* 危险：删除/清空/错误（语义红，非粉调） */
+  --color-danger-soft: #fee2e2;
+  --color-warning: #d97706;           /* 警告：缺 Key banner 等 */
+  --color-success: #059669;           /* 成功状态 */
+
+  /* 背景语义 */
+  --color-bg: #f8fafc;
+  --color-bg-elevated: #ffffff;
+  /* Neutral surface shared by pet creation/detail panels.  Keep status
+   * warnings amber, but do not tint the whole workspace yellow. */
+  --color-surface-warm: #ffffff;
+
+  /*
+   * 圆角刻意不在此定义 --radius-*。
+   *
+   * Tailwind v4 的 @theme 会覆盖同名内置命名空间：一旦定义 --radius-lg，
+   * 内置类 rounded-lg 就会跟着改值。此前在这里写过 lg=20px / xl=26px，
+   * 而 rounded-2xl 未定义仍为 16px，结果出现「lg 比 2xl 还圆」的层级
+   * 错乱，且全站 290 余处 rounded-lg/xl 被静默放大。
+   *
+   * 因此沿用 Tailwind 内置阶梯（sm 4 / md 6 / lg 8 / xl 12 / 2xl 16 / 3xl 24），
+   * 本项目仅做用法收敛：卡片/面板用 xl，控件用 lg，小元素用 md，头像类用 full。
+   */
+
+  /* 三级阴影（环境色，非纯黑）。命名空间 shadow-1/2/3 不与内置的
+   * shadow-sm/md/lg/xl/2xl 冲突，可安全扩展。 */
+  --shadow-1: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --shadow-2: 0 8px 24px rgba(15, 23, 42, 0.12);
+  --shadow-3: 0 24px 64px rgba(15, 23, 42, 0.18);
+
+  /*
+   * 动效令牌（docs/tasks/2026-09-10-system-motion.md §1，全站唯一允许的一套）。
+   *
+   * 分级（M0 静态不动画 → M4 氛围）：操作反馈要快、页面变化要柔、持续动画要少。
+   * 组件禁止随手写 duration-500/700/1000 之类的裸时长；只允许引用这里的令牌。
+   * 旧令牌名（--duration-fast/base、--ease-out-emphasized）保留为兼容别名，
+   * 新代码一律使用 --motion-* / --ease-* 正名。
+   */
+  --motion-instant: 80ms;    /* 按下、点击反馈（M1） */
+  --motion-fast: 150ms;      /* hover、focus、icon、Modal 遮罩（M1/M2） */
+  --motion-base: 220ms;      /* Modal、卡片、普通内容切换（M2） */
+  --motion-slow: 320ms;      /* Drawer、角色切换、背景 crossfade（M3/M4） */
+  --motion-ambient: 500ms;   /* 极少量氛围背景（M4 上限） */
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);      /* 通用过渡（对称缓出） */
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);      /* 入场：快出缓停 */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);          /* 退出：加速离场 */
+  --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1); /* 强调变化（双向动感） */
+
+  /* 兼容别名（已废弃，勿在新代码中使用） */
+  --duration-fast: var(--motion-fast);
+  --duration-base: var(--motion-base);
+  --ease-out-emphasized: var(--ease-enter);
+}
+
+body {
+  margin: 0;
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  background: var(--color-bg);
+  color: #0f172a;
+}
+
+/* The composer is intentionally independent from the message-bubble slider.
+   Keep it readable and stable while the user tunes bubble framing. */
+:root {
+  --chat-input-background: rgba(255, 255, 255, 0.94);
+  --chat-input-border: rgba(148, 163, 184, 0.42);
+  --chat-input-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+  --chat-input-filter: none;
+}
+
+/* 键盘焦点：全局一处生效，桌面端最低限度的可访问性保障。
+   颜色走 --color-focus-ring（随主题，≥3:1），经典默认与 accent 同值。 */
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-focus-ring, var(--color-accent));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/*
+ * P0-3 hover 渐显操作的统一原语：父容器加 .reveal-group，子操作把
+ * opacity-0 group-hover/x:opacity-100 换成 .reveal。
+ * - 触屏（无 hover）：始终可见，功能不再永久隐藏
+ * - 键盘：容器内任一元素获焦即整体显现（focus-within），焦点可见
+ * - 桌面鼠标：维持原有"行悬停才出现"的观感
+ */
+.reveal {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .reveal-group .reveal {
+    transition: opacity var(--motion-fast) ease;
+  }
+
+  .reveal-group:not(:hover, :focus-within) .reveal {
+    opacity: 0;
+  }
+}
+
+/* 无障碍：用户系统偏好减少动效时，全量关闭动画与过渡。
+   delay 一并清零：stagger 的 animation-delay 否则会让内容迟到 125ms。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+/* 消息气泡入场与打字指示器的 @keyframes 见下方动效区，集中管理 */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 公共动效 class（§13 技术选型：CSS tokens + 少量公共 class + Presence 原语，
+ * 不引入动画框架）。命名：motion-<运动语义>。全部只动 transform / opacity /
+ * filter，不触发布局属性；持续循环动画仅限明确的状态指示（录音环、脉冲）。
+ * -------------------------------------------------------------------------- */
+
+/* motion-fade：纯淡入（M1/M2，最轻的入场） */
+@keyframes motion-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.motion-fade {
+  animation: motion-fade-in var(--motion-fast) var(--ease-standard) backwards;
+}
+
+/* tab-panel-in：设置页 Tab 内容短距离横移入场（§8，150ms，不区分方向） */
+@keyframes tab-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.tab-panel-in {
+  animation: tab-panel-in var(--motion-fast) var(--ease-enter) backwards;
+}
+
+/* select-panel-in：自绘下拉面板入场（ADR 0017，150ms，淡入 + 朝开启方向
+   4px 滑移 + 轻缩放；向上翻 开启时滑移方向反转）。 */
+@keyframes select-panel-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes select-panel-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.select-panel-in {
+  animation: select-panel-in-down var(--motion-fast) var(--ease-enter) backwards;
+  transform-origin: top;
+}
+
+.select-panel-in[data-open-up='true'] {
+  animation-name: select-panel-in-up;
+  transform-origin: bottom;
+}
+
+/* reply-text-in：聊天回复三点→首段文字的交接淡入（流式挂载时跑一次，§4 克制规格） */
+@keyframes reply-text-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reply-text-in {
+  animation: reply-text-in var(--motion-fast) var(--ease-enter) backwards;
+}
+
+/* avatar-breathing：仅生成中的回复头像呼吸 v2——幅度加到 6%，并带一圈
+   accent 光晕同步扩散（完成即停；历史消息/静态时不出现） */
+@keyframes avatar-breath {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 6px var(--color-accent-soft);
+  }
+}
+
+.avatar-breathing {
+  animation: avatar-breath 1.8s var(--ease-standard) infinite;
+}
+
+/* reply-settled：回复完成瞬间的一次性 accent 柔环，绽放后消散（§4 完成落定） */
+@keyframes reply-settle-ring {
+  from {
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+  }
+  to {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+  }
+}
+
+.reply-settled {
+  animation: reply-settle-ring var(--motion-base) var(--ease-standard);
+}
+
+/* thinking-flow-dots：等待回复的流光三点（v3，用户选定形态）。
+   accent 圆点逐点点亮：光峰从左向右流动，透明度 0.3→1、缩放 0.72→1.18，
+   幅度比旧版三点明显；reduced-motion 下退化为静态圆点。 */
+.thinking-flow-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+}
+
+.thinking-flow-dots > span {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  animation: thinking-flow-dot 1.2s var(--ease-standard) infinite;
+}
+
+.thinking-flow-dots > span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-flow-dots > span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes thinking-flow-dot {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.72);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+/* motion-rise：轻上浮入场（M2 默认内容入场：面板内区块、状态条、Toast） */
+@keyframes motion-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.motion-rise {
+  animation: motion-rise-in var(--motion-base) var(--ease-enter) backwards;
+}
+
+/* motion-scale：轻微缩放入场（M2，卡片/小面板） */
+@keyframes motion-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.motion-scale {
+  animation: motion-scale-in var(--motion-base) var(--ease-enter) backwards;
+}
+
+/* motion-slide-left / motion-slide-right：Drawer 方向感（M3）。
+ * 从侧边滑入 20px + 半透明起步，与 Modal 的缩放入场区分空间关系。 */
+@keyframes motion-slide-left-in {
+  from {
+    opacity: 0.6;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-slide-right-in {
+  from {
+    opacity: 0.6;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.motion-slide-left {
+  animation: motion-slide-left-in var(--motion-base) var(--ease-enter);
+}
+
+.motion-slide-right {
+  animation: motion-slide-right-in var(--motion-base) var(--ease-enter);
+}
+
+/* motion-press：按压触感（§2）。按下 80ms 缩到 0.98，松开 150ms 恢复；
+ * 只"软"，不 Q 弹——禁止 bounce / 大缩放。颜色过渡走同一条 transition。 */
+.motion-press {
+  transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+.motion-press:active:not(:disabled) {
+  transform: scale(0.98);
+  transition-duration: var(--motion-instant);
+}
+
+/* 主按钮 hover 轻抬 1px（§2 可选项）；按下时 :active 的 scale 覆盖它。 */
+.motion-press-lift:hover:not(:disabled),
+.motion-press-lift:focus-visible:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* motion-pop-in：成功勾一次弹入（§11：scale .85→1，150ms，一次） */
+@keyframes motion-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.motion-pop-in {
+  animation: motion-pop-in var(--motion-fast) var(--ease-emphasized) backwards;
+}
+
+/* motion-nudge-x：失败小幅横向提示（§5：2px，禁止 15px×5 大幅 shake） */
+@keyframes motion-nudge-x {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(2px); }
+  75% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+.motion-nudge-x {
+  animation: motion-nudge-x var(--motion-base) var(--ease-standard);
+}
+
+/* Toast（§11）：进入 -6px 上方落下 + 淡入 220ms；退出上浮 4px + 淡出 150ms。
+ * 水平居中由调用方的 translate 工具类承担（translate 属性与 transform
+ * 动画分属不同属性，互不覆盖）。 */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.motion-toast {
+  animation: toast-in var(--motion-base) var(--ease-enter);
+}
+
+.motion-toast-exit {
+  animation: toast-out var(--motion-fast) var(--ease-exit) forwards;
+}
+
+/* motion-pulse-soft：等待权限等轻呼吸（§5 requesting_permission） */
+@keyframes motion-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.motion-pulse-soft {
+  animation: motion-pulse-soft 1.2s ease-in-out infinite;
+}
+
+/* motion-width：进度条宽度过渡（§10：220ms，确定性进度，不做假进度） */
+.motion-width {
+  transition: width var(--motion-base) var(--ease-standard);
+}
+
+/* motion-image-in：生成图 blur-in（§10：blur 2px + 透明 → 清晰，220ms） */
+.motion-image-in {
+  opacity: 1;
+  filter: blur(0);
+  transition:
+    opacity var(--motion-base) var(--ease-standard),
+    filter var(--motion-base) var(--ease-standard);
+}
+
+.motion-image-in--pending {
+  opacity: 0;
+  filter: blur(2px);
+}
+
+/* 列表 stagger（§9）：局部且有上限，延迟由行内 animation-delay 提供
+ * （Card N = (N-1)×25ms，最多前 6 个，第 7 个起 0ms；只在首次加载时套用）。 */
+@keyframes stagger-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.stagger-item {
+  animation: stagger-item-in var(--motion-base) var(--ease-enter) backwards;
+}
+
+/* 背景双层 crossfade（§6/§7）：新层在上 opacity 0→1，旧层保持不动垫底，
+ * 动画结束后由 React 摘掉旧层。时长可用 --bg-layer-duration 覆盖
+ * （背景 320ms / 侧栏 220ms）。 */
+@keyframes bg-layer-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.bg-layer-in {
+  animation: bg-layer-in var(--bg-layer-duration, var(--motion-slow)) var(--ease-standard);
+}
+
+/* 聊天区整体轻入场（§6 角色切换：opacity .6→1 + translateY 4px→0，不横飞） */
+@keyframes chat-swap-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.chat-swap-in {
+  animation: chat-swap-in var(--motion-base) var(--ease-enter);
+}
+
+/* ASR 录音外圈扩散（§5：scale 1→1.35、opacity .45→0，1.4s 循环；
+ * 只用于真实录音状态，不做假 waveform）。基础态 opacity:0 保证
+ * reduced-motion（动画被压到 0.01ms×1 次）结束后环完全不可见。 */
+@keyframes asr-ring-ping {
+  from {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  to {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+.asr-ring {
+  position: relative;
+}
+
+.asr-ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  opacity: 0;
+  pointer-events: none;
+  animation: asr-ring-ping 1.4s var(--ease-standard) infinite;
+}
+
+/* ASR 停止中收缩（§5：80–150ms） */
+.motion-shrink {
+  transform: scale(0.96);
+  transition: transform var(--motion-instant) var(--ease-standard);
+}
+
+/* ASR 成功：输入框 accent glow 一次（§5：150–220ms） */
+@keyframes asr-success-glow {
+  0% {
+    box-shadow:
+      var(--chat-input-shadow),
+      0 0 0 3px var(--color-accent-bright);
+  }
+  100% {
+    box-shadow:
+      var(--chat-input-shadow),
+      0 0 0 3px transparent;
+  }
+}
+
+.asr-success-glow {
+  animation: asr-success-glow var(--motion-base) var(--ease-standard);
+}
+
+/* 角色顶部 identity 交叉淡化（§6）：离开 150ms、进入 220ms */
+.identity-fade {
+  transition: opacity var(--motion-base) var(--ease-standard);
+}
+
+.identity-fade--out {
+  opacity: 0;
+  transition-duration: var(--motion-fast);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Modal 动效（§3）：进入保留原方向（遮罩淡入 / 面板 scale .98→1 + 上浮 8px），
+ * 时长收敛到令牌；退出由 Presence 原语挂 .modal-exiting 播放，播放期间
+ * pointer-events 关闭，animationend（或兜底计时器）后真正卸载。
+ * -------------------------------------------------------------------------- */
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes modal-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes modal-panel-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98) translateY(8px);
+  }
+}
+
+@keyframes modal-drawer-left-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+
+@keyframes modal-drawer-right-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+.modal-backdrop {
+  animation: modal-backdrop-in var(--motion-fast) var(--ease-enter);
+}
+
+.modal-panel {
+  animation: modal-panel-in var(--motion-base) var(--ease-enter);
+}
+
+/* Drawer 变体进入（App.tsx 侧栏/记忆面板等 bare Modal） */
+.modal-panel-drawer-left {
+  animation: motion-slide-left-in var(--motion-base) var(--ease-enter);
+}
+
+.modal-panel-drawer-right {
+  animation: motion-slide-right-in var(--motion-base) var(--ease-enter);
+}
+
+/* 退出：150ms 全部收敛，方向按空间关系反向 */
+.modal-backdrop.modal-exiting {
+  pointer-events: none;
+  animation: modal-backdrop-out var(--motion-fast) var(--ease-exit) forwards;
+}
+
+.modal-backdrop.modal-exiting > .modal-panel {
+  animation: modal-panel-out var(--motion-fast) var(--ease-exit) forwards;
+}
+
+.modal-backdrop.modal-exiting > .modal-panel-drawer-left {
+  animation: modal-drawer-left-out var(--motion-fast) var(--ease-exit) forwards;
+}
+
+.modal-backdrop.modal-exiting > .modal-panel-drawer-right {
+  animation: modal-drawer-right-out var(--motion-fast) var(--ease-exit) forwards;
+}
+
+/* 消息气泡入场（MessageBubble 外层行使用；§4 距离收敛 12px → 6px，
+ * 时长 --motion-base 落在 180–220ms 区间，长聊天不显跳） */
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.msg-in {
+  animation: bubble-in var(--motion-base) var(--ease-enter);
+}
+
+/* 打字指示器（assistant 流式且尚无内容时） */
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 0;
+}
+
+.typing-dots > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: typing-dot 1s infinite;
+}
+
+.typing-dots > span:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.typing-dots > span:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+/*
+ * 噪点颗粒层：SVG feTurbulence 生成，叠加在渐变网格上提供材质感。
+ *
+ * 注意：不要用 mix-blend-mode。全屏混合会强制整页在每次重绘时重新
+ * 合成（打字、滚动、流式输出都会触发），是典型的输入卡顿来源；
+ * 改为普通低透明度叠加，观感几乎无差别，代价可忽略。
+ */
+.grain-layer {
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Clean transparent scrollbar for dense panels. */
+.scrollbar-clean {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.28) transparent;
+}
+
+.scrollbar-clean::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-clean::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-clean::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.28);
+  border-radius: 4px;
+}
+
+.scrollbar-clean::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.45);
+}
+
+/*
+ * Sort placement guide. These are intentionally one-sided shadows: they
+ * follow the target card's rounded corners, while React supplies exactly one
+ * of --before/--after so an insertion point cannot show both directions.
+ */
+.order-drop-target {
+  position: relative;
+}
+
+.order-drop-target--before {
+  box-shadow: 0 -2px 0 0 var(--color-accent-bright);
+}
+
+.order-drop-target--after {
+  box-shadow: 0 2px 0 0 var(--color-accent-bright);
+}
+
+.writing-vertical {
+  writing-mode: vertical-rl;
+  letter-spacing: 0;
+}
