@@ -117,7 +117,7 @@ def detection_version(concepts: dict[str, Concept]) -> str:
     payload = {
         "rules": {key: asdict(concepts[key].detection) for key in sorted(concepts)},
         "implementation": hashlib.sha256(
-            Path(__file__).with_name("detector.py").read_bytes()
+            Path(__file__).with_name("detector.py").read_text(encoding="utf-8").encode("utf-8")
         ).hexdigest(),
     }
     return hashlib.sha256(
