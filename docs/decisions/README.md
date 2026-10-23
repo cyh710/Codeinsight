@@ -49,4 +49,5 @@ NNNN-简短英文短语.md
 | [0009](0009-single-agent-multi-tool.md) | 单 Agent + 多工具，不做多 Agent 协作 | 已接受 |
 | [0010](0010-two-layer-context-bounds.md) | 上下文两层分别设界 | 已接受 |
 | [0011](0011-concept-ontology-is-curated.md) | 概念本体是人工策展的 YAML，不是自动生成的知识图谱 | 已接受 |
-| [0012](0012-tool-failure-degrades-not-raises.md) | 工具失败不抛异常，降级为可解释的错误 | 已接受 |
+| [0012](0012-tool-failure-degrades-not-raises.md | 工具失败降级为可解释的错误，不抛异常 | 已接受 |
+| [0013](0013-frontend-copied-from-tapestry.md) | 前端复制织忆基建，只重写业务组件 | 已接受 |) | 工具失败不抛异常，降级为可解释的错误 | 已接受 |

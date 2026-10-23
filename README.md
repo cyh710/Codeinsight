@@ -82,6 +82,7 @@ docs/          架构、接口契约、ADR
 
 | 文档 | 内容 |
 |---|---|
+| [`docs/functional-spec.md`](docs/functional-spec.md) | **功能实现需求书**——三线并行时三条线各自的实现需求与验收 |
 | [`docs/roadmap.md`](docs/roadmap.md) | **路线图**——阶段划分，逐条对应源文档章节号 |
 | [`docs/interfaces.md`](docs/interfaces.md) | **接口契约**——10 个留接口的约定与依赖方向 |
 | [`docs/decisions/`](docs/decisions/) | **ADR**——每个技术决策的"为什么"与"什么条件下重评" |

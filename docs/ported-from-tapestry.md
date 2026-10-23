@@ -34,6 +34,7 @@ Tapestry 与 CodeInsight 是**两个独立项目**，解决不同问题：
 | 上下文装配思路 | `backend/services/agent_runner.py` 的 `_messages_from_events` | M3。**思路移植，代码重写**：织忆是任务级事件溯源，CodeInsight 是对话级；上限常量按代码场景重定 |
 | action digest 审批 | `backend/services/agent_tasks.py` | P2 备用。若将来把执行侧收回自己手里，整套移植 |
 | `classify_action` 权限分类 | `backend/agent/permissions.py` | P2 备用。同上 |
+| **整个前端基建** | `frontend/` | **M4。直接复制**，清单见 [`functional-spec.md` §3.3](functional-spec.md#c3--前端复制织忆前端基建只换业务组件)。含 `vite.config.ts`（SSE proxy）、`src/components/common/` 全 11 个通用件、`src/theme/palettes.ts`、`src/store/themeStore.ts`、`src/api/stream.ts`（SSE 解析 + watchdog）、`src/api/agent.ts`（`jsonRequest` + 错误类）、`src/store/chat*Actions.ts`（slice 拆分法）、`src/components/chat/`（MessageBubble / ChatWindow / InputBox / agentTimeline）、`tests/helpers/http.ts`（SSE 夹具） |
 
 ## 明确丢弃（织忆有、CodeInsight 不要）
 
