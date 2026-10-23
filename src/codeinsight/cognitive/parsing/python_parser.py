@@ -408,6 +408,9 @@ class PythonParser:
 
         module = node.module or ""
         names = tuple(a.name for a in node.names)
+        # 本地名与原始名可能不同（`from a import b as c`）——
+        # 名字解析要用本地名匹配调用点，用原始名拼仓库内 qualname。
+        local_names = tuple(a.asname or a.name for a in node.names)
         is_relative = node.level > 0
         if is_relative:
             # 相对导入要解析成绝对模块路径——相对路径本身没法用于依赖分析。
@@ -422,6 +425,7 @@ class PythonParser:
                 names=names,
                 lineno=node.lineno,
                 is_relative=is_relative,
+                local_names=local_names,
             )
         )
         if module:

@@ -63,6 +63,32 @@ def _cmd_dump_fixture(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_index(args: argparse.Namespace) -> int:
+    """对一个仓库建索引（M1）。"""
+    from codeinsight.cognitive.indexing.indexer import index_project
+
+    path = db_path(settings.data_dir)
+    result = index_project(
+        path,
+        root=Path(args.repo),
+        name=args.name or Path(args.repo).name,
+        ref=args.ref,
+        max_chunk_lines=settings.max_chunk_lines,
+    )
+    print(f"→ {path}")
+    print(f"   project={result.project_name} @ {result.head_commit[:8]}")
+    print(
+        f"   files={result.files} modules={result.modules} symbols={result.symbols} "
+        f"edges={result.edges}（解析到符号 {result.resolved_edges}）"
+    )
+    print(
+        f"   chunks={result.chunks} entry_points={result.entry_points} "
+        f"flows={result.flows} dependencies={result.dependencies} skipped={result.skipped}"
+    )
+    print(f"   用时 {result.elapsed_s:.2f}s")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ci", description="CodeInsight CLI")
     parser.add_argument("--version", action="version", version=f"CodeInsight {__version__}")
@@ -86,6 +112,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="符号与边覆盖多少个模块（分层取样；0 = 全量）",
     )
     p.set_defaults(func=_cmd_dump_fixture)
+
+    p = sub.add_parser("index", help="对仓库建索引")
+    p.add_argument("--repo", required=True, help="仓库根目录")
+    p.add_argument("--ref", default=None, help="git ref（缺省 HEAD）")
+    p.add_argument("--name", default=None, help="项目显示名（缺省用目录名）")
+    p.set_defaults(func=_cmd_index)
 
     return parser
 
