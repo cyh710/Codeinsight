@@ -8,8 +8,9 @@
 import { useEffect, useState } from 'react'
 import { Ban, BookOpen } from 'lucide-react'
 import { api } from '../../api/dataSource'
-import type { ConceptDepth, ConceptDetail, ConceptExplanation } from '../../api/types'
+import type { ConceptDepth, ConceptDetail, ConceptExplanation, ConceptInstance } from '../../api/types'
 import { projectStore } from '../../store/projectStore'
+import { workbenchStore } from '../../store/workbenchStore'
 
 const DEPTHS: Array<{ id: ConceptDepth; label: string; hint: string }> = [
   { id: 'quick', label: '快速理解', hint: '读本体的 summary，瞬时' },
@@ -63,6 +64,23 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
       alive = false
     }
   }, [projectId, conceptId, depth])
+
+  // 实例列表（双向导航的"概念 → 代码"侧）：点击跳回符号/文件。
+  // 概念本体可能存在但本项目还没有实例——空列表也是合法状态，不算错误。
+  const [instances, setInstances] = useState<{ for: string; items: ConceptInstance[] } | null>(null)
+  useEffect(() => {
+    let alive = true
+    if (projectId === null) return
+    api
+      .listConceptInstances(projectId, conceptId)
+      .then((r) => alive && setInstances({ for: conceptId, items: r.items }))
+      .catch(() => {
+        // 概念本体不存在时 instances 也 404；详情请求会给出错误卡，这里静默。
+      })
+    return () => {
+      alive = false
+    }
+  }, [projectId, conceptId])
 
   const detail = state?.for === conceptId ? state.detail : null
   const error =
@@ -172,6 +190,40 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
             <p className="text-[10px] text-slate-400">本层解释由模型生成，事实栏均可回代码验证。</p>
           )}
         </>
+      )}
+
+      {instances?.for === conceptId && instances.items.length > 0 && (
+        <section>
+          <h4 className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            本项目实例（{instances.items.length}）·点击跳回代码
+          </h4>
+          <ul className="mt-1 space-y-1">
+            {instances.items.map((inst) => (
+              <li key={inst.id}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    inst.qualname
+                      ? workbenchStore.getState().selectSymbol(inst.qualname, inst.path)
+                      : workbenchStore.getState().selectFile(inst.path)
+                  }
+                  className="flex w-full items-start gap-1.5 rounded px-1.5 py-1 text-left text-[11px] transition-colors hover:bg-accent-soft/50"
+                  title={`跳到 ${inst.path}:${inst.lineno}`}
+                >
+                  <span className="shrink-0 rounded bg-accent-soft/70 px-1.5 py-px font-mono text-[10px] text-accent">
+                    {inst.path}:{inst.lineno}
+                  </span>
+                  <span className="min-w-0 truncate text-slate-600">{inst.evidence}</span>
+                  {inst.confidence < 1 && (
+                    <span className="ml-auto shrink-0 text-[10px] text-warning">
+                      {Math.round(inst.confidence * 100)}%
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {depth === 'deep' && detail.principles && (
