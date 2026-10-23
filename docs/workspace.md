@@ -43,6 +43,16 @@
 | **B 线** | `feat/knowledge` | `cognitive/concepts/`、`knowledge/concepts/` | **§2.6** §5-4 |
 | **C 线** | `feat/frontend` | `frontend/`、`src/codeinsight/api/` | §3.1-1 §2.1-UI |
 
+### 开工包
+
+每条线的工作目录里都有一份"开工包"，**agent 只需要打开自己那一份**：
+
+| 线 | 开工包 |
+|---|---|
+| A 线 | [`lines/A-line.md`](lines/A-line.md) |
+| B 线 | [`lines/B-line.md`](lines/B-line.md) |
+| C 线 | [`lines/C-line.md`](lines/C-line.md) |
+
 ### 目录所有权规则
 
 > **一个目录只有一个 agent 能写。** 这是三线并行不打架的根本保证。

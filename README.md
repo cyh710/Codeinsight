@@ -83,6 +83,7 @@ docs/          架构、接口契约、ADR
 | 文档 | 内容 |
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | **作业规程**——三条线通用的硬规矩（任何 agent 开工先读这份） |
+| [`docs/lines/`](docs/lines/) | **三线开工包**——每条线打开自己那一份就能开工 |
 | [`docs/functional-spec.md`](docs/functional-spec.md) | **功能实现需求书**——三线并行时三条线各自的实现需求与验收 |
 | [`docs/workspace.md`](docs/workspace.md) | **工作区文档**——三个 worktree 在哪、谁能动什么、怎么合 |
 | [`docs/roadmap.md`](docs/roadmap.md) | **路线图**——阶段划分，逐条对应源文档章节号 |
