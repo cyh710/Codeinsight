@@ -86,9 +86,12 @@ def test_legacy_db_is_migrated_in_place(tmp_path: Path) -> None:
         assert "is_generated" not in cols
 
         # 新增的表也建出来了
-        assert conn.execute(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='dependency'"
-        ).fetchone()[0] == 1
+        assert (
+            conn.execute(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='dependency'"
+            ).fetchone()[0]
+            == 1
+        )
 
 
 def test_migration_keeps_project_rows(tmp_path: Path) -> None:
