@@ -44,6 +44,8 @@ text = validate_answer_links(answer.text, library)
 - `reading_context(target)` 从本地资产重新读取，不信任客户端正文；旧版本/旧章节标记截断/失效。
 - `link_answer` 对正文首次出现的术语加链接，不触碰代码块、行内代码和已有链接。
 - `/learn/{topic_id}#{section_id}` 是 C 线需要拦截的阅读目标，不是已经部署的网站。
+- 正文的 `{#section_id}` 是资产锚点标记；C 可按 sections 的 id/title/content 渲染，
+  将 id 绑定到标题，不把锚点标记作为面向用户的正文显示。
 - `KnowledgeService` 分别保存项目 commit/index_epoch。未注册项目返回 not_indexed，
   不将“没有数据”声称为“项目没有使用技术”。
 - `RuleBasedDetector.detect(..., sources=..., edge_confidences=...)` 接收冻结源码与原始边置信度。
