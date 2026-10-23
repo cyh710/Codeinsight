@@ -24,7 +24,7 @@
 ```python
 @dataclass(frozen=True)
 class ToolResult:
-    content: str          # 给模型看的文本（可能被截断）
+    content: str  # 给模型看的文本（可能被截断）
     data: dict[str, Any]  # 结构化数据（不进模型上下文）
     truncated: bool = False
     error: str | None = None

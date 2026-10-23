@@ -29,8 +29,8 @@
 @dataclass
 class Answer:
     text: str = ""
-    facts: list[dict[str, Any]] = field(default_factory=list)      # 每条必须有 citation
-    inferences: list[str] = field(default_factory=list)             # 显式标注为推断
+    facts: list[dict[str, Any]] = field(default_factory=list)  # 每条必须有 citation
+    inferences: list[str] = field(default_factory=list)  # 显式标注为推断
     citations: list[Citation] = field(default_factory=list)
     tools_used: list[str] = field(default_factory=list)
     abstained: bool = False

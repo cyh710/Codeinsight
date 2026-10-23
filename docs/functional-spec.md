@@ -64,10 +64,10 @@ docs/                 A 线维护；B/C 需要加文档时提需求
 | 契约 | 位置 | 状态 |
 |---|---|---|
 | 领域模型 | `src/codeinsight/models.py` | ✅ 冻结 |
-| 数据契约 | `src/codeinsight/storage/schema.sql` | ✅ 冻结（M1 会补两张表，见 §1.2） |
-| API + SSE 契约 | `docs/api-contract.md` | ⏳ **A 线本周补** |
-| 前端类型 | `frontend/src/api/types.ts` | ⏳ **A 线本周补**（C 线照它写） |
-| 索引样例 | `fixtures/sample-index.json` | ⏳ **A 线本周补**（B/C 对它开发） |
+| 数据契约 | `src/codeinsight/storage/schema.sql` | ✅ 冻结（`file.role` 单值分类 + `dependency` 表见 §1.2） |
+| API + SSE 契约 | `docs/api-contract.md` | ✅ 冻结（18 个端点 + SSE 事件词汇表，见 §1.2） |
+| 前端类型 | `frontend/src/api/types.ts` | ✅ 冻结（与契约一一对应，C 线照它写） |
+| 索引样例 | `fixtures/sample-index.json` | ✅ 已产出（688 文件 / 790 符号 / 5109 边，B/C 对它开发） |
 | **前端基建来源** | 织忆 `frontend/` | ✅ 清单见 §3.3 |
 
 ### 0.4 怎么提需求
@@ -110,30 +110,55 @@ def list_repo_files(root: Path, *, ref: str | None = None) -> list[RepoFile]
 - 按魔数 + 体积判二进制并排除。
 - 给每个文件标一个**互斥**的 `role`：`source` `test` `vendored` `generated` `config` `doc`
   （优先级 vendored > generated > test > config > doc > source）。
-  第三方目录（`mobile_sam/` 等）标 `vendored` 且 `in_index=0`——**默认不索引**。
-- **验收**：对织忆 `agent-v1` 取到的文件数与 `git ls-tree` 一致；不含 `dist/` `.venv/`。
+- **三档范围**（ADR 0015）：
+  - 第一档·**不进索引**：`build_cache/` `node_modules/` `.venv/` `dist/` `*.min.js` 二进制 `*.lock`
+  - 第二档·**符号入、chunk 不入**：第三方目录（`mobile_sam/` 等）→ `role='vendored'`。
+    项目 `import` 了它，那条 import 边是"项目用了 X"的证据，要留；
+    但第三方内部实现不该出现在检索结果里。
+  - 第三档·**全量入、同等对待**：`tests/` `docs/` `scripts/` `backend/`。
+    **不做任何降权**——降权是人为偏置，会污染 §5 的对照实验（ADR 0003 同理）。
+- **验收**：对织忆 `agent-v1` 取到的文件数与 `git ls-tree` 一致；不含 `dist/` `.venv/`；
+  非 ASCII 路径原样保留（不带引号、不转义）。
 
 #### A2 Python 解析器 `cognitive/parsing/python_parser.py`
 
 ```python
 class PythonParser:
     language = "python"
+
     def supports(self, path: str) -> bool: ...
     def parse(self, path: str, source: str, ctx: ParseContext) -> ParsedFile: ...
 ```
 
 - 只用标准库 `ast`（ADR 0001）。
 - 符号 kind：`module` / `class` / `function` / `method` / `property` / `constant`。
-- qualname 规则：模块级 `foo`；方法 `Class.method`；嵌套 `outer.inner`。
+- **qualname 一律从仓库根全限定**：`<模块 qualname>.<局部路径>`。
+  模块 qualname = 路径转点号（`backend/core/chunk_bm25.py` → `backend.core.chunk_bm25`，
+  `backend/__init__.py` → `backend`）。
+  局部路径规则：模块级 `foo`；方法 `Class.method`；嵌套 `outer.inner`。
+  全限定是**必须的**——跨文件解析调用要靠它（`foo` 和 `bar.foo` 是两个东西）。
 - **产出五类边**：
 
   | kind | 来源 | dst_name |
   |---|---|---|
-  | `call` | `ast.Call` 的 func（Name / Attribute） | 最后一个标识符 |
+  | `call` | `ast.Call` 的 func（Name / Attribute） | **完整点号路径**（`jwt.decode` / `helper`） |
   | `inherits` | `ast.ClassDef.bases` | 基类名 |
-  | `decorator` | `decorator_list` | 装饰器名 |
-  | `imports` | `ast.Import` / `ast.ImportFrom` | 被导入名 |
-  | `references` | 名字被读取但未调用（属性访问） | 名字 |
+  | `decorator` | `decorator_list` | 装饰器名（`app.get` / `lru_cache`） |
+  | `imports` | `ast.Import` / `ast.ImportFrom` | **完整模块路径**（`backend.config`） |
+  | `references` | 属性被读取但未调用 | 完整点号路径（`self.x` → `x`） |
+
+  > **为什么 `call` 与 `imports` 都用完整路径而不是最后一个标识符 / 顶层包名**：
+  > 源文档 §2.6 的概念检测规则里 `call_names: [jwt.decode]` 是按全路径写的——
+  > 只留 `decode` 就分不清 `jwt.decode` 和 `os.decode`；
+  > 而 `from backend.config import settings` 记成 `backend` 会让项目内部上百条导入
+  > 全变成同一个名字，既没法做模块依赖分析（§2.2-3），也没法做概念检测。
+  >
+  > **本体按「整串相等或前缀相等」匹配**：`import_names: [jwt]` 能命中
+  > `jwt` 和 `jwt.algorithms`；`import_names: [backend]` 能命中 `backend.config`。
+
+- **相对导入要解析成绝对模块路径**：`backend/api/pet.py` 里
+  `from .core import x` → `backend.api.core`，`from ..services import y` → `backend.services`。
+  相对导入能确定是仓库内部的模块，直接给 `dst_qualname`。
 
 - **动态调用**（`getattr` / `importlib` / 字符串反射）→ `confidence=0.5`、`dst_qualname=None`。
   **不能丢弃，也不能假装确定**（§2.2）。
@@ -336,14 +361,19 @@ references:                   # 选填，权威链接
 
 **detection 规则键 → 匹配对象**（关键，靠这个才能自动派生）：
 
-| 键 | 匹配什么 | 命中的边 kind |
-|---|---|---|
-| `import_names` | 被导入的模块名 | `imports` |
-| `call_names` | 被调用的名字（`a.b` 形式匹配 `Attribute` 的完整路径） | `call` |
-| `attribute_names` | 源码里出现的属性名 | `references` |
-| `decorator_names` | 装饰器名 | `decorator` |
-| `base_classes` | 基类名 | `inherits` |
-| `string_markers` | 源码中的字符串字面量 | 源码匹配 |
+| 键 | 匹配什么 | 命中的边 kind | 匹配规则 |
+|---|---|---|---|
+| `import_names` | 被导入的模块路径 | `imports` | 整串相等 **或** 前缀相等（`jwt` 命中 `jwt.algorithms`） |
+| `call_names` | 被调用的名字（`a.b` 形式匹配 `Attribute` 的完整路径） | `call` | 整串相等 **或** 末段相等（`jwt.decode` 命中 `jwt.decode` 与 `decode`） |
+| `attribute_names` | 属性名 | `references` | 末段相等（`self.redis` 记成 `redis`） |
+| `decorator_names` | 装饰器名 | `decorator` | 末段相等（`app.get` 命中 `get`） |
+| `base_classes` | 基类名 | `inherits` | 整串相等 |
+| `string_markers` | 源码中的字符串字面量 | 源码匹配 | 精确包含 |
+
+> **为什么规则是"相等或前缀/末段"而不是精确匹配**：边的 `dst_name` 存的是
+> **完整点号路径**（见 §1.2 A2），因为只存最后一段就分不清 `jwt.decode` 和 `os.decode`，
+> 只存顶层包名又会把 `backend.config` 和 `backend.services` 混成一个。
+> 完整路径 + 灵活的匹配规则两头都能兼顾。
 
 **硬约束**：
 - **不手工维护"概念 → 代码位置"映射表**（ADR 0011）。位置由规则自动派生。

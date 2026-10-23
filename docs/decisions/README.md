@@ -52,3 +52,4 @@ NNNN-简短英文短语.md
 | [0012](0012-tool-failure-degrades-not-raises.md | 工具失败降级为可解释的错误，不抛异常 | 已接受 |
 | [0013](0013-frontend-copied-from-tapestry.md) | 前端复制织忆基建，只重写业务组件 | 已接受 |
 | [0014](0014-file-role-taxonomy.md) | 文件分类用单列 `role`，不用三个布尔列 | 已接受 |
+| [0015](0015-index-scope.md) | 索引范围分三档，检索层不引入打分系数 | 已接受 |
