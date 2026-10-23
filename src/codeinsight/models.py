@@ -85,6 +85,13 @@ class ParsedImport:
     names: tuple[str, ...] = ()
     lineno: int = 0
     is_relative: bool = False
+    local_names: tuple[str, ...] = ()
+    """被绑定的**本地**名字，与 `names` 一一对应。
+
+    `from a import b as c` → `names=('b',)`（原始名）、`local_names=('c',)`（本地名）。
+    名字解析时用本地名去匹配调用点，用原始名去拼仓库内 qualname，两个都要。
+    为空时视为与 `names` 相同。
+    """
 
 
 @dataclass(frozen=True)
