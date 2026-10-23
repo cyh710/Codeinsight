@@ -1,9 +1,10 @@
 /**
  * 项目 store：项目列表、当前项目（持久化到 localStorage `ci.projectId`，
- * 契约 §0.5）、文件与符号（左栏树的数据源）。
+ * 契约 §0.5）、文件与符号（左栏树的数据源）、导入项目的轮询状态。
  */
 import { createStore } from 'zustand'
 import { api } from '../api/dataSource'
+import { waitForIndexing } from '../api/importFlow'
 import type { FileEntry, ProjectSummary, SymbolListItem } from '../api/types'
 import type { ProjectStore } from './types'
 
@@ -34,14 +35,15 @@ async function loadProjectData(
 ): Promise<void> {
   set({ loading: true, error: '' })
   try {
-    // 文件树要一次拉全（契约：裸数组）；符号全量 790 个也拉全，
-    // 左栏的"点文件展开符号"需要离线过滤，不值得为此再发请求。
-    const [files, symbolsRes] = await Promise.all([
+    // 文件树一次拉全（契约：裸数组）；符号全量拉来做左栏离线过滤，
+    // 不值得为"点文件展开符号"再发请求。详情（含状态与计数）同批取。
+    const [detail, files, symbolsRes] = await Promise.all([
+      api.getProject(projectId),
       api.getProjectFiles(projectId),
       api.listProjectSymbols(projectId, { limit: 500 }),
     ])
     const symbols: SymbolListItem[] = [...symbolsRes.items]
-    set({ files, symbols, loading: false })
+    set({ currentDetail: detail, files, symbols, loading: false })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     set({ loading: false, error: msg })
@@ -51,10 +53,13 @@ async function loadProjectData(
 export const projectStore = createStore<ProjectStore>((set, get) => ({
   projects: [] as ProjectSummary[],
   currentProjectId: null,
+  currentDetail: null,
   files: [] as FileEntry[],
   symbols: [] as SymbolListItem[],
   loading: false,
   error: '',
+  importing: false,
+  importError: '',
 
   init: async () => {
     try {
@@ -78,5 +83,39 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
     set({ currentProjectId: id })
     storeProjectId(id)
     await loadProjectData(set, id)
+  },
+
+  importProject: async (rootPath: string, name?: string, ref?: string) => {
+    if (get().importing) return
+    set({ importing: true, importError: '' })
+    try {
+      const created = await api.createProject({
+        root_path: rootPath,
+        ...(name ? { name } : {}),
+        ...(ref ? { ref } : {}),
+      })
+      // 列表刷新 + 立即切到新项目（此时 status=indexing，状态行开始转圈）。
+      set({ currentProjectId: created.id, currentDetail: null })
+      storeProjectId(created.id)
+      try {
+        set({ projects: await api.listProjects() })
+      } catch {
+        // 列表刷新失败不阻塞轮询：详情才是权威。
+      }
+      const detail = await waitForIndexing((id) => api.getProject(id), created.id, {
+        // onTick 让状态行（索引中/失败）实时跟着走。
+        onTick: (d) => set({ currentDetail: d }),
+      })
+      set({ currentDetail: detail })
+      if (detail.status === 'ready') {
+        await loadProjectData(set, created.id)
+      }
+      // failed/stale：数据保持空/旧，状态行如实呈现，不额外弹错。
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      set({ importError: msg })
+    } finally {
+      set({ importing: false })
+    }
   },
 }))

@@ -4,7 +4,7 @@
  * 两级联动（C-Q1 已对齐）：文件是心智入口；点开文件展开它的符号；
  * 顶部搜索同时过滤文件路径与符号名。
  */
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useStore } from 'zustand'
 import {
   ChevronDown,
@@ -12,13 +12,17 @@ import {
   FileCode2,
   FileText,
   Folder,
+  FolderInput,
   FolderOpen,
+  Loader2,
   Package,
   Search,
 } from 'lucide-react'
 import { projectStore } from '../../store/projectStore'
 import { workbenchStore } from '../../store/workbenchStore'
 import Select from '../common/Select'
+import ImportProjectDialog from './ImportProjectDialog'
+import { projectStatusView } from './projectStatusView'
 import type { SymbolListItem } from '../../api/types'
 import {
   buildFileTree,
@@ -64,6 +68,28 @@ function SymbolRow({ path, symbol, onPick }: {
       </span>
       <span className="truncate font-mono">{symbol.name}</span>
     </button>
+  )
+}
+
+function StatusLine() {
+  const detail = useStore(projectStore, (s) => s.currentDetail)
+  if (!detail) return null
+  const view = projectStatusView(detail.status)
+  if (view.tone === 'none') return null
+  const cls =
+    view.tone === 'danger'
+      ? 'text-danger'
+      : view.tone === 'warning'
+        ? 'text-warning'
+        : 'text-accent'
+  return (
+    <p className={`mt-1.5 flex items-center gap-1 text-[10.5px] ${cls}`} title={view.title} role="status">
+      {view.tone === 'info' ? (
+        <Loader2 size={11} strokeWidth={1.8} className="shrink-0 animate-spin" />
+      ) : null}
+      {view.label}
+      {view.tone === 'warning' && <span className="text-slate-400">·重新导入可刷新</span>}
+    </p>
   )
 }
 
@@ -203,6 +229,7 @@ function NodeRow({ node, depth, symbolsByPath }: {
 export default function LeftPanel() {
   const projectsState = useStore(projectStore)
   const treeFilter = useStore(workbenchStore, (s) => s.treeFilter)
+  const [importOpen, setImportOpen] = useState(false)
 
   // 688 文件 × 790 符号的分组与建树都以引用为键用 useMemo 缓存，
   // projectStore 只在换项目时换引用，平时 render 零重算。
@@ -218,9 +245,20 @@ export default function LeftPanel() {
     <aside className="flex h-full min-h-0 w-72 shrink-0 flex-col border-r border-slate-200/80 bg-bg-elevated">
       {/* 项目切换器：左栏顶部（C-Q6 已对齐）。 */}
       <div className="border-b border-slate-200/70 px-3 py-2.5">
-        <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          项目
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            项目
+          </label>
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="flex h-5.5 w-5.5 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-accent-soft hover:text-accent"
+            title="导入项目并建索引"
+            aria-label="导入项目并建索引"
+          >
+            <FolderInput size={13} strokeWidth={1.7} />
+          </button>
+        </div>
         {/* 自绘 Select（通用件）：API 与原生下拉兼容，但走统一的
             listbox 语义与动效——随基建复制的契约测试要求原生下拉
             元素全局退场。 */}
@@ -240,7 +278,9 @@ export default function LeftPanel() {
             </option>
           ))}
         </Select>
+        <StatusLine />
       </div>
+      <ImportProjectDialog open={importOpen} onClose={() => setImportOpen(false)} />
 
       {/* 搜索：同时作用于文件路径与符号名。 */}
       <div className="border-b border-slate-200/70 px-3 py-2">
