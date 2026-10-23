@@ -17,6 +17,7 @@ import hashlib
 import sqlite3
 import subprocess
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -134,35 +135,29 @@ class _ParsedEntry:
     source_lines: list[str]
 
 
-def index_project(
-    db_path: str | Path,
-    *,
-    root: str | Path,
-    name: str,
+def run_index(
+    conn: sqlite3.Connection,
+    project_id: int,
+    root_path: str | Path,
     ref: str | None = None,
+    *,
     max_chunk_lines: int = DEFAULT_MAX_CHUNK_LINES,
-) -> IndexResult:
-    """对一个仓库做一次**全量**索引。
+) -> dict:
+    """扫描 → 解析 → 落库 → `repo_state` 收尾（**不含** `index_run` 记账）。
 
-    参数
-    ----
-    db_path
-        索引库路径。
-    root
-        仓库根目录。
-    name
-        项目显示名（同名项目会被复用）。
-    ref
-        git ref（缺省 HEAD）。
-    max_chunk_lines
-        超大符号二次切分的行数上限（ADR 0005，默认 120）。
+    这是 C 线 `api/indexing.py::_ENGINE_CALLABLE` 要接的入口
+    （见 `docs/requests/0002-index-engine-entry.md`）：
 
-    全量重建的理由：先让「索引是对某个 commit 的完整快照」这件事成立，
-    增量（M6）才有明确的对比基准。增量版会在同一套写入逻辑上加一层 diff。
+    - `conn` 由调用方传入——事务与 `index_run` 记账归 API 层，引擎只管数据；
+    - 只返回原始计数，概览由调用方自己 `COUNT(*)` 生成，避免两处口径漂移；
+    - 失败抛异常，调用方的 try/except 会把它记进 `index_run.stats_json`。
+
+    语义是**全量重建**：先清掉这个项目的数据再重建。
+    先让「索引是对某个 commit 的完整快照」这件事成立，
+    增量（M6）才有明确的对比基准。
     """
     started = time.monotonic()
-    root = Path(root)
-    ensure_schema(db_path)
+    root = Path(root_path)
 
     head_commit, head_branch = _resolve_commit(root, ref)
     parser = PythonParser()
@@ -175,8 +170,7 @@ def index_project(
     blobs = read_blobs(root, ref, [f.path for f in indexed])
     to_parse = [f for f in indexed if parser.supports(f.path)]
 
-    with open_sqlite(db_path) as conn:
-        project_id = _ensure_project(conn, name=name, root_path=_origin_url(root))
+    with nullcontext(conn) as conn:
         _clear_project_data(conn, project_id)
 
         file_ids: dict[str, int] = {}
@@ -347,6 +341,53 @@ def index_project(
             (project_id, head_commit, head_branch, PARSER_VERSION, next_epoch),
         )
 
+        conn.commit()
+
+    return {
+        "head_commit": head_commit,
+        "head_branch": head_branch,
+        "files": len(indexed),
+        "modules": len(module_ids),
+        "symbols": symbol_count,
+        "edges": edge_count,
+        "resolved_edges": resolved_count,
+        "entry_points": entry_points,
+        "flows": flow_count,
+        "design_decisions": design_count,
+        "dependencies": dependencies,
+        "skipped": skipped,
+        "chunks": chunk_count,
+        "elapsed_s": time.monotonic() - started,
+        "index_epoch": next_epoch,
+        "parser_version": PARSER_VERSION,
+    }
+
+
+def index_project(
+    db_path: str | Path,
+    *,
+    root: str | Path,
+    name: str,
+    ref: str | None = None,
+    max_chunk_lines: int = DEFAULT_MAX_CHUNK_LINES,
+) -> IndexResult:
+    """对一个仓库建索引并记账（CLI 与测试用）。
+
+    这是 `run_index` 的薄包装：自己开库、自己建项目行、自己写 `index_run`。
+    API 层要用的是 `run_index`——那里连接与记账都归调用方。
+    """
+    started = time.monotonic()
+    ensure_schema(db_path)
+
+    with open_sqlite(db_path) as conn:
+        project_id = _ensure_project(conn, name=name, root_path=_origin_url(Path(root)))
+        stats = run_index(
+            conn,
+            project_id,
+            root,
+            ref,
+            max_chunk_lines=max_chunk_lines,
+        )
         conn.execute(
             """
             INSERT INTO index_run (project_id, base_commit, head_commit, mode,
@@ -356,11 +397,11 @@ def index_project(
             """,
             (
                 project_id,
-                head_commit,
-                head_commit,
+                stats["head_commit"],
+                stats["head_commit"],
                 started,
-                len(indexed),
-                symbol_count,
+                stats["files"],
+                stats["symbols"],
                 None,
             ),
         )
@@ -369,20 +410,20 @@ def index_project(
     return IndexResult(
         project_id=project_id,
         project_name=name,
-        head_commit=head_commit,
-        files=len(indexed),
-        modules=len(module_ids),
-        symbols=symbol_count,
-        edges=edge_count,
-        resolved_edges=resolved_count,
-        entry_points=entry_points,
-        flows=flow_count,
-        design_decisions=design_count,
-        dependencies=dependencies,
-        skipped=skipped,
-        chunks=chunk_count,
+        head_commit=stats["head_commit"],
+        files=stats["files"],
+        modules=stats["modules"],
+        symbols=stats["symbols"],
+        edges=stats["edges"],
+        resolved_edges=stats["resolved_edges"],
+        entry_points=stats["entry_points"],
+        flows=stats["flows"],
+        design_decisions=stats["design_decisions"],
+        dependencies=stats["dependencies"],
+        skipped=stats["skipped"],
+        chunks=stats["chunks"],
         elapsed_s=time.monotonic() - started,
-        stats={"index_epoch": next_epoch, "parser_version": PARSER_VERSION},
+        stats={"index_epoch": stats["index_epoch"], "parser_version": stats["parser_version"]},
     )
 
 

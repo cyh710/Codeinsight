@@ -1,15 +1,15 @@
 """导入项目的索引调度（契约 §3.3 的异步建索引）。
 
-**引擎缺口（写于 M1 期）**：A 线的落库索引器（规格 §1.2 A3）尚未合入
-`cognitive/indexing/`——目前只有扫描器（A1）与解析器（A2）。本模块是
-API 层与未来引擎之间的**唯一接缝**：
+**引擎接缝**：本模块是 API 层与索引引擎之间的**唯一接缝**。
 
-- 引擎就绪后：把 ``_ENGINE_CALLABLE`` 指到 A 线暴露的入口函数即可，
-  本文件其余代码不动；
-- 引擎缺席时：索引 run 如实记为失败（status=failed），错误信息可读，
-  绝不假装索引成功（ADR 0007 的"事实与推断分开"在运维层面同理）。
+A 线的落库索引器已落地（`cognitive/indexing/indexer.py::run_index`，
+规格 §1.2 A3/A4/A5/A6/A7），按 `docs/requests/0002-index-engine-entry.md`
+的约定签名接上：
 
-已向 A 线提 `docs/requests/0002-index-engine-entry.md` 请求该入口。
+    run_index(conn, project_id, root_path, ref) -> dict
+
+引擎缺席时：索引 run 如实记为失败（status=failed），错误信息可读，
+绝不假装索引成功（ADR 0007 的"事实与推断分开"在运维层面同理）。
 """
 
 from __future__ import annotations
@@ -20,12 +20,13 @@ import subprocess
 from collections.abc import Callable
 
 from codeinsight.api.errors import bad_request
+from codeinsight.cognitive.indexing.indexer import run_index
 from codeinsight.config import settings
 from codeinsight.storage.sqlite import db_path, open_sqlite
 
-# 引擎入口的约定签名（A 线合入后替换为真实 import）：
-#   (conn: sqlite3.Connection, project_id: int, root_path: str, ref: str | None) -> None
-_ENGINE_CALLABLE: Callable[[sqlite3.Connection, int, str, str | None], None] | None = None
+# 引擎入口：A 线的落库索引器（docs/requests/0002-index-engine-entry.md）。
+# 签名：(conn, project_id, root_path, ref) -> 统计字典
+_ENGINE_CALLABLE: Callable[[sqlite3.Connection, int, str, str | None], None] | None = run_index
 
 
 def validate_root_path(root_path: str) -> None:

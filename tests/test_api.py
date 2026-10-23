@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from codeinsight.api import indexing
 from codeinsight.api.app import create_app
 from codeinsight.storage.sqlite import db_path
 
@@ -296,18 +297,54 @@ def test_create_project_rejects_missing_dir(client: TestClient, data_dir: Path) 
     assert err(res.json())["code"] == "bad_request"
 
 
-def test_create_project_accepts_then_honestly_fails_without_engine(
+def test_create_project_indexes_and_becomes_ready(
     client: TestClient, tmp_path: Path, data_dir: Path
 ) -> None:
+    """引擎合入后：真实建索引，状态如实变成 ready，库里真的有符号。"""
     repo = tmp_path / "arepo"
-    repo.mkdir()
+    (repo / "pkg").mkdir(parents=True)
+    (repo / "pkg" / "core.py").write_text(
+        "def helper():\n    return 1\n",
+        encoding="utf-8",
+    )
+
     res = client.post("/projects", json={"root_path": str(repo), "name": "arepo"})
     assert res.status_code == 202
     body = res.json()
     assert body["status"] == "indexing"
     assert body["name"] == "arepo"
 
-    # 引擎未合入：后台任务跑完后状态如实为 failed，错误信息可读（不假装 ready）。
+    detail = client.get(f"/projects/{body['id']}").json()
+    assert detail["status"] == "ready"
+
+    conn = sqlite3.connect(db_path(data_dir))
+    try:
+        quals = {
+            row[0]
+            for row in conn.execute(
+                "SELECT qualname FROM symbol WHERE project_id = ?", (body["id"],)
+            )
+        }
+        assert "pkg.core.helper" in quals
+    finally:
+        conn.close()
+
+
+def test_create_project_honestly_fails_when_engine_raises(
+    client: TestClient, tmp_path: Path, data_dir: Path, monkeypatch
+) -> None:
+    """引擎抛异常时：状态如实为 failed，错误信息可读——绝不假装 ready。"""
+
+    def _boom(conn, project_id, root_path, ref):
+        raise RuntimeError("索引引擎炸了")
+
+    monkeypatch.setattr(indexing, "_ENGINE_CALLABLE", _boom)
+
+    repo = tmp_path / "arepo"
+    repo.mkdir()
+    res = client.post("/projects", json={"root_path": str(repo), "name": "arepo"})
+    body = res.json()
+
     detail = client.get(f"/projects/{body['id']}").json()
     assert detail["status"] == "failed"
     conn = sqlite3.connect(db_path(data_dir))
@@ -318,7 +355,7 @@ def test_create_project_accepts_then_honestly_fails_without_engine(
                 (body["id"],),
             ).fetchone()[0]
         )
-        assert "引擎" in stats["error"]
+        assert "索引引擎炸了" in stats["detail"]
     finally:
         conn.close()
 

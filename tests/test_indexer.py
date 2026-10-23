@@ -269,6 +269,23 @@ def test_reindex_is_idempotent(indexed, demo_repo: Path) -> None:
     assert _rows(db, "SELECT COUNT(*) FROM edge")[0][0] == edges_before
 
 
+def test_plain_directory_without_git_can_be_imported(tmp_path: Path) -> None:
+    """源文档 §2.1：输入可以是「GitHub 地址或**本地项目**」。
+
+    没有 `.git` 的目录也得能索引——扫描器本来就有文件系统退路，
+    读文件内容那一半也得有（否则 `git cat-file` 直接炸）。
+    """
+    repo = tmp_path / "plain"
+    (repo / "pkg").mkdir(parents=True)
+    (repo / "pkg" / "core.py").write_text("def helper():\n    return 1\n", encoding="utf-8")
+
+    db = tmp_path / "ci.db"
+    result = index_project(db, root=repo, name="plain")
+    assert result.symbols > 0
+    quals = {r[0] for r in _rows(db, "SELECT qualname FROM symbol")}
+    assert "pkg.core.helper" in quals
+
+
 def test_syntax_error_file_does_not_break_index(demo_repo: Path, tmp_path: Path) -> None:
     """坏文件降级成空符号集，不能让整次索引失败（ADR 0012）。"""
     (demo_repo / "pkg" / "broken.py").write_text("def broken(:\n", encoding="utf-8")

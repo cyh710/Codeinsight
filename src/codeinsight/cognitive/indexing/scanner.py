@@ -349,6 +349,11 @@ def read_blobs(root: Path, ref: str | None, paths: list[str]) -> dict[str, bytes
     """
     if not paths:
         return {}
+    if not (root / ".git").exists():
+        # 非 git 目录：退到文件系统读。
+        # 源文档 §2.1 说输入可以是「GitHub 地址或**本地项目**」——
+        # 人家给一个没有 .git 的目录也得能导入。
+        return _read_from_disk(root, paths)
     ref = ref or "HEAD"
     request = "".join(f"{ref}:{p}\n" for p in paths)
     proc = subprocess.run(
@@ -377,6 +382,22 @@ def read_blobs(root: Path, ref: str | None, paths: list[str]) -> dict[str, bytes
         size = int(header[2])
         out[path] = data[pos : pos + size]
         pos += size + 1  # 内容后面跟一个换行
+    return out
+
+
+def _read_from_disk(root: Path, paths: list[str]) -> dict[str, bytes]:
+    """非 git 目录的退路：直接读文件。
+
+    路径是仓库相对路径（posix 风格），拼上 root 即可。
+    读不到的文件静默跳过（和 git 路径的行为一致）。
+    """
+    out: dict[str, bytes] = {}
+    for path in paths:
+        full = root / path
+        try:
+            out[path] = full.read_bytes()
+        except OSError:
+            continue
     return out
 
 
