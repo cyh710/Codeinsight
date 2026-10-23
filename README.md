@@ -78,6 +78,19 @@ docs/          架构、接口契约、ADR
 | `LLMProvider` | `llm/provider.py` | 多 provider |
 | `CommandRunner` | `execution/base.py` | 自建沙箱（当前交给外部 agent） |
 
+## 文档
+
+| 文档 | 内容 |
+|---|---|
+| [`docs/roadmap.md`](docs/roadmap.md) | **路线图**——阶段划分，逐条对应源文档章节号 |
+| [`docs/interfaces.md`](docs/interfaces.md) | **接口契约**——10 个留接口的约定与依赖方向 |
+| [`docs/decisions/`](docs/decisions/) | **ADR**——每个技术决策的"为什么"与"什么条件下重评" |
+| [`docs/ported-from-tapestry.md`](docs/ported-from-tapestry.md) | 从织忆移植了哪些代码、改了什么、丢弃了什么 |
+| [`NOTICE.md`](NOTICE.md) | 第三方归属与数据隐私声明 |
+
+> **功能范围**记在路线图，**技术决策**记在 ADR——范围会随进度调整，
+> 决策会留下"为什么当时这么选"。范围变了要改 ADR（决策的前提变了），而不是默默改代码。
+
 ## 设计原则
 
 1. **结论必须能落回 `file:line`** —— 引用信息放在结构化字段里，不随文本截断丢失。
