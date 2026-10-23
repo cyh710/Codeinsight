@@ -1,0 +1,25 @@
+# 行尾统一：仓库内一律 LF，Windows 脚本例外。
+#
+# 本机 core.autocrlf=true 会把工作区的 LF 改写成 CRLF，导致 clone 下来满仓
+# "整个文件被修改"的假 diff。仓库级 .gitattributes 优先于全局配置。
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.whl binary
+*.so binary
+*.dll binary
+*.exe binary
+*.onnx binary
+*.bin binary
