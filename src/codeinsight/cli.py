@@ -73,6 +73,7 @@ def _cmd_index(args: argparse.Namespace) -> int:
         root=Path(args.repo),
         name=args.name or Path(args.repo).name,
         ref=args.ref,
+        max_chunk_lines=settings.max_chunk_lines,
     )
     print(f"→ {path}")
     print(f"   project={result.project_name} @ {result.head_commit[:8]}")
@@ -81,8 +82,8 @@ def _cmd_index(args: argparse.Namespace) -> int:
         f"edges={result.edges}（解析到符号 {result.resolved_edges}）"
     )
     print(
-        f"   entry_points={result.entry_points} dependencies={result.dependencies} "
-        f"skipped={result.skipped}"
+        f"   chunks={result.chunks} entry_points={result.entry_points} "
+        f"dependencies={result.dependencies} skipped={result.skipped}"
     )
     print(f"   用时 {result.elapsed_s:.2f}s")
     return 0

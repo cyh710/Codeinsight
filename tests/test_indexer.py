@@ -279,3 +279,72 @@ def test_syntax_error_file_does_not_break_index(demo_repo: Path, tmp_path: Path)
     result = index_project(db, root=demo_repo, name="demo")
     assert result.skipped == 1
     assert result.symbols > 0
+
+
+def test_chunks_are_written(indexed) -> None:
+    _, db = indexed
+    rows = _rows(db, "SELECT qualname, content_kind FROM chunk")
+    assert ("pkg.core.helper", "code") in rows
+    assert ("pkg.core.Widget", "doc") in rows
+    assert ("pkg.core", "init") in rows
+
+
+def test_vendored_files_have_symbols_but_no_chunks(indexed) -> None:
+    """ADR 0015 第二档：vendored 符号入库、chunk 不入库。
+
+    第三方代码不该出现在「这个项目怎么做的」的答案里，
+    但项目 import 了它——那条 import 边是「项目用了 X」这条设计事实的载体。
+    """
+    _, db = indexed
+    symbol_rows = _rows(
+        db,
+        """
+        SELECT COUNT(*) FROM symbol s JOIN file f ON f.id = s.file_id
+        WHERE f.path = 'vendor/lib.py'
+        """,
+    )
+    chunk_rows = _rows(
+        db,
+        """
+        SELECT COUNT(*) FROM chunk ch JOIN file f ON f.id = ch.file_id
+        WHERE f.path = 'vendor/lib.py'
+        """,
+    )
+    assert symbol_rows[0][0] > 0
+    assert chunk_rows[0][0] == 0
+
+
+def test_oversized_symbol_is_split_but_keeps_one_symbol(demo_repo: Path, tmp_path: Path) -> None:
+    """ADR 0005：切分后 `symbol_id` 仍指向原符号——「这个符号在哪」只有一个答案。"""
+    body = "\n".join(f"    x{i} = {i}" for i in range(1, 61))
+    (demo_repo / "pkg" / "big.py").write_text(f"def big():\n{body}\n", encoding="utf-8")
+    _git(demo_repo, "add", "-A")
+    _git(demo_repo, "commit", "-m", "big")
+
+    db = tmp_path / "ci.db"
+    index_project(db, root=demo_repo, name="demo", max_chunk_lines=20)
+
+    rows = _rows(
+        db,
+        """
+        SELECT c.ordinal, c.part_count, s.qualname
+        FROM chunk c JOIN symbol s ON s.id = c.symbol_id
+        WHERE s.qualname = 'pkg.big.big'
+        ORDER BY c.ordinal
+        """,
+    )
+    assert len(rows) > 1
+    assert {r[2] for r in rows} == {"pkg.big.big"}
+    assert all(r[1] == len(rows) for r in rows)
+
+
+def test_fts_index_is_populated(indexed) -> None:
+    """FTS5 虚表由触发器维护，入库后应该能查到东西。"""
+    _, db = indexed
+    rows = _rows(
+        db,
+        """
+        SELECT rowid FROM chunk_fts WHERE chunk_fts MATCH 'helper'
+        """,
+    )
+    assert rows

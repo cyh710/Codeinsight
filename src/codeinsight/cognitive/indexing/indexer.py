@@ -20,6 +20,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from codeinsight.cognitive.indexing.chunker import DEFAULT_MAX_CHUNK_LINES, chunk_symbol
 from codeinsight.cognitive.indexing.edges import (
     EdgeResolver,
     FileSymbolScope,
@@ -72,6 +73,7 @@ class IndexResult:
     entry_points: int = 0
     dependencies: int = 0
     skipped: int = 0
+    chunks: int = 0
     elapsed_s: float = 0.0
     stats: dict = field(default_factory=dict)
 
@@ -129,6 +131,7 @@ def index_project(
     root: str | Path,
     name: str,
     ref: str | None = None,
+    max_chunk_lines: int = DEFAULT_MAX_CHUNK_LINES,
 ) -> IndexResult:
     """对一个仓库做一次**全量**索引。
 
@@ -142,6 +145,8 @@ def index_project(
         项目显示名（同名项目会被复用）。
     ref
         git ref（缺省 HEAD）。
+    max_chunk_lines
+        超大符号二次切分的行数上限（ADR 0005，默认 120）。
 
     全量重建的理由：先让「索引是对某个 commit 的完整快照」这件事成立，
     增量（M6）才有明确的对比基准。增量版会在同一套写入逻辑上加一层 diff。
@@ -166,13 +171,18 @@ def index_project(
         _clear_project_data(conn, project_id)
 
         file_ids: dict[str, int] = {}
+        file_sha: dict[str, str] = {}
+        role_by_path: dict[str, str] = {}
         for f in indexed:
             raw = blobs.get(f.path, b"")
+            digest = hashlib.sha256(raw).hexdigest()
+            file_sha[f.path] = digest
+            role_by_path[f.path] = f.role
             file_ids[f.path] = _write_file(
                 conn,
                 project_id=project_id,
                 repo_file=f,
-                content_sha256=hashlib.sha256(raw).hexdigest(),
+                content_sha256=digest,
                 line_count=raw.count(b"\n") + (1 if raw and not raw.endswith(b"\n") else 0),
             )
 
@@ -209,6 +219,7 @@ def index_project(
         src_modules: dict[str, str] = {}
         module_ids: dict[str, int] = {}
         symbol_count = 0
+        chunk_count = 0
 
         for entry in parsed_entries:
             module_id = write_module(
@@ -236,6 +247,21 @@ def index_project(
             symbol_count += len(ids)
             scopes[entry.path] = scope
             bindings[entry.module_qualname] = build_bindings(entry.parsed.imports)
+
+            # ── 切块（ADR 0005）────────────────────────────────
+            # vendored 文件只进符号索引，不进块索引（ADR 0015 第二档）：
+            # 第三方代码不该出现在「这个项目怎么做的」的答案里。
+            if role_by_path[entry.path] != "vendored":
+                chunk_count += _write_chunks(
+                    conn,
+                    project_id=project_id,
+                    file_id=file_ids[entry.path],
+                    file_content_sha256=file_sha[entry.path],
+                    parsed=entry.parsed,
+                    source_lines=entry.source_lines,
+                    symbol_ids=ids,
+                    max_lines=max_chunk_lines,
+                )
 
         # ── 边（全局符号表齐了才写）──────────────────────────────
         resolver = EdgeResolver(symbol_index, bindings)
@@ -329,6 +355,7 @@ def index_project(
         entry_points=entry_points,
         dependencies=dependencies,
         skipped=skipped,
+        chunks=chunk_count,
         elapsed_s=time.monotonic() - started,
         stats={"index_epoch": next_epoch, "parser_version": PARSER_VERSION},
     )
@@ -397,6 +424,72 @@ def _write_file(
         ),
     )
     return int(cur.lastrowid or 0)
+
+
+def _write_chunks(
+    conn: sqlite3.Connection,
+    *,
+    project_id: int,
+    file_id: int,
+    file_content_sha256: str,
+    parsed: object,
+    source_lines: list[str],
+    symbol_ids: list[int],
+    max_lines: int,
+) -> int:
+    """切块并写进 `chunk` 表（ADR 0005）。
+
+    `file_content_sha256` 是**文件级**哈希——过期判定的粗筛层；
+    `chunk.source_sha256` 是**块级**哈希——精确层。
+    文件变了但符号没变时，粗筛会误报，精确层不会。
+    """
+    import_lines = [imp.lineno for imp in parsed.imports if imp.lineno]
+    # 只保留**模块头部**的 import：函数体里的 import 是实现细节，
+    # 混进模块块会让它的行号范围一路延伸到文件末尾。
+    first_symbol_line = min(
+        (s.lineno for s in parsed.symbols if str(s.kind) != "module"),
+        default=0,
+    )
+    if first_symbol_line:
+        import_lines = [lineno for lineno in import_lines if lineno < first_symbol_line]
+
+    written = 0
+    for symbol, symbol_id in zip(parsed.symbols, symbol_ids, strict=True):
+        for spec in chunk_symbol(
+            symbol,
+            source_lines,
+            max_lines=max_lines,
+            import_lines=import_lines,
+        ):
+            conn.execute(
+                """
+                INSERT INTO chunk (
+                    project_id, symbol_id, file_id, ordinal, part_count,
+                    qualname, name, kind, lineno, end_lineno, header, body,
+                    token_text, source_sha256, file_content_sha256, content_kind
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    project_id,
+                    symbol_id,
+                    file_id,
+                    spec.ordinal,
+                    spec.part_count,
+                    spec.qualname,
+                    spec.name,
+                    spec.kind,
+                    spec.lineno,
+                    spec.end_lineno,
+                    spec.header,
+                    spec.body,
+                    spec.token_text,
+                    spec.source_sha256,
+                    file_content_sha256,
+                    spec.content_kind,
+                ),
+            )
+            written += 1
+    return written
 
 
 def _write_entry_points(
