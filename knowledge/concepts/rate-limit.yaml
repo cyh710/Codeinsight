@@ -1,0 +1,20 @@
+id: rate-limit
+name: 限流：保护有限处理能力
+category: http
+summary: 限流控制一段时间内允许多少请求或工作进入系统，避免资源耗尽。它与并发上限有关但不同：每秒十次请求和同时十个任务约束的是不同维度。合理限流还需要明确按用户、接口、项目还是全局计数。
+principles: 固定窗口实现简单，但窗口边界可能集中放行；滑动窗口更平滑，令牌桶允许受控突发。分布式服务需要共享计数或接受局部误差。拒绝请求时应有稳定状态与重试建议，但不能保证客户端都会遵守。
+tradeoffs: 更严格限制保护容量，却可能拒绝正常突发。排队、降级与拒绝适合不同工作。应监测拒绝比例、等待时间和下游容量；具体数值需要依据实际负载，不应由概念检测器凭代码名字判断合理性。
+alternatives: 并发信号量、背压、有界队列、配额或分级服务。
+detection:
+  import_names:
+  - slowapi
+  - limits
+  call_names:
+  - slowapi.Limiter
+  attribute_names: []
+  decorator_names:
+  - slowapi.extension.Limiter.limit
+  base_classes: []
+  string_markers: []
+references:
+- https://developer.mozilla.org/zh-CN/docs/Learn_web_development

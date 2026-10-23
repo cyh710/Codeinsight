@@ -1,0 +1,1685 @@
+[
+  {
+    "id": "python-execution",
+    "title": "程序怎样执行：从源文件到结果",
+    "group": "Python",
+    "aliases": [
+      "Python",
+      "程序执行",
+      "解释器",
+      "源代码"
+    ],
+    "summary": "程序是写给计算机的一组明确指令，源代码是这些指令的文字表示。Python 解释器负责读取程序、理解语法并执行操作；把代码保存成文件，并不等于代码已经运行。先分清“写了什么”和“实际执行了什么”，才能读懂项目入口。",
+    "prerequisites": [],
+    "related": [
+      "python-modules",
+      "python-functions"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "byte-python",
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/python/python-execution.md"
+  },
+  {
+    "id": "python-values",
+    "title": "变量、值与类型",
+    "group": "Python",
+    "aliases": [
+      "变量",
+      "数据类型",
+      "Python类型",
+      "赋值"
+    ],
+    "summary": "变量是指向对象的名字，值是实际的数据，类型决定数据支持哪些操作。在 Python 中，a = b 通常让两个名字指向同一对象，不是把一份数据放进另一个盒子。理解名字与对象的关系，可以解释为什么修改列表有时会影响另一个变量。",
+    "prerequisites": [],
+    "related": [
+      "python-containers",
+      "python-functions"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "byte-python",
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/python/python-values.md"
+  },
+  {
+    "id": "python-control-flow",
+    "title": "条件与循环：程序怎样选择下一步",
+    "group": "Python",
+    "aliases": [
+      "条件判断",
+      "循环",
+      "if",
+      "for循环",
+      "while循环"
+    ],
+    "summary": "条件让程序根据数据选择路径，循环让同一段处理作用于多个值或反复执行。代码从上往下写，不意味着每一行都会执行；判断条件、提前返回和异常都可能改变流程。读业务代码时，先识别这些分支和退出点，再理解具体计算。",
+    "prerequisites": [
+      "python-values"
+    ],
+    "related": [
+      "python-functions",
+      "python-containers"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "byte-python",
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/python/python-control-flow.md"
+  },
+  {
+    "id": "python-functions",
+    "title": "函数、参数与返回值",
+    "group": "Python",
+    "aliases": [
+      "函数",
+      "Python函数",
+      "函数参数",
+      "参数",
+      "返回值"
+    ],
+    "summary": "函数是一段可以命名、重复调用的处理过程。参数让调用者提供输入，返回值让函数把结果交还给调用者。例如，计算价格的函数接收单价和数量，返回总价；调用者不必每次重写乘法，也更容易单独检查价格规则。",
+    "prerequisites": [
+      "python-values"
+    ],
+    "related": [
+      "python-modules",
+      "python-annotations",
+      "js-functions"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "byte-python",
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/python/python-functions.md"
+  },
+  {
+    "id": "python-containers",
+    "title": "列表、元组、字典与集合",
+    "group": "Python",
+    "aliases": [
+      "列表",
+      "字典",
+      "元组",
+      "集合",
+      "Python容器"
+    ],
+    "summary": "容器把多个值组织起来。列表按顺序保存元素，元组保存一组通常不改变的结构，字典把键映射到值，集合保存不重复的成员。选哪种容器，取决于你要按顺序遍历、按键查找，还是判断某个值是否存在。",
+    "prerequisites": [
+      "python-values"
+    ],
+    "related": [
+      "python-control-flow",
+      "python-functions"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "byte-python",
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/python/python-containers.md"
+  },
+  {
+    "id": "python-classes",
+    "title": "类、对象与继承",
+    "group": "Python",
+    "aliases": [
+      "类",
+      "对象",
+      "Python类",
+      "继承"
+    ],
+    "summary": "类描述一类对象拥有的数据与行为，对象是某一次具体实例。例如，Cart 类规定购物车如何添加商品，而小林的购物车和小李的购物车是两个对象，各自保存自己的商品。理解类时，先分清实例数据与共享的类数据。",
+    "prerequisites": [
+      "python-functions"
+    ],
+    "related": [
+      "abstract-base",
+      "dependency-injection"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "byte-python",
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/python/python-classes.md"
+  },
+  {
+    "id": "python-modules",
+    "title": "模块、包与导入",
+    "group": "Python",
+    "aliases": [
+      "模块",
+      "Python导入",
+      "import",
+      "包"
+    ],
+    "summary": "模块通常是一份可以导入的 Python 代码，包把多个模块组织在一个命名空间下。导入让一个文件使用另一个文件提供的函数或类，而不必复制实现。读工程时，导入关系能帮助你理解模块边界，但它不等于实际的业务调用链。",
+    "prerequisites": [
+      "python-functions"
+    ],
+    "related": [
+      "python-execution",
+      "python-classes"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "byte-python",
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/python/python-modules.md"
+  },
+  {
+    "id": "python-exceptions",
+    "title": "异常与错误处理",
+    "group": "Python",
+    "aliases": [
+      "异常",
+      "try",
+      "except",
+      "错误处理"
+    ],
+    "summary": "异常是程序无法按当前路径继续时发出的信号，例如文件不存在或字符串不能转成数字。处理异常的目标不是让程序永远不报错，而是让可恢复的问题得到处理、不可恢复的问题保留清楚的原因，并确保资源得到清理。",
+    "prerequisites": [
+      "python-functions"
+    ],
+    "related": [
+      "context-manager",
+      "retry-idempotency"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "byte-python",
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/python/python-exceptions.md"
+  },
+  {
+    "id": "python-files",
+    "title": "文件、路径与资源生命周期",
+    "group": "Python",
+    "aliases": [
+      "文件读写",
+      "文件路径",
+      "Path",
+      "文件句柄"
+    ],
+    "summary": "文件把数据保存在程序进程之外，路径告诉操作系统去哪里找它。相对路径依赖当前工作目录，绝对路径指向明确位置。路径对象本身只是位置描述，不代表文件存在，也不代表当前程序有权读取。",
+    "prerequisites": [
+      "python-exceptions"
+    ],
+    "related": [
+      "context-manager",
+      "file-lock"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "byte-python",
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/python/python-files.md"
+  },
+  {
+    "id": "python-annotations",
+    "title": "类型注解：把接口约定写出来",
+    "group": "Python",
+    "aliases": [
+      "类型注解",
+      "typing",
+      "类型提示"
+    ],
+    "summary": "类型注解说明函数期望接收和返回什么数据，帮助读者、编辑器和静态检查工具发现不一致。Python 注解通常不会自动限制运行时传入的对象，所以它是接口表达的一部分，不是输入校验的替代品。",
+    "prerequisites": [
+      "python-functions",
+      "python-containers"
+    ],
+    "related": [
+      "ts-types",
+      "abstract-base"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/python/python-annotations.md"
+  },
+  {
+    "id": "web-client-server",
+    "title": "浏览器、前端与后端",
+    "group": "Web 基础",
+    "aliases": [
+      "前端",
+      "后端",
+      "浏览器",
+      "客户端",
+      "服务端"
+    ],
+    "summary": "浏览器运行用户看到的页面，前端代码负责界面与交互；后端通常运行在另一进程，处理数据、权限和持久化。一个按钮可以在浏览器里立即改变颜色，也可以发请求让后端保存消息。界面有变化，不代表后端操作已经成功。",
+    "prerequisites": [],
+    "related": [
+      "web-http",
+      "web-api",
+      "js-fetch"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/web/web-client-server.md"
+  },
+  {
+    "id": "web-html",
+    "title": "HTML：页面的结构与语义",
+    "group": "Web 基础",
+    "aliases": [
+      "HTML",
+      "标签",
+      "HTML元素",
+      "语义化"
+    ],
+    "summary": "HTML 描述网页中有哪些内容以及它们的结构，例如标题、段落、按钮和表单。标签不是单纯的外观标记：button 表达可操作按钮，h1 表达主要标题。清楚的语义让浏览器、键盘用户和辅助技术都更容易理解页面。",
+    "prerequisites": [
+      "web-client-server"
+    ],
+    "related": [
+      "web-css",
+      "js-dom",
+      "react-components"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/web/web-html.md"
+  },
+  {
+    "id": "web-css",
+    "title": "CSS 选择器、层叠与盒模型",
+    "group": "Web 基础",
+    "aliases": [
+      "CSS",
+      "选择器",
+      "盒模型",
+      "层叠"
+    ],
+    "summary": "CSS 规定页面内容怎样呈现。选择器决定规则作用于哪些元素，层叠决定多条规则冲突时采用哪一条，盒模型描述内容、内边距、边框与外边距怎样占据空间。看到宽度异常时，应先检查这些层次，而不是不断修改像素。",
+    "prerequisites": [
+      "web-html"
+    ],
+    "related": [
+      "web-layout"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/web/web-css.md"
+  },
+  {
+    "id": "web-layout",
+    "title": "Flex、Grid 与响应式布局",
+    "group": "Web 基础",
+    "aliases": [
+      "Flex",
+      "Grid",
+      "响应式",
+      "布局"
+    ],
+    "summary": "布局决定内容区域怎样排列。Flex 主要解决一条轴上的分配与对齐，Grid 擅长同时组织行和列。响应式布局根据可用空间调整呈现，目标是保持内容可用，而不是让所有屏幕都显示完全相同的像素位置。",
+    "prerequisites": [
+      "web-css"
+    ],
+    "related": [
+      "react-components"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/web/web-layout.md"
+  },
+  {
+    "id": "web-http",
+    "title": "HTTP 请求与响应",
+    "group": "Web 基础",
+    "aliases": [
+      "HTTP",
+      "请求",
+      "响应",
+      "状态码",
+      "请求响应"
+    ],
+    "summary": "HTTP 是客户端与服务器交换消息的一套规则。请求描述想做什么，响应说明处理结果并携带数据。方法、地址、状态码、头部和正文各有职责；它们共同构成接口约定，不能只看一个 JSON 字段就认定调用成功。",
+    "prerequisites": [
+      "web-client-server"
+    ],
+    "related": [
+      "web-api",
+      "js-fetch",
+      "retry-idempotency"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/web/web-http.md"
+  },
+  {
+    "id": "web-api",
+    "title": "URL、JSON 与 API 契约",
+    "group": "Web 基础",
+    "aliases": [
+      "URL",
+      "JSON",
+      "API",
+      "接口契约"
+    ],
+    "summary": "URL 标识访问目标，JSON 表达可以传输的数据结构，API 约定双方怎样交互。它们不是同一件事：知道一个地址不代表知道请求字段；拿到一段 JSON 也不代表它符合接口需要的形状。工程协作依赖的是完整契约。",
+    "prerequisites": [
+      "web-http"
+    ],
+    "related": [
+      "ts-interfaces",
+      "structured-logging"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/web/web-api.md"
+  },
+  {
+    "id": "js-values",
+    "title": "JavaScript 的变量与值",
+    "group": "JavaScript",
+    "aliases": [
+      "JavaScript",
+      "let",
+      "const",
+      "JS变量"
+    ],
+    "summary": "JavaScript 用变量保存对值的引用。let 允许重新赋值，const 限制名字重新绑定，但不会自动冻结它指向的对象。读前端状态时，要区分给变量换一个对象与修改原对象的属性，这会影响状态更新是否被观察到。",
+    "prerequisites": [],
+    "related": [
+      "js-functions",
+      "js-objects",
+      "react-state"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/js/js-values.md"
+  },
+  {
+    "id": "js-functions",
+    "title": "JavaScript 函数、作用域与闭包",
+    "group": "JavaScript",
+    "aliases": [
+      "JavaScript函数",
+      "作用域",
+      "闭包",
+      "箭头函数"
+    ],
+    "summary": "函数把行为组织起来，作用域决定名字从哪里取得，闭包让函数保留对创建时词法环境的访问。前端回调经常在稍后执行，所以理解它捕获了什么，比只看函数现在写在哪里更重要。",
+    "prerequisites": [
+      "js-values"
+    ],
+    "related": [
+      "python-functions",
+      "react-effects",
+      "js-events-loop"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/js/js-functions.md"
+  },
+  {
+    "id": "js-objects",
+    "title": "对象、数组与不可变更新",
+    "group": "JavaScript",
+    "aliases": [
+      "JS对象",
+      "JS数组",
+      "展开语法",
+      "不可变更新"
+    ],
+    "summary": "对象适合按名字组织属性，数组适合有顺序的一组元素。界面常把消息、项目和章节保存成对象数组，再转换成视图。读这类代码时，先看每项的数据形状，以及转换是否修改了原数据。",
+    "prerequisites": [
+      "js-values",
+      "js-functions"
+    ],
+    "related": [
+      "react-state",
+      "ts-interfaces"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/js/js-objects.md"
+  },
+  {
+    "id": "js-modules",
+    "title": "JavaScript 模块与 import/export",
+    "group": "JavaScript",
+    "aliases": [
+      "JS模块",
+      "ESM",
+      "export",
+      "JavaScript导入"
+    ],
+    "summary": "模块让文件明确声明自己提供什么、依赖什么。export 导出能力，import 在另一个文件中使用。它帮助拆分工程，也让构建工具分析依赖；但模块边界不等于运行进程边界，导入代码仍可能在当前环境执行。",
+    "prerequisites": [
+      "js-functions"
+    ],
+    "related": [
+      "python-modules",
+      "react-components"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/js/js-modules.md"
+  },
+  {
+    "id": "js-dom",
+    "title": "DOM 与事件：点击怎样变成行为",
+    "group": "JavaScript",
+    "aliases": [
+      "DOM",
+      "事件",
+      "事件监听",
+      "事件冒泡"
+    ],
+    "summary": "DOM 是浏览器中的页面对象树，JavaScript 可以读取或修改它。事件把用户动作和程序行为连接起来，例如点击、输入和键盘操作。理解一个按钮，既要看它对应的元素，也要看事件被谁监听以及触发后改变了什么。",
+    "prerequisites": [
+      "web-html",
+      "js-functions"
+    ],
+    "related": [
+      "react-events",
+      "web-api"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/js/js-dom.md"
+  },
+  {
+    "id": "js-async",
+    "title": "Promise 与 async/await",
+    "group": "JavaScript",
+    "aliases": [
+      "Promise",
+      "async/await",
+      "JavaScript异步",
+      "await"
+    ],
+    "summary": "异步让程序在等待网络或其他操作时可以继续处理别的工作。Promise 表示一个未来可能成功或失败的结果，async/await 提供更接近顺序代码的写法。等待并不等于开一个新线程，也不保证多个请求会自动同时完成。",
+    "prerequisites": [
+      "js-functions",
+      "web-http"
+    ],
+    "related": [
+      "js-fetch",
+      "js-events-loop",
+      "async"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/js/js-async.md"
+  },
+  {
+    "id": "js-fetch",
+    "title": "网络请求、取消与失败处理",
+    "group": "JavaScript",
+    "aliases": [
+      "fetch",
+      "AbortController",
+      "请求取消",
+      "网络错误"
+    ],
+    "summary": "fetch 是浏览器发起 HTTP 请求的接口。一次可靠的请求处理需要分别处理网络失败、HTTP 错误、正文解析失败和业务错误。用户切换项目后，旧请求可能晚到；让旧结果覆盖新界面，是异步应用常见的状态问题。",
+    "prerequisites": [
+      "js-async",
+      "web-http"
+    ],
+    "related": [
+      "retry-idempotency",
+      "react-effects"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/js/js-fetch.md"
+  },
+  {
+    "id": "js-events-loop",
+    "title": "事件循环、任务与微任务",
+    "group": "JavaScript",
+    "aliases": [
+      "事件循环",
+      "微任务",
+      "宏任务",
+      "event loop"
+    ],
+    "summary": "浏览器通过事件循环协调脚本、事件与渲染。主线程一次执行一段 JavaScript 工作，异步操作完成后再安排后续处理。异步写法可以避免等待时阻塞，但长时间同步计算仍会让页面卡住。",
+    "prerequisites": [
+      "js-async"
+    ],
+    "related": [
+      "react-state",
+      "thread-pool"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/js/js-events-loop.md"
+  },
+  {
+    "id": "ts-types",
+    "title": "TypeScript 的类型注解与推断",
+    "group": "TypeScript",
+    "aliases": [
+      "TypeScript",
+      "TS",
+      "类型推断",
+      "TS类型"
+    ],
+    "summary": "TypeScript 在 JavaScript 基础上增加静态类型检查，帮助你在运行前发现一些接口不一致。类型注解描述值的形状，推断根据上下文自动得到类型。它不会把外部输入自动变成正确数据，也不会替你验证所有业务规则。",
+    "prerequisites": [
+      "js-values"
+    ],
+    "related": [
+      "ts-unions",
+      "python-annotations"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "typescript"
+    ],
+    "dialect": null,
+    "file": "articles/ts/ts-types.md"
+  },
+  {
+    "id": "ts-unions",
+    "title": "联合类型与类型收窄",
+    "group": "TypeScript",
+    "aliases": [
+      "联合类型",
+      "类型收窄",
+      "判别联合"
+    ],
+    "summary": "联合类型表示一个值可能属于几种情况，收窄通过实际检查确定当前是哪一种。它特别适合表达加载、成功和失败等互斥状态，让界面在访问结果前先处理状态，而不是假设所有字段总是存在。",
+    "prerequisites": [
+      "ts-types"
+    ],
+    "related": [
+      "ts-nullability",
+      "react-state"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "typescript"
+    ],
+    "dialect": null,
+    "file": "articles/ts/ts-unions.md"
+  },
+  {
+    "id": "ts-interfaces",
+    "title": "interface、type 与结构契约",
+    "group": "TypeScript",
+    "aliases": [
+      "interface",
+      "type",
+      "接口类型",
+      "结构类型"
+    ],
+    "summary": "interface 和 type 都能描述数据形状。它们帮助前后端与组件约定字段，不代表运行时已经建立了一个有校验能力的对象。TypeScript 很多地方按结构判断兼容性：只要具备要求的成员，就可能符合接口。",
+    "prerequisites": [
+      "ts-types",
+      "web-api"
+    ],
+    "related": [
+      "ts-generics",
+      "ts-react"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "typescript"
+    ],
+    "dialect": null,
+    "file": "articles/ts/ts-interfaces.md"
+  },
+  {
+    "id": "ts-generics",
+    "title": "泛型：保留输入与输出的类型关系",
+    "group": "TypeScript",
+    "aliases": [
+      "泛型",
+      "Generic",
+      "泛型函数"
+    ],
+    "summary": "泛型让一段代码适用于不同类型，同时保留它们之间的关系。例如，从数组取第一项时，返回类型应该跟数组元素类型一致。用 any 虽然也能接受不同输入，却会丢失这层关系。",
+    "prerequisites": [
+      "ts-interfaces"
+    ],
+    "related": [
+      "ts-nullability"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "typescript"
+    ],
+    "dialect": null,
+    "file": "articles/ts/ts-generics.md"
+  },
+  {
+    "id": "ts-nullability",
+    "title": "可选字段、null 与安全访问",
+    "group": "TypeScript",
+    "aliases": [
+      "null",
+      "undefined",
+      "可选链",
+      "空值合并"
+    ],
+    "summary": "空值表达“没有数据”，但缺失字段、明确为 null 和空字符串可能代表不同业务状态。类型系统能提醒你处理这些情况，前提是接口没有把它们不准确地标成必有值。",
+    "prerequisites": [
+      "ts-types"
+    ],
+    "related": [
+      "ts-unions",
+      "web-api"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "typescript"
+    ],
+    "dialect": null,
+    "file": "articles/ts/ts-nullability.md"
+  },
+  {
+    "id": "ts-react",
+    "title": "为 React props 与事件声明类型",
+    "group": "TypeScript",
+    "aliases": [
+      "React类型",
+      "Props类型",
+      "TSX"
+    ],
+    "summary": "TypeScript 可以描述 React 组件接收的 props、事件和状态，让组件使用方式更清楚。一个按钮需要的标题与回调可以直接写在接口中，调用方漏传或传错类型时就能在构建阶段发现。",
+    "prerequisites": [
+      "ts-interfaces",
+      "react-props"
+    ],
+    "related": [
+      "react-events"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "typescript",
+      "react"
+    ],
+    "dialect": null,
+    "file": "articles/ts/ts-react.md"
+  },
+  {
+    "id": "react-components",
+    "title": "React 组件与 JSX",
+    "group": "React",
+    "aliases": [
+      "React",
+      "组件",
+      "JSX",
+      "React组件"
+    ],
+    "summary": "React 用组件组织界面。组件可以小到一个按钮，也可以大到一个对话区；它接收输入，描述当前应该显示的内容。JSX 是一种便于在 JavaScript 中描述界面的语法，它看起来像 HTML，但会经过构建工具转换。",
+    "prerequisites": [
+      "web-html",
+      "js-functions"
+    ],
+    "related": [
+      "react-props",
+      "react-state",
+      "ts-react"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "react"
+    ],
+    "dialect": null,
+    "file": "articles/react/react-components.md"
+  },
+  {
+    "id": "react-props",
+    "title": "Props：组件之间怎样传数据",
+    "group": "React",
+    "aliases": [
+      "props",
+      "组件参数",
+      "属性传递"
+    ],
+    "summary": "Props 是父组件传给子组件的数据与回调。它让同一个组件可以展示不同内容，也把“显示什么”和“用户操作后做什么”连接起来。子组件应把 props 当作只读输入，不直接修改父组件传来的对象。",
+    "prerequisites": [
+      "react-components"
+    ],
+    "related": [
+      "react-lifting",
+      "ts-react"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "react"
+    ],
+    "dialect": null,
+    "file": "articles/react/react-props.md"
+  },
+  {
+    "id": "react-state",
+    "title": "State、重新渲染与状态快照",
+    "group": "React",
+    "aliases": [
+      "state",
+      "useState",
+      "React state",
+      "重新渲染"
+    ],
+    "summary": "State 保存影响界面的记忆，例如当前选中的章节。调用状态更新函数会请求新的渲染；当前事件处理函数仍然读取本次渲染时的状态快照。理解这个时间关系，可以解释为什么 setState 后马上打印仍可能看到旧值。",
+    "prerequisites": [
+      "react-props",
+      "js-objects"
+    ],
+    "related": [
+      "react-events",
+      "react-lifting",
+      "js-events-loop"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "react"
+    ],
+    "dialect": null,
+    "file": "articles/react/react-state.md"
+  },
+  {
+    "id": "react-events",
+    "title": "事件处理与受控输入",
+    "group": "React",
+    "aliases": [
+      "受控输入",
+      "onChange",
+      "React事件",
+      "输入框"
+    ],
+    "summary": "事件处理把用户动作转换成状态变化。受控输入由 React state 保存当前值，输入框根据这个值显示；用户输入时通过 onChange 更新状态。它使校验和联动更明确，也要求状态更新不能遗漏。",
+    "prerequisites": [
+      "react-state",
+      "js-dom"
+    ],
+    "related": [
+      "js-fetch",
+      "web-http"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "react"
+    ],
+    "dialect": null,
+    "file": "articles/react/react-events.md"
+  },
+  {
+    "id": "react-lists",
+    "title": "条件渲染、列表与 key",
+    "group": "React",
+    "aliases": [
+      "条件渲染",
+      "列表渲染",
+      "key"
+    ],
+    "summary": "条件渲染决定当前显示哪个状态，列表渲染把一组数据转换为多个元素。key 帮助 React 在相邻渲染之间识别同一项，不是单纯为消除警告而填写的数字。身份选错，可能让输入状态或展开状态跟着错误条目移动。",
+    "prerequisites": [
+      "react-state",
+      "js-objects"
+    ],
+    "related": [
+      "react-components"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "react"
+    ],
+    "dialect": null,
+    "file": "articles/react/react-lists.md"
+  },
+  {
+    "id": "react-effects",
+    "title": "Effect、依赖与清理",
+    "group": "React",
+    "aliases": [
+      "Effect",
+      "useEffect",
+      "副作用",
+      "依赖数组"
+    ],
+    "summary": "Effect 用于让组件与外部系统保持同步，例如注册监听或根据项目 ID 读取数据。它不是所有业务逻辑的默认位置。能够从 props 或 state 直接计算的值，通常应在渲染时计算；用户点击导致的动作通常先放在对应事件处理里。",
+    "prerequisites": [
+      "react-state",
+      "js-async"
+    ],
+    "related": [
+      "react-hooks",
+      "js-fetch"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "react"
+    ],
+    "dialect": null,
+    "file": "articles/react/react-effects.md"
+  },
+  {
+    "id": "react-hooks",
+    "title": "Hooks 的调用规则与组合",
+    "group": "React",
+    "aliases": [
+      "Hook",
+      "Hooks",
+      "自定义Hook",
+      "use开头函数"
+    ],
+    "summary": "Hooks 让函数组件使用状态、Effect 等 React 能力，自定义 Hook 则把相关逻辑组合起来复用。复用 Hook 逻辑不等于所有调用者自动共享同一份状态；每个调用位置通常有自己的状态实例。",
+    "prerequisites": [
+      "react-state",
+      "react-effects"
+    ],
+    "related": [
+      "react-lifting"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "react"
+    ],
+    "dialect": null,
+    "file": "articles/react/react-hooks.md"
+  },
+  {
+    "id": "react-lifting",
+    "title": "状态提升与 Context",
+    "group": "React",
+    "aliases": [
+      "状态提升",
+      "Context",
+      "共享状态",
+      "单一事实来源"
+    ],
+    "summary": "当多个区域需要同步变化，可以把状态放到它们共同的拥有者，再通过 props 或 Context 传递。单一事实来源表示同一业务事实有一个明确的权威状态，而不是每个组件各存一份并靠猜测互相同步。",
+    "prerequisites": [
+      "react-props",
+      "react-state"
+    ],
+    "related": [
+      "web-api"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "react"
+    ],
+    "dialect": null,
+    "file": "articles/react/react-lifting.md"
+  },
+  {
+    "id": "sql-database",
+    "title": "SQL 是什么：数据库、表、行与列",
+    "group": "SQL",
+    "aliases": [
+      "SQL",
+      "数据库",
+      "数据表",
+      "表",
+      "关系型数据库"
+    ],
+    "summary": "SQL 是一种查询和管理数据的语言。数据库负责有组织地保存数据，SQL 则用来表达“我要查什么、增加什么、修改什么”。可以先把表想成一张有固定列的电子表格：每一行是一条记录，每一列描述一个属性；这种类比有助于入门，但数据库还会维护约束、并发与持久化。",
+    "prerequisites": [],
+    "related": [
+      "sql-select",
+      "sql-constraints",
+      "sql-transactions",
+      "web-api"
+    ],
+    "concept_ids": [
+      "db-transaction",
+      "orm"
+    ],
+    "source_ids": [
+      "postgres"
+    ],
+    "dialect": "PostgreSQL",
+    "file": "articles/sql/sql-database.md"
+  },
+  {
+    "id": "sql-select",
+    "title": "SELECT：查询、筛选与排序",
+    "group": "SQL",
+    "aliases": [
+      "SELECT",
+      "WHERE",
+      "ORDER BY",
+      "SQL查询",
+      "筛选"
+    ],
+    "summary": "SELECT 表达要从数据中得到什么结果。FROM 指定来源，WHERE 过滤记录，ORDER BY 指定顺序。把一句自然语言问题拆成“从哪里、保留哪些行、显示哪些列、怎样排序”，通常比记住整段语法更容易。",
+    "prerequisites": [
+      "sql-database"
+    ],
+    "related": [
+      "sql-indexes",
+      "sql-joins"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "postgres"
+    ],
+    "dialect": "PostgreSQL",
+    "file": "articles/sql/sql-select.md"
+  },
+  {
+    "id": "sql-writes",
+    "title": "INSERT、UPDATE 与 DELETE",
+    "group": "SQL",
+    "aliases": [
+      "INSERT",
+      "UPDATE",
+      "DELETE",
+      "SQL增删改"
+    ],
+    "summary": "SQL 不只查询，也能新增、修改和删除记录。写入会改变后续读者看到的数据，因此除了语法，还需要考虑条件、约束、事务与重试。尤其是 UPDATE 和 DELETE，忘记筛选条件可能影响整张表。",
+    "prerequisites": [
+      "sql-select"
+    ],
+    "related": [
+      "sql-transactions",
+      "retry-idempotency"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "postgres"
+    ],
+    "dialect": "PostgreSQL",
+    "file": "articles/sql/sql-writes.md"
+  },
+  {
+    "id": "sql-constraints",
+    "title": "主键、外键与数据约束",
+    "group": "SQL",
+    "aliases": [
+      "主键",
+      "外键",
+      "约束",
+      "PRIMARY KEY",
+      "FOREIGN KEY"
+    ],
+    "summary": "约束把部分数据规则交给数据库维护。主键稳定区分记录，外键要求关联对象存在，唯一约束防止某种重复，NOT NULL 防止必填字段缺失。它们补充程序检查，使其他写入路径也必须遵守相同规则。",
+    "prerequisites": [
+      "sql-database"
+    ],
+    "related": [
+      "sql-joins",
+      "sql-transactions"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "postgres"
+    ],
+    "dialect": "PostgreSQL",
+    "file": "articles/sql/sql-constraints.md"
+  },
+  {
+    "id": "sql-joins",
+    "title": "JOIN：关联多张表",
+    "group": "SQL",
+    "aliases": [
+      "JOIN",
+      "关联查询",
+      "LEFT JOIN",
+      "INNER JOIN"
+    ],
+    "summary": "关联查询把多张表中的相关记录组合起来。例如，消息表只保存用户 ID，用户表保存名字；JOIN 可以把消息正文和发送者名字一起返回。它不会凭空理解两张表的业务关系，关联条件必须正确表达。",
+    "prerequisites": [
+      "sql-constraints",
+      "sql-select"
+    ],
+    "related": [
+      "sql-aggregate",
+      "orm"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "postgres"
+    ],
+    "dialect": "PostgreSQL",
+    "file": "articles/sql/sql-joins.md"
+  },
+  {
+    "id": "sql-aggregate",
+    "title": "聚合与 GROUP BY",
+    "group": "SQL",
+    "aliases": [
+      "GROUP BY",
+      "聚合",
+      "COUNT",
+      "SUM",
+      "HAVING"
+    ],
+    "summary": "聚合把多条记录汇总成指标，例如消息数、总金额或每个用户的记录数。GROUP BY 指定按什么分组，聚合函数在各组内计算。汇总会丢失部分明细，所以需要确认你要回答的是明细问题还是统计问题。",
+    "prerequisites": [
+      "sql-select",
+      "sql-joins"
+    ],
+    "related": [
+      "sql-indexes"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "postgres"
+    ],
+    "dialect": "PostgreSQL",
+    "file": "articles/sql/sql-aggregate.md"
+  },
+  {
+    "id": "sql-transactions",
+    "title": "事务：让多步数据库修改共同完成",
+    "group": "SQL",
+    "aliases": [
+      "SQL事务",
+      "COMMIT",
+      "ROLLBACK",
+      "BEGIN",
+      "原子性"
+    ],
+    "summary": "事务把一组数据库操作组织为整体，成功后提交，失败时撤销尚未提交的修改。它适合维护多步操作之间的约束，例如领取队列任务时，同时创建执行记录并更新队列状态。先理解这些修改为什么必须配套，再理解事务语法。",
+    "prerequisites": [
+      "sql-writes",
+      "sql-constraints"
+    ],
+    "related": [
+      "db-transaction",
+      "retry-idempotency",
+      "file-lock"
+    ],
+    "concept_ids": [
+      "db-transaction"
+    ],
+    "source_ids": [
+      "postgres"
+    ],
+    "dialect": "PostgreSQL",
+    "file": "articles/sql/sql-transactions.md"
+  },
+  {
+    "id": "sql-indexes",
+    "title": "索引与查询代价",
+    "group": "SQL",
+    "aliases": [
+      "数据库索引",
+      "SQL索引",
+      "EXPLAIN",
+      "查询计划"
+    ],
+    "summary": "索引是一种额外维护的数据结构，帮助数据库更快定位部分记录，类似书后按关键词定位页码的目录。它可能减少扫描，也会占空间并增加写入维护成本。不是每列都应建立索引，也不是有索引的查询一定更快。",
+    "prerequisites": [
+      "sql-select"
+    ],
+    "related": [
+      "sql-aggregate",
+      "connection-pool"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "postgres"
+    ],
+    "dialect": "PostgreSQL",
+    "file": "articles/sql/sql-indexes.md"
+  },
+  {
+    "id": "jwt",
+    "title": "JWT：可验证的令牌",
+    "group": "工程概念",
+    "aliases": [
+      "JWT",
+      "jwt",
+      "令牌",
+      "签名令牌"
+    ],
+    "summary": "JWT 是一种承载声明的令牌格式，常用于让接收方验证某些信息来自可信签发者。常见的签名形式包含头部、载荷和签名。它不是密码保险箱，载荷通常只是编码而非加密，拿到令牌的人可能读出里面的信息。",
+    "prerequisites": [],
+    "related": [
+      "session",
+      "web-http"
+    ],
+    "concept_ids": [
+      "jwt"
+    ],
+    "source_ids": [
+      "pyjwt",
+      "fastapi"
+    ],
+    "dialect": null,
+    "file": "articles/jwt/jwt.md"
+  },
+  {
+    "id": "session",
+    "title": "Session：把多次请求关联为会话",
+    "group": "工程概念",
+    "aliases": [
+      "session",
+      "会话",
+      "Cookie",
+      "cookie"
+    ],
+    "summary": "HTTP 请求本身不会自动记住上一次是谁访问。会话机制通过一个标识，把多次请求关联到同一份登录或交互状态。常见做法是浏览器保存 Cookie，服务器根据其中的会话 ID 查找状态，也有把签名状态保存在客户端的方案。",
+    "prerequisites": [],
+    "related": [
+      "jwt",
+      "web-http"
+    ],
+    "concept_ids": [
+      "session"
+    ],
+    "source_ids": [
+      "mdn",
+      "fastapi"
+    ],
+    "dialect": null,
+    "file": "articles/session/session.md"
+  },
+  {
+    "id": "redis-cache",
+    "title": "Redis 缓存：复用可以重建的结果",
+    "group": "工程概念",
+    "aliases": [
+      "Redis",
+      "Redis缓存",
+      "缓存"
+    ],
+    "summary": "缓存把较昂贵的结果暂时保存起来，让后续相同或相关请求更快得到答案。Redis 是可用于实现缓存的键值系统，但它也能承担队列、计数等职责。因此导入 Redis 或建立连接，不足以证明项目实现了缓存。",
+    "prerequisites": [],
+    "related": [
+      "singleton-lazy",
+      "sql-indexes"
+    ],
+    "concept_ids": [
+      "redis-cache"
+    ],
+    "source_ids": [
+      "redis"
+    ],
+    "dialect": null,
+    "file": "articles/redis/redis-cache.md"
+  },
+  {
+    "id": "db-transaction",
+    "title": "数据库事务：一致完成状态转换",
+    "group": "工程概念",
+    "aliases": [
+      "数据库事务",
+      "事务",
+      "transaction"
+    ],
+    "summary": "事务把相关数据库修改放在共同提交边界内。工程中它常用于维护跨记录不变量，例如领取输入时必须同时建立执行轮、更新会话指针并记录事件。需要先识别这些状态之间的关系，才能判断事务范围是否正确。",
+    "prerequisites": [],
+    "related": [
+      "sql-transactions",
+      "retry-idempotency",
+      "file-lock"
+    ],
+    "concept_ids": [
+      "db-transaction"
+    ],
+    "source_ids": [
+      "python",
+      "postgres"
+    ],
+    "dialect": null,
+    "file": "articles/db/db-transaction.md"
+  },
+  {
+    "id": "connection-pool",
+    "title": "连接池：复用连接并限制并发",
+    "group": "工程概念",
+    "aliases": [
+      "连接池",
+      "connection pool",
+      "连接复用"
+    ],
+    "summary": "数据库连接往往包含建立网络连接、认证和分配服务端资源等成本。连接池保存一组可复用连接，使用者借出连接完成工作后归还。它既是性能机制，也是限制数据库同时承受多少请求的一道容量边界。",
+    "prerequisites": [],
+    "related": [
+      "orm",
+      "sql-indexes"
+    ],
+    "concept_ids": [
+      "connection-pool"
+    ],
+    "source_ids": [
+      "sqlalchemy"
+    ],
+    "dialect": null,
+    "file": "articles/connection/connection-pool.md"
+  },
+  {
+    "id": "orm",
+    "title": "ORM：对象与关系数据之间的映射",
+    "group": "工程概念",
+    "aliases": [
+      "ORM",
+      "SQLAlchemy",
+      "对象关系映射"
+    ],
+    "summary": "ORM 把数据库中的表和记录映射为程序中的类与对象，让部分数据操作用对象接口表达。它能减少重复 SQL 和对象装配代码，但底层仍然执行数据库查询，事务、索引和数据约束依然存在。",
+    "prerequisites": [],
+    "related": [
+      "sql-joins",
+      "db-transaction",
+      "connection-pool"
+    ],
+    "concept_ids": [
+      "orm"
+    ],
+    "source_ids": [
+      "sqlalchemy"
+    ],
+    "dialect": null,
+    "file": "articles/orm/orm.md"
+  },
+  {
+    "id": "async",
+    "title": "异步编程：等待期间让出执行机会",
+    "group": "工程概念",
+    "aliases": [
+      "异步",
+      "协程",
+      "async def",
+      "asyncio"
+    ],
+    "summary": "异步编程让程序在等待 I/O 时处理其他工作。Python 中 async def 定义协程函数，await 在合适位置等待结果并让出执行机会。它适合大量等待型任务，不会自动把 CPU 密集工作变成并行计算。",
+    "prerequisites": [],
+    "related": [
+      "js-async",
+      "thread-pool"
+    ],
+    "concept_ids": [
+      "async"
+    ],
+    "source_ids": [
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/async/async.md"
+  },
+  {
+    "id": "thread-pool",
+    "title": "线程池：受控执行阻塞工作",
+    "group": "工程概念",
+    "aliases": [
+      "线程池",
+      "ThreadPoolExecutor",
+      "to_thread"
+    ],
+    "summary": "线程池维护一组可复用工作线程，让调用方提交任务并获取未来结果。它常用于把阻塞文件、数据库或第三方库操作移出异步事件循环。线程池提供执行资源，不自动保证被调用对象线程安全。",
+    "prerequisites": [],
+    "related": [
+      "async",
+      "file-lock"
+    ],
+    "concept_ids": [
+      "thread-pool"
+    ],
+    "source_ids": [
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/thread/thread-pool.md"
+  },
+  {
+    "id": "dependency-injection",
+    "title": "依赖注入：把需要的能力交进来",
+    "group": "工程概念",
+    "aliases": [
+      "依赖注入",
+      "DI",
+      "Depends"
+    ],
+    "summary": "依赖注入让函数或对象接收所需服务，而不是在内部固定创建所有依赖。例如，保存消息的服务接收数据库访问对象，测试时可以换成临时实现。它让依赖关系更显式，也便于控制生命周期。",
+    "prerequisites": [],
+    "related": [
+      "abstract-base",
+      "python-functions"
+    ],
+    "concept_ids": [
+      "dependency-injection"
+    ],
+    "source_ids": [
+      "fastapi"
+    ],
+    "dialect": null,
+    "file": "articles/dependency/dependency-injection.md"
+  },
+  {
+    "id": "config-env",
+    "title": "环境配置：把部署差异移出代码",
+    "group": "工程概念",
+    "aliases": [
+      "环境变量",
+      "环境配置",
+      "配置",
+      "dotenv"
+    ],
+    "summary": "配置描述程序在不同环境下使用什么地址、路径和选项。环境变量允许同一份代码在本地、测试和部署环境使用不同值。配置不是随处读取字符串的借口，应集中定义类型、默认值和必需项。",
+    "prerequisites": [],
+    "related": [
+      "structured-logging",
+      "python-annotations"
+    ],
+    "concept_ids": [
+      "config-env"
+    ],
+    "source_ids": [
+      "python",
+      "fastapi"
+    ],
+    "dialect": null,
+    "file": "articles/config/config-env.md"
+  },
+  {
+    "id": "structured-logging",
+    "title": "结构化日志：记录可以关联的事件",
+    "group": "工程概念",
+    "aliases": [
+      "结构化日志",
+      "日志",
+      "logging",
+      "trace id"
+    ],
+    "summary": "日志记录程序在某个时间发生了什么。结构化日志把重要字段独立保存，例如任务 ID、项目 ID、操作类型和耗时，方便筛选与关联。它的价值不在于输出更多文字，而在于能回答具体诊断问题。",
+    "prerequisites": [],
+    "related": [
+      "config-env",
+      "retry-idempotency"
+    ],
+    "concept_ids": [
+      "structured-logging"
+    ],
+    "source_ids": [
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/structured/structured-logging.md"
+  },
+  {
+    "id": "retry-idempotency",
+    "title": "重试与幂等：失败后怎样安全再来一次",
+    "group": "工程概念",
+    "aliases": [
+      "重试",
+      "幂等",
+      "retry",
+      "idempotency"
+    ],
+    "summary": "重试是在可能暂时失败时重新尝试，幂等是相同操作重复执行仍保持约定结果。两者经常一起设计：没有收到响应时，服务器可能已经完成写入，盲目再做一次可能产生重复副作用。检测到重试代码，不等于已经证明业务幂等。",
+    "prerequisites": [],
+    "related": [
+      "db-transaction",
+      "web-http"
+    ],
+    "concept_ids": [
+      "retry-idempotency"
+    ],
+    "source_ids": [
+      "tenacity",
+      "postgres"
+    ],
+    "dialect": null,
+    "file": "articles/retry/retry-idempotency.md"
+  },
+  {
+    "id": "rate-limit",
+    "title": "限流：保护有限处理能力",
+    "group": "工程概念",
+    "aliases": [
+      "限流",
+      "rate limit",
+      "429",
+      "令牌桶"
+    ],
+    "summary": "限流控制一段时间内允许多少请求或工作进入系统，避免资源耗尽。它与并发上限有关但不同：每秒十次请求和同时十个任务约束的是不同维度。合理限流还需要明确按用户、接口、项目还是全局计数。",
+    "prerequisites": [],
+    "related": [
+      "thread-pool",
+      "retry-idempotency"
+    ],
+    "concept_ids": [
+      "rate-limit"
+    ],
+    "source_ids": [
+      "mdn"
+    ],
+    "dialect": null,
+    "file": "articles/rate/rate-limit.md"
+  },
+  {
+    "id": "file-lock",
+    "title": "文件锁：协调对共享文件的访问",
+    "group": "工程概念",
+    "aliases": [
+      "文件锁",
+      "file lock",
+      "FileLock"
+    ],
+    "summary": "文件锁用于协调可能同时访问某个共享资源的参与者，常见于多进程写文件或本地缓存。锁只有在所有相关写入方遵守同一协议时才有效。它与 Python 线程锁、数据库事务解决的范围不同。",
+    "prerequisites": [],
+    "related": [
+      "python-files",
+      "db-transaction",
+      "context-manager"
+    ],
+    "concept_ids": [
+      "file-lock"
+    ],
+    "source_ids": [
+      "filelock",
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/file/file-lock.md"
+  },
+  {
+    "id": "context-manager",
+    "title": "上下文管理器：把进入与退出配对",
+    "group": "工程概念",
+    "aliases": [
+      "上下文管理器",
+      "with",
+      "contextmanager",
+      "资源清理"
+    ],
+    "summary": "上下文管理器通过 with 把进入资源和退出清理配对。无论主体正常结束还是抛异常，都能按约定执行退出逻辑。它能管理文件、锁、连接或临时状态，但具体退出行为由对象决定，不能只看到 with 就认定事务已提交。",
+    "prerequisites": [],
+    "related": [
+      "python-exceptions",
+      "file-lock",
+      "db-transaction"
+    ],
+    "concept_ids": [
+      "context-manager"
+    ],
+    "source_ids": [
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/context/context-manager.md"
+  },
+  {
+    "id": "decorator",
+    "title": "装饰器：在定义时包装行为",
+    "group": "工程概念",
+    "aliases": [
+      "装饰器",
+      "decorator",
+      "@语法"
+    ],
+    "summary": "装饰器在函数或类定义时接收对象，再返回替代或增强后的对象。它常用于注册路由、缓存、日志和权限检查。表面的 @ 很短，背后可能改变调用行为；读代码时要知道包装发生在何时、实际调用的是哪个对象。",
+    "prerequisites": [],
+    "related": [
+      "python-functions",
+      "singleton-lazy"
+    ],
+    "concept_ids": [
+      "decorator"
+    ],
+    "source_ids": [
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/decorator/decorator.md"
+  },
+  {
+    "id": "generator",
+    "title": "生成器：按需产生一串值",
+    "group": "工程概念",
+    "aliases": [
+      "生成器",
+      "generator",
+      "yield",
+      "惰性迭代"
+    ],
+    "summary": "生成器通过 yield 逐步产生值，让调用方需要一项时再继续计算。它适合处理大数据流或分阶段遍历，不必先构造完整列表。函数暂停时仍保留局部状态，因此也有资源生命周期需要管理。",
+    "prerequisites": [],
+    "related": [
+      "context-manager",
+      "async",
+      "python-containers"
+    ],
+    "concept_ids": [
+      "generator"
+    ],
+    "source_ids": [
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/generator/generator.md"
+  },
+  {
+    "id": "abstract-base",
+    "title": "抽象基类与协议：约定可以替换的能力",
+    "group": "工程概念",
+    "aliases": [
+      "抽象基类",
+      "ABC",
+      "Protocol",
+      "抽象接口"
+    ],
+    "summary": "抽象基类定义子类应实现的能力，协议描述对象需要具备的结构。它们帮助上层依赖稳定接口，而不是绑定某个具体实现。例如，检索器只要求得到命中列表，就可以替换底层索引。接口还需要说明语义，不只是函数名字相同。",
+    "prerequisites": [],
+    "related": [
+      "dependency-injection",
+      "python-annotations"
+    ],
+    "concept_ids": [
+      "abstract-base"
+    ],
+    "source_ids": [
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/abstract/abstract-base.md"
+  },
+  {
+    "id": "singleton-lazy",
+    "title": "延迟初始化与缓存工厂",
+    "group": "工程概念",
+    "aliases": [
+      "延迟初始化",
+      "单例",
+      "singleton",
+      "lru_cache"
+    ],
+    "summary": "延迟初始化把创建资源推迟到第一次需要时，缓存工厂可以复用已经创建的对象。无参数工厂配合缓存常表现为进程内共享实例，但不等于跨进程的全局唯一对象，也不一定保证并发首次调用只构造一次。",
+    "prerequisites": [],
+    "related": [
+      "redis-cache",
+      "dependency-injection"
+    ],
+    "concept_ids": [
+      "singleton-lazy"
+    ],
+    "source_ids": [
+      "python"
+    ],
+    "dialect": null,
+    "file": "articles/singleton/singleton-lazy.md"
+  },
+  {
+    "id": "event-bus",
+    "title": "事件总线：发布事件与订阅处理",
+    "group": "工程概念",
+    "aliases": [
+      "事件总线",
+      "event bus",
+      "信号",
+      "发布订阅"
+    ],
+    "summary": "事件总线让产生事件的一方发布消息，由订阅者决定怎样响应，减少双方直接调用的耦合。例如，索引完成后可以通知界面更新或记录统计。事件发生、事件送达和处理成功是不同阶段，不能只看发布动作就认定所有响应已经完成。",
+    "prerequisites": [],
+    "related": [
+      "structured-logging",
+      "retry-idempotency"
+    ],
+    "concept_ids": [
+      "event-bus"
+    ],
+    "source_ids": [
+      "blinker"
+    ],
+    "dialect": null,
+    "file": "articles/event/event-bus.md"
+  }
+]

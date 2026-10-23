@@ -1,0 +1,22 @@
+id: session
+name: Session：把多次请求关联为会话
+category: auth
+summary: HTTP 请求本身不会自动记住上一次是谁访问。会话机制通过一个标识，把多次请求关联到同一份登录或交互状态。常见做法是浏览器保存 Cookie，服务器根据其中的会话 ID 查找状态，也有把签名状态保存在客户端的方案。
+principles: 登录后建立会话，后续请求携带标识，服务器读取并验证，再查找对应用户和权限。会话标识应难以猜测并能失效。Cookie 的 Secure、HttpOnly 与 SameSite 等属性分别控制传输、脚本读取和跨站携带行为，不能互相替代。不同框架的
+  session 可能存服务端，也可能使用签名 Cookie，需要读取实现而不是只看名称。
+tradeoffs: 服务端状态便于撤销与集中管理，却需要存储和清理。客户端签名状态减少查询，但载荷大小、泄露内容和撤销方式需要权衡。认证状态与聊天上下文应有不同的生命周期和权限检查。
+alternatives: 签名令牌、短期不透明凭证；依据撤销和跨服务需求选择。
+detection:
+  import_names:
+  - starlette.middleware.sessions
+  - flask.sessions
+  call_names:
+  - starlette.middleware.sessions.SessionMiddleware
+  - flask.session.get
+  attribute_names: []
+  decorator_names: []
+  base_classes: []
+  string_markers: []
+references:
+- https://developer.mozilla.org/zh-CN/docs/Learn_web_development
+- https://fastapi.tiangolo.com/tutorial/dependencies/

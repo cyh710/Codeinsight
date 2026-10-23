@@ -1,0 +1,20 @@
+id: structured-logging
+name: 结构化日志：记录可以关联的事件
+category: observability
+summary: 日志记录程序在某个时间发生了什么。结构化日志把重要字段独立保存，例如任务 ID、项目 ID、操作类型和耗时，方便筛选与关联。它的价值不在于输出更多文字，而在于能回答具体诊断问题。
+principles: 日志通常包含级别、时间、来源与业务字段。一次请求跨多个函数时，可用关联 ID 串起事件。记录开始不代表完成，完成日志还应明确成功、失败和不确定结果。异常栈有助于诊断，但用户提示与内部日志可以使用不同细节层次。
+tradeoffs: 更多日志增加诊断信息，也增加存储、性能和隐私成本。优先记录状态转移、外部调用结果和可恢复错误。指标看整体趋势，日志看具体事件，追踪看跨组件链路，它们可以互补。
+alternatives: 结构化事件账本、指标和分布式追踪；按问题组合使用。
+detection:
+  import_names:
+  - structlog
+  - logging
+  call_names:
+  - logging.getLogger
+  - structlog.get_logger
+  attribute_names: []
+  decorator_names: []
+  base_classes: []
+  string_markers: []
+references:
+- https://docs.python.org/3.13/tutorial/

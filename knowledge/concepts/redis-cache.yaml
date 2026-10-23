@@ -1,0 +1,22 @@
+id: redis-cache
+name: Redis 缓存：复用可以重建的结果
+category: cache
+summary: 缓存把较昂贵的结果暂时保存起来，让后续相同或相关请求更快得到答案。Redis 是可用于实现缓存的键值系统，但它也能承担队列、计数等职责。因此导入 Redis 或建立连接，不足以证明项目实现了缓存。
+principles: 典型流程是先计算缓存键、读取缓存，未命中时访问原数据或执行计算，再写入结果并设置过期。缓存键必须包含影响结果的必要因素，例如模型版本、权限范围或语言。缓存的内容应当可以根据权威数据重建，失效与更新策略决定用户会看到多旧的数据。
+tradeoffs: 缓存降低延迟与计算成本，但增加过期、失效和容量管理。短 TTL 更新快但命中率可能低，长 TTL 更易过时。局部内存缓存部署简单，多进程间却不共享；Redis 增加共享能力与额外基础设施。
+alternatives: 进程内 LRU、数据库查询优化、物化结果或不缓存。
+detection:
+  import_names:
+  - redis
+  call_names:
+  - redis.Redis
+  - redis.StrictRedis
+  - redis.asyncio.Redis
+  attribute_names:
+  - cache
+  - redis
+  decorator_names: []
+  base_classes: []
+  string_markers: []
+references:
+- https://redis.readthedocs.io/en/stable/examples.html

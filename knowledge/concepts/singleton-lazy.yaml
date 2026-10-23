@@ -1,0 +1,20 @@
+id: singleton-lazy
+name: 延迟初始化与缓存工厂
+category: pattern
+summary: 延迟初始化把创建资源推迟到第一次需要时，缓存工厂可以复用已经创建的对象。无参数工厂配合缓存常表现为进程内共享实例，但不等于跨进程的全局唯一对象，也不一定保证并发首次调用只构造一次。
+principles: 工厂函数封装构造过程，缓存按参数保存结果。无参数时只有一组调用键，后续调用可以返回同一对象。带参数时则可能创建多种实例。functools 的缓存需要关注对象寿命、清理和并发首次未命中；仅看
+  @lru_cache 无法直接认定严格单例。
+tradeoffs: 延迟创建减少启动成本，却会把首次延迟和失败推到用户操作时。显式应用生命周期更便于初始化与关闭资源。选择缓存工厂时，应确认共享范围和失效机制，而不是仅为了减少一行构造代码。
+alternatives: 显式生命周期管理、依赖注入作用域或受锁保护的工厂。
+detection:
+  import_names:
+  - functools
+  call_names: []
+  attribute_names: []
+  decorator_names:
+  - functools.lru_cache
+  - functools.cache
+  base_classes: []
+  string_markers: []
+references:
+- https://docs.python.org/3.13/tutorial/

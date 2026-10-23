@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <title>PostgreSQL: Documentation: 18: Legal Notice</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="Content-Type" content="text/xhtml; charset=utf-8" />
+   
+  <meta name="theme-color" content="#336791"/>
+  <meta name="copyright" content="The PostgreSQL Global Development Group" />
+  <meta property="og:url" content="https://www.postgresql.org/docs/18/legalnotice.html" />
+  <meta property="og:type" content="article" />
+
+  <meta property="article:published_time" content="2026-08-13T12:52:54.741344" />
+  <meta property="og:image" content="https://www.postgresql.org/media/img/about/press/elephant.png" />
+  <meta property="og:title" content="Legal Notice" />
+  <meta property="og:description" content="" />
+  <meta property="og:site_name" content="PostgreSQL Documentation" />
+  <link href="/media/css/fontawesome.css?629b876c" rel="stylesheet">
+  <link rel="stylesheet" href="/media/css/bootstrap-4.4.1.min.css">
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" type="text/css" href="/dyncss/base.css?629b876c">
+
+  <script src="/media/js/theme.js?629b876c"></script>
+
+  
+
+
+  <link rel="canonical" href="https://www.postgresql.org/docs/current/legalnotice.html" />
+
+
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row justify-content-md-center">
+        <div class="col">
+          <!-- Header -->
+          <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand p-0" href="/">
+              <img class="logo" src="/media/img/about/press/elephant.png" alt="PostgreSQL Elephant Logo">
+            </a>
+            <input type="checkbox" id="navbar-toggler" aria-controls="pgNavbar" aria-expanded="false" aria-label="Toggle navigation">
+            <label for="navbar-toggler" id="navbar-toggler-label" class="navbar-toggler" tabindex="0"><span class="navbar-toggler-icon"></span></label>
+            <div class="navbar-collapse" id="pgNavbar">
+              <ul class="navbar-nav mr-auto">
+                <li class="nav-item p-2"><a href="/" title="Home">Home</a></li>
+                <li class="nav-item p-2"><a href="/about/" title="About">About</a></li>
+                <li class="nav-item p-2"><a href="/download/" title="Download">Download</a></li>
+                <li class="nav-item p-2"><a href="/docs/" title="Documentation">Documentation</a></li>
+                <li class="nav-item p-2"><a href="/community/" title="Community">Community</a></li>
+                <li class="nav-item p-2"><a href="/developer/" title="Developers">Developers</a></li>
+                <li class="nav-item p-2"><a href="/support/" title="Support">Support</a></li>
+                <li class="nav-item p-2"><a href="/about/donate/" title="Donate">Donate</a></li>
+                <li class="nav-item p-2"><a href="/account/" title="Your account">Your account</a></li>
+              </ul>
+              <form role="search" method="get" action="/search/">
+                <div class="input-group">
+                  <input id="q" name="q" type="text" size="20" maxlength="255" accesskey="s"  class="form-control" placeholder="Search for...">
+                  <span class="input-group-btn">
+                    <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                  </span>
+                </div><!-- /input-group -->
+              </form>
+              <form id="form-theme" class="form-inline d-none">
+                <button id="btn-theme" class="btn btn-default ml-1" type="button"></button>
+              </form>
+            </div>
+          </nav>
+        </div>
+      </div>
+      <div class="row justify-content-center pg-shout-box">
+        <div class="col text-white text-center">October 15, 2026: <a href="/about/news/postgresql-19-rc-1-released-3409/">PostgreSQL 19 RC 1 Released!</a>
+
+</div>
+      </div>
+    </div>
+    
+    <div class="container-fluid margin">
+      <div class="row">
+        <div id="pgContentWrap" class="col-11">
+          <div class="row">
+            <div class="col-md-6 mb-2">
+              <div class="row">
+                <div class="col">
+                  <div>
+                    <a href="/docs/" title="Documentation">Documentation</a> &rarr; <a href="/docs/18/index.html">PostgreSQL 18</a>
+                  </div>
+                </div>
+              </div>
+              
+                <div class="row">
+                  <div class="col">
+                    Supported Versions:
+                      
+                        
+                        
+                          <a href="/docs/current/legalnotice.html" title="PostgreSQL 18 - Legal Notice" class="docs-version-selected">Current</a>
+                          (<a href="/docs/18/legalnotice.html" title="PostgreSQL 18 - Legal Notice" class="docs-version-selected">18</a>)
+                        
+                      
+                         / 
+                        
+                          <a href="/docs/17/legalnotice.html" title="PostgreSQL 17 - Legal Notice" >17</a>
+                        
+                      
+                         / 
+                        
+                          <a href="/docs/16/legalnotice.html" title="PostgreSQL 16 - Legal Notice" >16</a>
+                        
+                      
+                         / 
+                        
+                          <a href="/docs/15/legalnotice.html" title="PostgreSQL 15 - Legal Notice" >15</a>
+                        
+                      
+                         / 
+                        
+                          <a href="/docs/14/legalnotice.html" title="PostgreSQL 14 - Legal Notice" >14</a>
+                        
+                      
+                  </div>
+                </div>
+              
+              
+                <div class="row">
+                  <div class="col">
+                    Development Versions:
+                    
+                      
+                      <a href="/docs/19/legalnotice.html" title="PostgreSQL 19 - Legal Notice"  rel="nofollow">19</a>
+                    
+                       / 
+                      <a href="/docs/devel/legalnotice.html" title="PostgreSQL devel - Legal Notice"  rel="nofollow">devel</a>
+                    
+                  </div>
+                </div>
+              
+              
+                <div class="row">
+                  <div class="col-12">
+                    Unsupported versions:
+                    
+                      
+                      <a href="/docs/13/legalnotice.html" title="PostgreSQL 13 - Legal Notice"  rel="nofollow">13</a>
+                    
+                       / 
+                      <a href="/docs/12/legalnotice.html" title="PostgreSQL 12 - Legal Notice"  rel="nofollow">12</a>
+                    
+                       / 
+                      <a href="/docs/11/legalnotice.html" title="PostgreSQL 11 - Legal Notice"  rel="nofollow">11</a>
+                    
+                       / 
+                      <a href="/docs/10/legalnotice.html" title="PostgreSQL 10 - Legal Notice"  rel="nofollow">10</a>
+                    
+                       / 
+                      <a href="/docs/9.6/LEGALNOTICE.html" title="PostgreSQL 9.6 - Legal Notice"  rel="nofollow">9.6</a>
+                    
+                       / 
+                      <a href="/docs/9.5/LEGALNOTICE.html" title="PostgreSQL 9.5 - Legal Notice"  rel="nofollow">9.5</a>
+                    
+                       / 
+                      <a href="/docs/9.4/LEGALNOTICE.html" title="PostgreSQL 9.4 - Legal Notice"  rel="nofollow">9.4</a>
+                    
+                       / 
+                      <a href="/docs/9.3/LEGALNOTICE.html" title="PostgreSQL 9.3 - Legal Notice"  rel="nofollow">9.3</a>
+                    
+                       / 
+                      <a href="/docs/9.2/LEGALNOTICE.html" title="PostgreSQL 9.2 - Legal Notice"  rel="nofollow">9.2</a>
+                    
+                       / 
+                      <a href="/docs/9.1/LEGALNOTICE.html" title="PostgreSQL 9.1 - Legal Notice"  rel="nofollow">9.1</a>
+                    
+                       / 
+                      <a href="/docs/9.0/LEGALNOTICE.html" title="PostgreSQL 9.0 - Legal Notice"  rel="nofollow">9.0</a>
+                    
+                       / 
+                      <a href="/docs/8.4/LEGALNOTICE.html" title="PostgreSQL 8.4 - Legal Notice"  rel="nofollow">8.4</a>
+                    
+                       / 
+                      <a href="/docs/8.3/LEGALNOTICE.html" title="PostgreSQL 8.3 - Legal Notice"  rel="nofollow">8.3</a>
+                    
+                       / 
+                      <a href="/docs/8.2/LEGALNOTICE.html" title="PostgreSQL 8.2 - Legal Notice"  rel="nofollow">8.2</a>
+                    
+                       / 
+                      <a href="/docs/8.1/LEGALNOTICE.html" title="PostgreSQL 8.1 - Legal Notice"  rel="nofollow">8.1</a>
+                    
+                       / 
+                      <a href="/docs/8.0/LEGALNOTICE.html" title="PostgreSQL 8.0 - Legal Notice"  rel="nofollow">8.0</a>
+                    
+                       / 
+                      <a href="/docs/7.4/LEGALNOTICE.html" title="PostgreSQL 7.4 - Legal Notice"  rel="nofollow">7.4</a>
+                    
+                  </div>
+                </div>
+              
+            </div>
+            <div class="col-md-6 col-lg-5 offset-lg-1">
+              <form id="docSearchForm" role="search" method="get" action="/search/">
+                <input type="hidden" name="u" value="/docs/18/" />
+                <div class="input-group">
+                  <input type="text" id="q" name="q" class="form-control" placeholder="Search the documentation for..."/>
+                  <span class="input-group-btn">
+                    <button class="btn btn-default" type="submit"><i class="fas fa-search"></i></button>
+                  </span>
+                </div><!-- /input-group -->
+              </form>
+            </div>
+          </div>
+
+          <div id="docContent">
+            <div class="legalnotice" id="LEGALNOTICE">
+  <p class="legalnotice-title"><strong>Legal Notice</strong></p>
+  <p><span class="productname">PostgreSQL</span> Database Management System (also known as Postgres, formerly known as Postgres95)</p>
+  <p>Portions Copyright © 1996-2026, PostgreSQL Global Development Group</p>
+  <p>Portions Copyright © 1994, The Regents of the University of California</p>
+  <p>Permission to use, copy, modify, and distribute this software and its documentation for any purpose, without fee, and without a written agreement is hereby granted, provided that the above copyright notice and this paragraph and the following two paragraphs appear in all copies.</p>
+  <p>IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF THE UNIVERSITY OF CALIFORNIA HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+  <p>THE UNIVERSITY OF CALIFORNIA SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS ON AN <span class="quote">“<span class="quote">AS-IS</span>”</span> BASIS, AND THE UNIVERSITY OF CALIFORNIA HAS NO OBLIGATIONS TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.</p>
+</div>
+
+          </div>
+          
+            <div id="docComments">
+              <h2>Submit correction</h2>
+              <p>
+              If you see anything in the documentation that is not correct, does not match
+              your experience with the particular feature or requires further clarification,
+              please use
+              <a href="/account/comments/new/18/legalnotice.html/" rel="nofollow">this form</a>
+              to report a documentation issue.
+              </p>
+            </div>
+          
+        </div> <!-- pgContentWrap -->
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer id="footer">
+      <!-- Copyright -->
+      <div class="container">
+        <a href="/about/policies/">Policies</a> |
+        <a href="/about/policies/coc/">Code of Conduct</a> |
+        <a href="/about/">About PostgreSQL</a> |
+        <a href="/about/contact/">Contact</a><br/>
+        <p>Copyright &copy; 1996-2026 The PostgreSQL Global Development Group</p>
+      </div>
+    </footer>
+    <script src="/media/js/main.js?629b876c"></script>
+
+  </body>
+</html>

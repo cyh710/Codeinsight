@@ -1,0 +1,20 @@
+id: thread-pool
+name: 线程池：受控执行阻塞工作
+category: concurrency
+summary: 线程池维护一组可复用工作线程，让调用方提交任务并获取未来结果。它常用于把阻塞文件、数据库或第三方库操作移出异步事件循环。线程池提供执行资源，不自动保证被调用对象线程安全。
+principles: 提交任务得到 Future，工作线程执行函数，结果或异常由调用方取得。最大工作线程数限制同时执行规模，排队任务还需要容量控制。Python 的线程对等待型工作很有用，但受解释器与扩展实现影响，不能保证纯
+  Python CPU 计算按线程数线性加速。
+tradeoffs: 受控池比每次新开线程更容易管理。任务队列、等待上限和关闭策略同样重要。对 CPU 密集任务可评估进程或专用扩展，决策应来自测量而不是仅凭“并发”这个词。
+alternatives: 原生异步 I/O、进程池或外部任务队列。
+detection:
+  import_names:
+  - concurrent.futures
+  call_names:
+  - concurrent.futures.ThreadPoolExecutor
+  - asyncio.to_thread
+  attribute_names: []
+  decorator_names: []
+  base_classes: []
+  string_markers: []
+references:
+- https://docs.python.org/3.13/tutorial/

@@ -1,0 +1,25 @@
+id: db-transaction
+name: 数据库事务：一致完成状态转换
+category: db
+summary: 事务把相关数据库修改放在共同提交边界内。工程中它常用于维护跨记录不变量，例如领取输入时必须同时建立执行轮、更新会话指针并记录事件。需要先识别这些状态之间的关系，才能判断事务范围是否正确。
+principles: 一个事务可能包含读取、条件检查和多次写入。数据库控制原子提交与并发交互，程序负责正确表达业务约束。不同连接、不同数据库或外部请求不会因为代码在同一个函数里就自动加入同一事务。SQLite
+  的 BEGIN IMMEDIATE 提前争取写事务资格，但仍需要处理忙等待和失败。
+tradeoffs: 短事务减少锁占用。过小范围可能暴露中间状态，过大范围会阻塞其他操作并增加冲突。把耗时模型请求移出写事务通常有利于并发，但必须先可靠记录执行归属，并为恢复与重试定义边界。
+alternatives: 条件更新、适当约束和锁；跨系统流程采用幂等与补偿。
+detection:
+  import_names:
+  - sqlite3
+  - sqlalchemy
+  call_names:
+  - sqlite3.Connection.commit
+  - sqlalchemy.orm.Session.begin
+  attribute_names: []
+  decorator_names: []
+  base_classes: []
+  string_markers:
+  - BEGIN IMMEDIATE
+  - BEGIN TRANSACTION
+  - SAVEPOINT
+references:
+- https://docs.python.org/3.13/tutorial/
+- https://www.postgresql.org/docs/18/tutorial.html

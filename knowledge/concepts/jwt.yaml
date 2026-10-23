@@ -1,0 +1,23 @@
+id: jwt
+name: JWT：可验证的令牌
+category: auth
+summary: JWT 是一种承载声明的令牌格式，常用于让接收方验证某些信息来自可信签发者。常见的签名形式包含头部、载荷和签名。它不是密码保险箱，载荷通常只是编码而非加密，拿到令牌的人可能读出里面的信息。
+principles: 签发方把用户标识、有效期等声明放进载荷，并使用约定算法签名。验证方检查签名、算法以及有效期、受众、签发者等约束后，才依据声明执行权限逻辑。签名验证只说明完整性和来源满足条件，不自动证明当前操作被授权。密钥轮换、撤销和泄露响应都需要额外设计。
+tradeoffs: 无状态验证便于多服务共享，但令牌失窃和即时撤销更难处理。短有效期减少暴露窗口，却需要刷新策略。小型本地应用可能更适合服务器会话，不能因为 JWT 常见就默认它最好。
+alternatives: 服务器会话、短期不透明令牌或明确的服务间身份协议。
+detection:
+  import_names:
+  - jwt
+  - jose
+  call_names:
+  - jwt.encode
+  - jwt.decode
+  - jose.jwt.encode
+  - jose.jwt.decode
+  attribute_names: []
+  decorator_names: []
+  base_classes: []
+  string_markers: []
+references:
+- https://pyjwt.readthedocs.io/en/stable/usage.html
+- https://fastapi.tiangolo.com/tutorial/dependencies/
