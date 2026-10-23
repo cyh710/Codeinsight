@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from codeinsight.cognitive.indexing.chunker import DEFAULT_MAX_CHUNK_LINES, chunk_symbol
+from codeinsight.cognitive.indexing.design_docs import DesignDoc, parse_design_docs
 from codeinsight.cognitive.indexing.edges import (
     EdgeResolver,
     FileSymbolScope,
@@ -78,6 +79,7 @@ class IndexResult:
     resolved_edges: int = 0
     entry_points: int = 0
     flows: int = 0
+    design_decisions: int = 0
     dependencies: int = 0
     skipped: int = 0
     chunks: int = 0
@@ -297,6 +299,18 @@ def index_project(
         )
         entry_points = len(entry_specs)
         flow_count = _write_flows(conn, project_id=project_id, entry_specs=entry_specs)
+        design_count = _write_design_decisions(
+            conn,
+            project_id=project_id,
+            docs=parse_design_docs(
+                [f.path for f in indexed],
+                {
+                    f.path: blobs[f.path].decode("utf-8", "replace")
+                    for f in indexed
+                    if f.path.endswith(".md") and f.path in blobs
+                },
+            ),
+        )
         dependencies = _write_dependencies(
             conn,
             project_id=project_id,
@@ -363,6 +377,7 @@ def index_project(
         resolved_edges=resolved_count,
         entry_points=entry_points,
         flows=flow_count,
+        design_decisions=design_count,
         dependencies=dependencies,
         skipped=skipped,
         chunks=chunk_count,
@@ -619,6 +634,115 @@ def _flow_entry(spec) -> FlowEntry:
         module_qualname=module_qualname,
         symbol_qualname=symbol_qualname,
     )
+
+
+def _write_design_decisions(
+    conn: sqlite3.Connection,
+    *,
+    project_id: int,
+    docs: list[DesignDoc],
+) -> int:
+    """写设计说明及其证据（规格 §1.2 A6）。
+
+    证据 = 「这条设计说明提到的文件/符号，在代码里确实在这儿」。
+    M6 的过期检测就靠它：符号没了、文件没了 → 这条设计说明不再适用。
+    """
+    import json
+
+    count = 0
+    for doc in docs:
+        cur = conn.execute(
+            """
+            INSERT INTO design_decision (project_id, doc_id, title, status, body, path, decided_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(project_id, doc_id) DO UPDATE SET
+                title = excluded.title,
+                status = excluded.status,
+                body = excluded.body,
+                path = excluded.path,
+                decided_at = excluded.decided_at,
+                claims_json = excluded.claims_json
+            """,
+            (
+                project_id,
+                doc.doc_id,
+                doc.title,
+                doc.status,
+                doc.body,
+                doc.path,
+                doc.decided_at,
+            ),
+        )
+        del cur
+        conn.execute(
+            "UPDATE design_decision SET claims_json = ? WHERE project_id = ? AND doc_id = ?",
+            (json.dumps(doc.claims, ensure_ascii=False), project_id, doc.doc_id),
+        )
+        decision_id = conn.execute(
+            "SELECT id FROM design_decision WHERE project_id = ? AND doc_id = ?",
+            (project_id, doc.doc_id),
+        ).fetchone()[0]
+
+        for claim in doc.claims:
+            for evidence in _claim_evidence(conn, project_id, claim):
+                conn.execute(
+                    """
+                    INSERT INTO design_decision_evidence (decision_id, symbol_id, path, lineno, note)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        decision_id,
+                        evidence[0],
+                        evidence[1],
+                        evidence[2],
+                        evidence[3],
+                    ),
+                )
+        count += 1
+    return count
+
+
+def _claim_evidence(
+    conn: sqlite3.Connection,
+    project_id: int,
+    claim: dict,
+) -> list[tuple[int | None, str | None, int | None, str]]:
+    """把一条 claim 落到具体代码位置上。
+
+    路径 claim → 那个文件（及其模块符号）。
+    符号 claim → 名字或点号后缀匹配的符号。
+    """
+    value = claim.get("value") or ""
+    if claim.get("kind") == "path":
+        row = conn.execute(
+            "SELECT id FROM file WHERE project_id = ? AND path = ?",
+            (project_id, value),
+        ).fetchone()
+        if not row:
+            return []
+        file_id = int(row[0])
+        module_row = conn.execute(
+            "SELECT id FROM module WHERE project_id = ? AND file_id = ?",
+            (project_id, file_id),
+        ).fetchone()
+        note = "设计说明提到该文件"
+        if module_row:
+            return [(int(module_row[0]), value, None, note)]
+        return [(None, value, None, note)]
+
+    if claim.get("kind") == "symbol":
+        rows = conn.execute(
+            """
+            SELECT s.id, f.path, s.lineno FROM symbol s JOIN file f ON f.id = s.file_id
+            WHERE s.project_id = ?
+              AND (s.qualname = ? OR s.qualname LIKE ? OR s.name = ?)
+            LIMIT 5
+            """,
+            (project_id, value, f"%.{value}", value),
+        ).fetchall()
+        return [(int(r[0]), r[1], int(r[2]), "设计说明提到该符号") for r in rows]
+
+    return []
 
 
 def _load_pyproject(root: Path) -> dict | None:
