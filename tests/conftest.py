@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from codeinsight.config import settings
-from codeinsight.storage.sqlite import apply_schema, db_path, open_sqlite
+from codeinsight.storage.sqlite import db_path, ensure_schema, open_sqlite
 
 
 @pytest.fixture
@@ -21,8 +21,7 @@ def data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     d = tmp_path / "data"
     d.mkdir()
     monkeypatch.setattr(settings, "data_dir", d)
-    with open_sqlite(db_path(d)) as conn:
-        apply_schema(conn)
+    ensure_schema(db_path(d))
     return d
 
 

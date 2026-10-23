@@ -34,6 +34,10 @@ CREATE TABLE IF NOT EXISTS repo_state (
 -- 代码结构（源文档 §2.1 / §2.2）
 -- ─────────────────────────────────────────────────────────────
 
+-- role 是**互斥**的单值分类（source|test|vendored|generated|config|doc）。
+-- 不用三个布尔列：布尔列会同时表达"既是测试又是第三方"这种无意义组合，
+-- 而且前端要的是"这个文件算什么"的一个答案，不是三个 bit 的组合。
+-- 优先级：vendored > generated > test > config > doc > source。
 CREATE TABLE IF NOT EXISTS file (
     id                 INTEGER PRIMARY KEY,
     project_id         INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
@@ -43,14 +47,28 @@ CREATE TABLE IF NOT EXISTS file (
     content_sha256     TEXT NOT NULL,
     size_bytes         INTEGER,
     line_count         INTEGER,
-    is_generated       INTEGER NOT NULL DEFAULT 0,
-    is_vendored        INTEGER NOT NULL DEFAULT 0,
-    is_test            INTEGER NOT NULL DEFAULT 0,
-    in_index           INTEGER NOT NULL DEFAULT 1,
+    role               TEXT NOT NULL DEFAULT 'source',
+    in_index           INTEGER NOT NULL DEFAULT 1,   -- 是否进入符号/块索引
     UNIQUE(project_id, path)
 );
 CREATE INDEX IF NOT EXISTS ix_file_project ON file(project_id);
 CREATE INDEX IF NOT EXISTS ix_file_sha ON file(project_id, content_sha256);
+CREATE INDEX IF NOT EXISTS ix_file_role ON file(project_id, role);
+
+-- 项目依赖（源文档 §2.1-1「自动识别…依赖和配置」）。
+-- 一个包一行：声明过又在 pyproject/requirements 里出现的合并成一行；
+-- 只在源码里 import 到但没声明的，记 source='import'、declared=0。
+CREATE TABLE IF NOT EXISTS dependency (
+    id          INTEGER PRIMARY KEY,
+    project_id  INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,           -- 'fastapi'
+    version     TEXT,                    -- '>=0.115'（声明里写的约束）
+    source      TEXT NOT NULL,           -- pyproject|requirements|import
+    declared    INTEGER NOT NULL DEFAULT 1,
+    is_dev      INTEGER NOT NULL DEFAULT 0,  -- dev 依赖组
+    UNIQUE(project_id, name)
+);
+CREATE INDEX IF NOT EXISTS ix_dependency_project ON dependency(project_id);
 
 CREATE TABLE IF NOT EXISTS module (
     id                INTEGER PRIMARY KEY,

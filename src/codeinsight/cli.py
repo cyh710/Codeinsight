@@ -20,15 +20,13 @@ import sys
 
 from codeinsight import __version__
 from codeinsight.config import settings
-from codeinsight.storage.sqlite import apply_schema, db_path, open_sqlite
+from codeinsight.storage.sqlite import db_path, ensure_schema
 
 
 def _cmd_init_db(args: argparse.Namespace) -> int:
     path = db_path(settings.data_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open_sqlite(path) as conn:
-        apply_schema(conn)
-    print(f"schema applied → {path}")
+    action = ensure_schema(path)
+    print(f"schema {action} → {path}")
     return 0
 
 

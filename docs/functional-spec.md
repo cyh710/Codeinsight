@@ -108,8 +108,9 @@ def list_repo_files(root: Path, *, ref: str | None = None) -> list[RepoFile]
 - 非 git 目录才 fallback 到 `os.walk`。
 - 排除：`.git/` `build_cache/` `node_modules/` `.venv/` `dist/` `*.lock`
 - 按魔数 + 体积判二进制并排除。
-- 标记 `is_generated`（`__init__.py`、生成代码）、`is_vendored`（`mobile_sam/` 等第三方）、
-  `is_test`（`tests/`）。
+- 给每个文件标一个**互斥**的 `role`：`source` `test` `vendored` `generated` `config` `doc`
+  （优先级 vendored > generated > test > config > doc > source）。
+  第三方目录（`mobile_sam/` 等）标 `vendored` 且 `in_index=0`——**默认不索引**。
 - **验收**：对织忆 `agent-v1` 取到的文件数与 `git ls-tree` 一致；不含 `dist/` `.venv/`。
 
 #### A2 Python 解析器 `cognitive/parsing/python_parser.py`
