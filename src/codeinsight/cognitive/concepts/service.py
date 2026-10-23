@@ -2,12 +2,25 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from codeinsight.cognitive.concepts.learning_models import KnowledgeContext, LearningTarget
 from codeinsight.cognitive.concepts.library import LearningLibrary
 from codeinsight.models import ConceptInstance
+
+
+def is_reading_follow_up(question: str) -> bool:
+    """只识别没有独立术语的常用指代问题，不能用它猜测未提供的阅读目标。"""
+    return bool(
+        re.fullmatch(
+            r"(?:请|请问|帮我)?(?:解释一下)?(?:这里|这儿|这段|这段代码|这一节|这句话|当前章节|这个)"
+            r"(?:是什么意思|是什么|什么意思|怎么理解|讲了什么|为什么这样写|为什么要这样写|是干什么的|指什么)"
+            r"[?？。！!\s]*",
+            question.strip(),
+        )
+    )
 
 
 @dataclass(frozen=True)
@@ -38,9 +51,11 @@ class KnowledgeService:
         reading_context = (
             self.library.reading_context(reading, max_bytes=max_bytes) if reading else None
         )
-        hits = self.library.search(question, limit=6)
+        hits = [] if is_reading_follow_up(question) else self.library.search(question, limit=6)
         references = [*(reading_context.references if reading_context else ()), *hits]
-        unique = {(hit.target.topic_id, hit.target.section_id): hit for hit in references}
+        unique = {}
+        for hit in references:
+            unique.setdefault((hit.target.topic_id, hit.target.section_id), hit)
         context = self.library.context(unique.values(), max_bytes=max_bytes)
         if reading_context and reading_context.truncated:
             context = KnowledgeContext(context.content, context.references, True)

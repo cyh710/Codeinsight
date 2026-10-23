@@ -21,10 +21,11 @@ def link_answer(
     library: LearningLibrary,
     *,
     recommendations: Iterable[LearningTarget] = (),
+    context_topic_id: str | None = None,
 ) -> LinkedAnswer:
     """首次出现的无歧义术语加站内链接；末尾入口最多三项，正文不截数。"""
     terms = {
-        term: library.resolve_term(term)
+        term: library.resolve_term(term, context_topic_id=context_topic_id)
         for topic in library.topics.values()
         for term in (topic.title, *topic.aliases)
         if term
@@ -63,7 +64,7 @@ def link_answer(
             # 独立回退分词只在可确认的词界或独立术语上链接，未知词界宁可保留文字。
             if run != term and term not in library.tokenizer(run):
                 return term
-        target = library.resolve_term(term)
+        target = library.resolve_term(term, context_topic_id=context_topic_id)
         normalized = re.sub(r"\s+", "", term).casefold()
         if target is None or normalized in seen_terms:
             return term

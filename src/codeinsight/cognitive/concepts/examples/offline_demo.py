@@ -7,8 +7,8 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
+from codeinsight.cognitive.concepts.integration import LearningBridge
 from codeinsight.cognitive.concepts.library import LearningLibrary
-from codeinsight.cognitive.concepts.links import link_answer
 from codeinsight.cognitive.concepts.service import KnowledgeService
 
 
@@ -23,22 +23,29 @@ def main() -> None:
     args = parser.parse_args()
     library = LearningLibrary(args.assets)
     service = KnowledgeService(library)
+    bridge = LearningBridge(service)
     reading = (
         library.target(args.reading_topic, args.reading_section) if args.reading_topic else None
     )
-    context, entries = service.prepare_turn(args.question, reading=reading)
+    prepared = bridge.prepare_turn(
+        args.question, reading_context=asdict(reading) if reading else None
+    )
+    context = prepared.context
     if context.references:
         topic = library.get(context.references[0].target.topic_id)
-        answer = link_answer(topic.summary, library, recommendations=entries)
+        answer = bridge.finalize_answer(topic.summary, prepared)
     else:
-        answer = link_answer("内置知识库未找到匹配章节，请尝试更明确的术语或目录。", library)
+        answer = bridge.finalize_answer(
+            "内置知识库未找到匹配章节，请尝试更明确的术语或目录。", prepared
+        )
     result = {
         "question": args.question,
         "library_version": library.version,
         "tree": library.tree(),
         "reading_context": asdict(reading) if reading else None,
         "context": asdict(context),
-        "example_answer": asdict(answer),
+        "example_answer": answer,
+        "agent_tool_result": asdict(prepared.as_tool_result()),
         "project_instances": service.find_instances(1, topic_id="sql-database"),
         "provider_calls": 0,
         "limitations": "本文件是 B 服务数据演示；HTTP、SSE、面板导航须由 A/C 接入后验收。",
@@ -49,8 +56,8 @@ def main() -> None:
         json.dumps(
             {
                 "out": str(args.out),
-                "answer": answer.text,
-                "entries": [entry.href for entry in entries],
+                "answer": answer["text"],
+                "entries": [entry["href"] for entry in answer["learning_entries"]],
                 "provider_calls": 0,
             },
             ensure_ascii=False,
