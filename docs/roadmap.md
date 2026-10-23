@@ -84,3 +84,44 @@
 两者分开：范围会随进度调整，决策会留下"为什么当时这么选、什么条件下该重评"。
 
 见 [`decisions/README.md`](decisions/README.md)。
+
+---
+
+## 三线并行怎么落到这张表上
+
+本项目由**三个 agent 并行**推进。三条线各自的车道见
+[`workspace.md` §3](workspace.md)，功能需求见 [`functional-spec.md`](functional-spec.md)。
+
+| 线 | 分支 | 覆盖的阶段 |
+|---|---|---|
+| **A 线**（索引+检索+Agent+MCP+集成） | `main` | M0 · M1 · M2 · M3 · M5 · M6 · M7 · M9 |
+| **B 线**（知识探索） | `feat/knowledge` | M1.5 · M4 概念面板 · M5 concept 臂 · M6 概念侧过期检测 |
+| **C 线**（前端+API） | `feat/frontend` | M4 工作台 · M8 关系图 |
+
+### 排期（按周）
+
+| | 第 1 周 | 第 2 周 | 第 3 周 | 第 4 周 |
+|---|---|---|---|---|
+| **A 线** | 契约冻结 + fixture + **M1 索引** | **M2 检索** + **M3 Agent** | M3 收尾 + **M5 评测** | **M6 持续认知** → **M7 MCP** → M9 |
+| **B 线** | **概念本体 20 个 YAML**（零依赖）+ detector 测试 | detector 实现 + 三级深度解释 | concept 臂评测 + 设计说明过期检测 | 本体扩到 40 个 |
+| **C 线** | **前端骨架 + mock + API 实现** | 三栏工作台 + 对话流 + 证据面板 | **概念卡 + 双向导航** + Monaco | 关系图 + 时间线 + 演示素材 |
+
+**第 1 周三条线都是满负荷**——B 线写本体、C 线搭前端，都不等 A 线。
+
+### 依赖关系（谁在等谁）
+
+```
+第1周  A: M1索引    B: 写概念本体      C: 前端骨架+mock
+                    ↑ 零依赖            ↑ 零依赖
+第2周  A: M2/M3     B: detector实现     C: 三栏工作台
+                    ↑ 需要 A 的符号/边   ↑ 需要 A 的 API 契约(第1周已给)
+第3周  A: M5评测    B: concept臂        C: 概念卡UI
+                    ↑ 需要 B 的 detector ↑ 需要 B 的概念 API
+```
+
+**关键：A 线在第 1 周必须交付三份契约**（`docs/api-contract.md`、
+`frontend/src/api/types.ts`、`fixtures/sample-index.json`），
+否则 B/C 第二周就会空转。
+
+> 契约冻结清单见 [`functional-spec.md` §0.3](functional-spec.md)。
+> 契约要改时走 [`requests/`](requests/)，不要口头说。

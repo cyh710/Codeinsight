@@ -3,7 +3,8 @@
 > **这份文档是三条线唯一的对齐依据。** 三个 agent 都以本文为准；
 > 本文与代码冲突时，先改本文再改代码。
 >
-> 配套：[`roadmap.md`](roadmap.md)（阶段与验收）· [`interfaces.md`](interfaces.md)（接口契约）·
+> 配套：[`../AGENTS.md`](../AGENTS.md)（作业规程）· [`workspace.md`](workspace.md)（三线怎么协作）·
+> [`roadmap.md`](roadmap.md)（阶段与验收）· [`interfaces.md`](interfaces.md)（接口契约）·
 > [`decisions/`](decisions/)（技术决策与理由）
 
 ---
@@ -25,6 +26,8 @@
 <仓库根>-wt-knowledge feat/knowledge  B 线
 <仓库根>-wt-frontend  feat/frontend   C 线
 ```
+
+> 物理环境、合并流程、冲突处理的细节见 [`workspace.md`](workspace.md)。
 
 ### 0.2 目录所有权（一个目录只有一个 agent 能写）
 
