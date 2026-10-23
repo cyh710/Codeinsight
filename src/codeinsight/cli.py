@@ -83,7 +83,7 @@ def _cmd_index(args: argparse.Namespace) -> int:
     )
     print(
         f"   chunks={result.chunks} entry_points={result.entry_points} "
-        f"dependencies={result.dependencies} skipped={result.skipped}"
+        f"flows={result.flows} dependencies={result.dependencies} skipped={result.skipped}"
     )
     print(f"   用时 {result.elapsed_s:.2f}s")
     return 0

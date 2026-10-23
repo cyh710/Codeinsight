@@ -101,12 +101,7 @@ def test_nested_if_is_split_without_losing_the_header() -> None:
 def test_try_except_body_is_not_lost() -> None:
     """`except` 处理块不是 `ast.stmt`——不 specially 处理就会整段丢代码。"""
     source = (
-        "def f():\n"
-        "    try:\n"
-        "        a = 1\n"
-        "    except ValueError:\n"
-        "        b = 2\n"
-        "    return a\n"
+        "def f():\n    try:\n        a = 1\n    except ValueError:\n        b = 2\n    return a\n"
     )
     parsed, lines = _symbols(source)
     symbol = _find(parsed, "f")

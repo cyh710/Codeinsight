@@ -36,6 +36,12 @@ from codeinsight.cognitive.indexing.entries import (
     parse_pyproject_dependencies,
     parse_requirements_text,
 )
+from codeinsight.cognitive.indexing.flows import (
+    FlowEdge,
+    FlowEntry,
+    FlowSymbol,
+    detect_flows,
+)
 from codeinsight.cognitive.indexing.scanner import (
     RepoFile,
     list_repo_files,
@@ -71,6 +77,7 @@ class IndexResult:
     edges: int = 0
     resolved_edges: int = 0
     entry_points: int = 0
+    flows: int = 0
     dependencies: int = 0
     skipped: int = 0
     chunks: int = 0
@@ -281,13 +288,15 @@ def index_project(
         ).fetchone()[0]
 
         # ── 入口与依赖 ─────────────────────────────────────────
-        entry_points = _write_entry_points(
+        entry_specs = _write_entry_points(
             conn,
             project_id=project_id,
             root=root,
             files=[f.path for f in indexed],
             sources={e.path: "\n".join(e.source_lines) for e in parsed_entries},
         )
+        entry_points = len(entry_specs)
+        flow_count = _write_flows(conn, project_id=project_id, entry_specs=entry_specs)
         dependencies = _write_dependencies(
             conn,
             project_id=project_id,
@@ -353,6 +362,7 @@ def index_project(
         edges=edge_count,
         resolved_edges=resolved_count,
         entry_points=entry_points,
+        flows=flow_count,
         dependencies=dependencies,
         skipped=skipped,
         chunks=chunk_count,
@@ -499,7 +509,7 @@ def _write_entry_points(
     root: Path,
     files: list[str],
     sources: dict[str, str],
-) -> int:
+) -> list:
     pyproject = _load_pyproject(root)
     specs = detect_entry_points(files=files, sources=sources, pyproject=pyproject)
     count = 0
@@ -527,7 +537,88 @@ def _write_entry_points(
             ),
         )
         count += 1
-    return count
+    return specs
+
+
+def _write_flows(
+    conn: sqlite3.Connection,
+    *,
+    project_id: int,
+    entry_specs: list,
+) -> int:
+    """检测关键业务流程并写进 `flow` / `flow_step`（规格 §1.2 A5）。"""
+    symbol_rows = conn.execute(
+        """
+        SELECT s.id, s.qualname, s.name, s.kind, f.path, s.lineno, COALESCE(m.qualname, '')
+        FROM symbol s
+        JOIN file f ON f.id = s.file_id
+        LEFT JOIN module m ON m.id = s.module_id
+        WHERE s.project_id = ?
+        """,
+        (project_id,),
+    ).fetchall()
+    symbols = [FlowSymbol(*row) for row in symbol_rows]
+
+    edge_rows = conn.execute(
+        """
+        SELECT src_symbol_id, dst_symbol_id, kind, dst_name, confidence
+        FROM edge WHERE project_id = ? AND kind = 'call'
+        """,
+        (project_id,),
+    ).fetchall()
+    edges = [FlowEdge(*row) for row in edge_rows]
+
+    entries = [_flow_entry(spec) for spec in entry_specs]
+    flows = detect_flows(symbols, edges, entries)
+
+    for flow in flows:
+        cur = conn.execute(
+            """
+            INSERT INTO flow (project_id, name, entry_symbol_id, description)
+            VALUES (?, ?, ?, ?)
+            """,
+            (project_id, flow.name, flow.entry_symbol_id, flow.description),
+        )
+        flow_id = int(cur.lastrowid or 0)
+        for ordinal, step in enumerate(flow.steps):
+            conn.execute(
+                """
+                INSERT INTO flow_step (flow_id, ordinal, symbol_id, qualname, path, lineno, note)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    flow_id,
+                    ordinal,
+                    step.symbol_id,
+                    step.qualname,
+                    step.path,
+                    step.lineno,
+                    step.note,
+                ),
+            )
+    return len(flows)
+
+
+def _flow_entry(spec) -> FlowEntry:
+    """把入口规格转成流程检测用的起点。"""
+    target = spec.target
+    if spec.kind == "console_script" and "=" in target:
+        target = target.split("=", 1)[1].strip()
+
+    module_qualname = spec.module_qualname
+    symbol_qualname = None
+    if ":" in target:
+        module_part, _, attr = target.partition(":")
+        module_qualname = module_qualname or module_part
+        if spec.kind == "console_script" and attr:
+            # `pkg.main:main` → 符号 qualname `pkg.main.main`
+            symbol_qualname = f"{module_part}.{attr}"
+    return FlowEntry(
+        kind=spec.kind,
+        target=target,
+        module_qualname=module_qualname,
+        symbol_qualname=symbol_qualname,
+    )
 
 
 def _load_pyproject(root: Path) -> dict | None:
