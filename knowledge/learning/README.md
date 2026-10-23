@@ -38,7 +38,8 @@ answer = link_answer('SQL 可以查询数据库中的表。', library, recommend
 text = validate_answer_links(answer.text, library)
 ```
 
-- A 线共享分词器落地后通过 `tokenizer=` 注入；当前回退分词只用于独立知识通道。
+- 默认复用 A 线 `split_identifiers`，入库与查询使用同一实例；也可通过 `tokenizer=` 注入对照实现。
+  当前环境未安装 jieba，共享分词器按 A 线实现回退到中文二元词，不将此结果描述为 jieba 验证。
 - 搜索返回章节而不是整本书；来源与版本不藏在可截断正文里。
 - `reading_context(target)` 从本地资产重新读取，不信任客户端正文；旧版本/旧章节标记截断/失效。
 - `link_answer` 对正文首次出现的术语加链接，不触碰代码块、行内代码和已有链接。

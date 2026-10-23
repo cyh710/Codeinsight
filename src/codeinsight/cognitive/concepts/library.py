@@ -23,25 +23,9 @@ from codeinsight.cognitive.concepts.learning_models import (
     Topic,
 )
 from codeinsight.cognitive.concepts.ontology import ID_PATTERN, _strings
+from codeinsight.cognitive.retrieval.tokenizer import split_identifiers
 
 _HEADING = re.compile(r"^## (.+?) \{#([a-z][a-z0-9-]*)\}\s*$", re.MULTILINE)
-_STOP = frozenset(
-    "什么 是什 是什么 如何 怎么 这里 这个 那个 一下 请问 可以 为什么 告诉 介绍 理解".split()
-)
-
-
-def fallback_tokenizer(text: str) -> list[str]:
-    """A 线共享分词器尚未接入时的独立知识分词；不用于代码评测基线。"""
-    tokens: list[str] = []
-    for value in re.findall(r"[A-Za-z_][A-Za-z_0-9]*|[\u3400-\u9fff]+", text):
-        if value.isascii():
-            tokens.append(value.lower())
-            tokens.extend(x.lower() for x in re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)", value))
-        elif len(value) == 1:
-            continue
-        else:
-            tokens.extend(value[i : i + 2] for i in range(len(value) - 1))
-    return [value for value in tokens if value not in _STOP]
 
 
 def _digest(value: object) -> str:
@@ -68,7 +52,7 @@ class LearningLibrary:
         self,
         directory: Path,
         *,
-        tokenizer: Callable[[str], Sequence[str]] = fallback_tokenizer,
+        tokenizer: Callable[[str], Sequence[str]] = split_identifiers,
     ) -> None:
         self.directory = Path(directory).resolve()
         self.tokenizer = tokenizer
