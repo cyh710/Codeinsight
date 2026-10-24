@@ -1,5 +1,11 @@
 # 0002. 索引引擎入口函数（POST /projects 的建索引接缝）
 
+> **状态：✅ 已解决（2026-10-24）**。A 线合入 `cognitive/indexing.index_project`
+> （按 `db_path + root + name + ref` 整-job 签名，自带 repo_state/index_run 记账），
+> C 线已直接接线；本请求中建议的 `(conn, project_id, ...)` 签名未采用——
+> 引擎侧签名更合理（名字复用语义与落库一致性都在引擎内闭环）。
+> `symbol.path` 冗余列未加，读端点按 JOIN 实现。
+
 - **提出方**：C 线
 - **日期**：2026-10-24
 - **紧急度**：阻塞"导入项目并建索引"真实跑通（读端点不受影响）

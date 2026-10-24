@@ -6,7 +6,6 @@ C 线负责的"查询与组装"这一层。
 
 from __future__ import annotations
 
-import json
 import sqlite3
 from pathlib import Path
 
@@ -14,7 +13,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from codeinsight.api.app import create_app
-from codeinsight.storage.sqlite import db_path
 
 
 @pytest.fixture
@@ -287,45 +285,100 @@ def test_changes_shell_fields_frozen(client: TestClient) -> None:
     }
 
 
-# ─── POST /projects（异步建索引） ──────────────────────────────
+# ─── POST /projects（异步建索引，真引擎端到端） ─────────────────
 
 
-def test_create_project_rejects_missing_dir(client: TestClient, data_dir: Path) -> None:
+def test_create_project_rejects_missing_dir(client: TestClient) -> None:
     res = client.post("/projects", json={"root_path": "D:/definitely/not/here"})
     assert res.status_code == 400
     assert err(res.json())["code"] == "bad_request"
 
 
-def test_create_project_accepts_then_honestly_fails_without_engine(
+def _mini_git_repo(tmp_path: Path) -> Path:
+    """一个两文件的真实 git 仓：引擎的扫描→解析→落库全程跑真路径。"""
+    import subprocess
+
+    repo = tmp_path / "minirepo"
+    repo.mkdir()
+    (repo / "app.py").write_text(
+        '"""小应用。"""\n\n\ndef greet(name: str) -> str:\n    """问候。"""\n    return f"hi {name}"\n\n\ndef main() -> None:\n    print(greet("world"))\n',
+        encoding="utf-8",
+    )
+    (repo / "README.md").write_text("# mini\n", encoding="utf-8")
+    for args in (
+        ("init", "-q"),
+        ("config", "user.email", "t@t"),
+        ("config", "user.name", "t"),
+        ("add", "-A"),
+        ("commit", "-qm", "init"),
+    ):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+    return repo
+
+
+def test_create_project_real_index_end_to_end(
     client: TestClient, tmp_path: Path, data_dir: Path
 ) -> None:
-    repo = tmp_path / "arepo"
-    repo.mkdir()
-    res = client.post("/projects", json={"root_path": str(repo), "name": "arepo"})
+    repo = _mini_git_repo(tmp_path)
+    res = client.post("/projects", json={"root_path": str(repo), "name": "minirepo"})
     assert res.status_code == 202
     body = res.json()
     assert body["status"] == "indexing"
-    assert body["name"] == "arepo"
 
-    # 引擎未合入：后台任务跑完后状态如实为 failed，错误信息可读（不假装 ready）。
+    # TestClient 等后台任务跑完才返回：此时引擎已落库。
     detail = client.get(f"/projects/{body['id']}").json()
-    assert detail["status"] == "failed"
-    conn = sqlite3.connect(db_path(data_dir))
-    try:
-        stats = json.loads(
-            conn.execute(
-                "SELECT stats_json FROM index_run WHERE project_id = ? ORDER BY id DESC LIMIT 1",
-                (body["id"],),
-            ).fetchone()[0]
-        )
-        assert "引擎" in stats["error"]
-    finally:
-        conn.close()
+    assert detail["status"] == "ready", detail
+    assert detail["files"] >= 2
+    assert detail["symbols"] >= 2  # module + greet + main
+    assert detail["chunks"] >= 1
+    assert detail["head_commit"]
+
+    symbols = client.get(f"/projects/{body['id']}/symbols", params={"q": "greet"}).json()
+    assert symbols["total"] == 1
+    assert symbols["items"][0]["qualname"] == "app.greet"
+
+    # 符号详情的源码从 chunk 拼回（带行号前缀）
+    sym = client.get(f"/projects/{body['id']}/symbols/app.greet").json()
+    assert "def greet" in sym["source"]
+    assert sym["callers"][0]["qualname"] == "app.main"
 
 
-def test_create_project_rejects_duplicate_name(client: TestClient, tmp_path: Path) -> None:
-    repo = tmp_path / "dup"
+def test_reimport_same_path_reindexes(client: TestClient, tmp_path: Path) -> None:
+    repo = _mini_git_repo(tmp_path)
+    first = client.post("/projects", json={"root_path": str(repo), "name": "minirepo"}).json()
+    second = client.post("/projects", json={"root_path": str(repo), "name": "minirepo"})
+    # 同名同路径 = 重建：202 复用同一项目 id（stale 状态的刷新通道）。
+    assert second.status_code == 202
+    assert second.json()["id"] == first["id"]
+    assert client.get(f"/projects/{first['id']}").json()["status"] == "ready"
+
+
+def test_create_project_rejects_name_used_by_other_path(client: TestClient, tmp_path: Path) -> None:
+    a = tmp_path / "a"
+    b = tmp_path / "b"
+    a.mkdir()
+    b.mkdir()
+    assert client.post("/projects", json={"root_path": str(a), "name": "x"}).status_code == 202
+    res = client.post("/projects", json={"root_path": str(b), "name": "x"})
+    assert res.status_code == 400
+    assert err(res.json())["code"] == "bad_request"
+
+
+def test_create_project_409_while_index_running(
+    client: TestClient, tmp_path: Path, conn: sqlite3.Connection
+) -> None:
+    repo = tmp_path / "busy"
     repo.mkdir()
-    assert (
-        client.post("/projects", json={"root_path": str(repo), "name": "demo"}).status_code == 400
+    first = client.post("/projects", json={"root_path": str(repo), "name": "busy"})
+    assert first.status_code == 202
+    project_id = first.json()["id"]
+    # 手工插一条未完结的 run，模拟"正在索引"窗口内重复提交。
+    conn.execute(
+        "INSERT INTO index_run (project_id, head_commit, mode, started_at) "
+        "VALUES (?, '', 'full', datetime('now'))",
+        (project_id,),
     )
+    conn.commit()
+    res = client.post("/projects", json={"root_path": str(repo), "name": "busy"})
+    assert res.status_code == 409
+    assert err(res.json())["code"] == "index_running"
