@@ -73,6 +73,7 @@ export function applySseEvent(
         citations: event.data.citations,
         abstained: event.data.abstained,
         abstentionReason: event.data.reason,
+        incomplete: event.data.incomplete,
       }))
     case 'error':
       // 只记录，不中断：契约保证 done 仍会来，由 done 统一收尾。

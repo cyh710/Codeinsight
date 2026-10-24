@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from pathlib import Path
 
 from codeinsight.api.errors import bad_request
 from codeinsight.cognitive.indexing import index_project
@@ -42,8 +43,25 @@ def _git_head(root_path: str, ref: str | None) -> str | None:
     return out.stdout.strip() or None
 
 
+def _default_concepts_dir() -> Path | None:
+    """B 线概念本体的默认位置：本仓根的 `knowledge/concepts`。
+
+    `config.py` 是冻结契约，没有 concepts 目录的配置项（CLI 用 `--concepts`
+    显式传）；API 导入走包内相对定位——装在仓库里跑（uv run）时成立，
+    打包安装时目录不在，返回 None 如实降级为"不跑概念检测"。
+    """
+    candidates = [
+        Path(__file__).resolve().parents[3] / "knowledge" / "concepts",
+        Path.cwd() / "knowledge" / "concepts",
+    ]
+    for c in candidates:
+        if c.is_dir():
+            return c
+    return None
+
+
 def start_indexing(project_id: int, name: str, root_path: str, ref: str | None) -> None:
-    """后台索引任务：调引擎；引擎抛异常时补记失败的 index_run。"""
+    """后台索引任务：调引擎（含概念检测）；引擎抛异常时补记失败的 index_run。"""
     path = db_path(settings.data_dir)
     try:
         index_project(
@@ -52,6 +70,7 @@ def start_indexing(project_id: int, name: str, root_path: str, ref: str | None) 
             name=name,
             ref=ref,
             max_chunk_lines=settings.max_chunk_lines,
+            concepts_dir=_default_concepts_dir(),
         )
     except Exception as exc:
         # 引擎失败不算 API 失败：项目状态如实转 failed，错误写进 run 的

@@ -82,6 +82,24 @@ describe('applySseEvent', () => {
     expect(a.error?.code).toBe('upstream_error')
   })
 
+  it('answer 带 incomplete 时落到消息上（与 abstained 分开）', () => {
+    let msgs = seed()
+    msgs = applySseEvent(msgs, AID, {
+      event: 'answer',
+      data: {
+        facts: [],
+        inferences: [],
+        citations: [],
+        abstained: false,
+        reason: '',
+        incomplete: true,
+      },
+    })
+    const a = assistant(msgs)
+    expect(a.incomplete).toBe(true)
+    expect(a.abstained).toBe(false)
+  })
+
   it('done 携带弃答信息', () => {
     let msgs = seed()
     msgs = applySseEvent(msgs, AID, { event: 'done', data: { abstained: true, reason: '检索无命中' } })
