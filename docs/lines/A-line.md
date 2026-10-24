@@ -116,4 +116,6 @@ cd <仓库根>-wt-frontend  && git merge main
       （6 臂 × 3 题型，报告在 `eval/reports/`）
 - [x] M6：改一个函数后只有相关 chunk 的 `source_sha256` 变化（SQL 断言）
       + 增量结果与全量重建逐项一致（符号 / 块 / 边 / 模块 / 设计说明）
-- [ ] M7：外部 agent（Claude Code）能真的调通 `search_code` / `explain_concept`
+- [x] M7：外部 agent（Claude Code）能真的调通 `search_code` / `explain_concept`
+      （用官方 `mcp` 客户端的 `ClientSession` 真机验证了 initialize / list_tools /
+      call_tool；项目里配 `.mcp.json` 即可接 Claude Code，见 `docs/mcp.md`）

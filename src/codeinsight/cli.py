@@ -8,6 +8,7 @@
     ci ask "<question>"        对项目提问            (M3)
     ci eval                    对照评测（多臂 + 95% CI）(M5)
     ci changes --project X     最近一次变更说明          (M6)
+    ci mcp --project X         启动 MCP Server（stdio）  (M7)
     ci concepts                列出识别到的技术概念   (M1.5)
     ci explain <concept>       三级深度解释一个概念   (M3)
     ci changes                 变更说明              (M6)
@@ -289,6 +290,25 @@ def _cmd_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_mcp(args: argparse.Namespace) -> int:
+    """把理解能力以 MCP 暴露给外部 agent（Claude Code / Codex）。
+
+    **stdout 是协议通道**：这里只往 stderr 写日志，任何 print 到 stdout
+    都会把 JSON-RPC 流冲坏。
+    """
+    import asyncio
+
+    from codeinsight.agent.service import ProjectNotFound
+    from codeinsight.mcp.server import run_stdio
+
+    try:
+        asyncio.run(run_stdio(args.project, db=args.db))
+    except (FileNotFoundError, ProjectNotFound) as exc:
+        print(f"[codeinsight-mcp] {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def _cmd_ask(args: argparse.Namespace) -> int:
     """对项目提问（M3）：Agent 自己决定检索几次、要不要看调用关系。"""
     import asyncio
@@ -500,6 +520,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="开哪些通道，逗号分隔：bm25,dense,symbol,concept",
     )
     p.set_defaults(func=_cmd_eval_locate)
+
+    p = sub.add_parser("mcp", help="启动 MCP Server（stdio，给外部 agent 用）")
+    p.add_argument(
+        "--project",
+        default=None,
+        help="绑定哪个项目；只有一个项目时可省略",
+    )
+    p.add_argument("--db", default=None, help="索引库路径（缺省 .ci/codeinsight.db）")
+    p.set_defaults(func=_cmd_mcp)
 
     p = sub.add_parser("changes", help="最近一次索引更新的变更说明（M6）")
     p.add_argument("--project", required=True, help="项目名")

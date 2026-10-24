@@ -28,7 +28,7 @@
 | **M4** ✅ | 工作台三栏 + 符号树 + 证据面板 + **知识探索界面** | 能演示（真机跑通：vite + uvicorn + 浏览器） | 4天 | §3.1-1 |
 | **M5** ✅ | 评测：bench 生成 + **五臂对照** + 指标 + CI + 报告 | **第一份带数字的报告** | 4天 | §5 §6 |
 | **M6** ✅ | 持续认知：git diff → 符号级增量 → 变更说明 + 测试证据 + 影响范围 + **设计说明过期检测** | 差异化能力 + 第二份报告 | 4天 | §2.4 §2.5 |
-| **M7** | **MCP Server**：把理解能力暴露给外部 agent | 自己天天能用 | 2天 | §2.7-3 |
+| **M7** ✅ | **MCP Server**：把理解能力暴露给外部 agent | 自己天天能用（15 个工具，官方客户端真机调通） | 2天 | §2.7-3 |
 | **M8** | 关系图（带概念标签）+ 演进时间线 | 演示加分 | 3天 | §2.2-6/7 |
 | **M9** | **人工用户研究** + README / 报告 / 截图 / CI | 可投简历 | 4天 | §6-对比3 §8-四阶段 |
 
@@ -69,7 +69,7 @@
 | 块 | 6400（最大 236 行，43 个符号二次切分） | `chunk` 表 |
 | 入口 / 流程 / 依赖 / 设计说明 | 4 / 9 / 41 / 43 | `entry_point` · `flow` · `dependency` · `design_decision` |
 | 一次全量索引耗时 | 约 31 秒（中文分词含字级 bigram，不含 embedding） | `ci index` |
-| 测试 | 347 通过（后端）+ 79 通过（前端 Vitest） | `pytest` · `npm test` |
+| 测试 | 353 通过（后端）+ 79 通过（前端 Vitest） | `pytest` · `npm test` |
 
 **M1 已完成**。**M2 已完成**（稠密通道待向量数据，见下）。
 **M3 已完成**：Runtime + 12 个只读工具 + 两层有界上下文 + 事实/推断分离 +
@@ -184,6 +184,28 @@ k=8，seed=7，括号内是 95% bootstrap 区间。
 > 增量索引的已知边界：只重解析**变了的文件**。如果某文件的 import 目标
 > 被改坏，而该文件本身没变，它指向旧目标的边会随 CASCADE 消失，
 > 不会自动重解析。这是「宁可少一条边，不要留一条假边」的取舍。
+
+### MCP Server（M7）
+
+`uv run ci mcp --project tapestry` 起一个 stdio MCP server，把 **15 个工具**
+（14 个项目/知识工具 + `list_projects`）交给外部 agent。接入方式与工具清单见
+[`docs/mcp.md`](mcp.md)。
+
+真机验证（官方 `mcp` Python 客户端的 `ClientSession`）：
+
+```
+initialize            → codeinsight 0.1.0
+list_tools            → 15 个工具
+call_tool search_code → 文本 + structured_content.citations（3 条）
+call_tool list_projects → 两个已索引项目 + 绑定标记
+```
+
+两个设计点：
+
+- 工具表直接从 `ToolRegistry` 翻成 MCP schema，不重写第二份——
+  两处各写一遍参数说明，迟早不一致。
+- 教材工具的 `structured_content` 里**没有** `citations`：
+  换了个入口，「教材不是项目证据」这条规则也不能松。
 
 ### 三线现状（2026-10-24）
 
