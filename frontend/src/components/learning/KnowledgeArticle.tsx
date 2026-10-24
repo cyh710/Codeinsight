@@ -100,7 +100,7 @@ export default function KnowledgeArticle({ target }: { target: LearningTarget })
         <h2 className="mt-2 text-lg font-semibold leading-8 tracking-tight text-slate-800">
           {topic.title}
         </h2>
-        <p className="mt-2 text-xs leading-6 text-slate-500">{topic.summary}</p>
+        {/* 摘要就是正文首段，不再重复渲染一次。目录卡片里仍然显示摘要。 */}
         {(target.version !== topic.version ||
           (target.section_id && !topic.sections.some((s) => s.id === target.section_id))) && (
           <p
