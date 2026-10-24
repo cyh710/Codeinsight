@@ -6,7 +6,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { mockApi, provideSnapshot, setMockStreamDelay } from '../src/api/mock'
+import { mockApi, provideOntology, provideSnapshot, setMockStreamDelay } from '../src/api/mock'
 import type { SymbolListItem } from '../src/api/types'
 
 interface MiniSnapshot {
@@ -146,5 +146,57 @@ describe('真实快照可被完整消费', () => {
     const detail = await mockApi.getSymbol(1, hero.qualname)
     expect(detail.qualname).toBe(hero.qualname)
     expect(detail.source.length).toBeGreaterThan(0)
+  })
+
+  it('快照携带的概念实例与本体：列表/详情/实例/quick 解释全链路', async () => {
+    const raw = readFileSync(
+      fileURLToPath(new URL('../public/mock/sample-index.json', import.meta.url)),
+      'utf-8',
+    )
+    const snapshot = JSON.parse(raw) as MiniSnapshot
+    provideSnapshot(snapshot as never)
+    const ontology = JSON.parse(
+      readFileSync(fileURLToPath(new URL('../public/mock/ontology.json', import.meta.url)), 'utf-8'),
+    )
+    provideOntology(ontology)
+
+    // 列表：真实检测分组，非空且带实例计数
+    const concepts = await mockApi.listConcepts(1)
+    expect(concepts.total).toBeGreaterThan(0)
+    const top = concepts.items[0]
+    expect(top.instance_count).toBeGreaterThan(0)
+    expect(top.name).not.toBe(top.concept_id) // 本体 join 上了
+
+    // 详情与实例：引用完整性——实例的 qualname 都能在样本符号里找到
+    const instances = await mockApi.listConceptInstances(1, top.concept_id)
+    expect(instances.total).toBe(top.instance_count)
+    for (const inst of instances.items) {
+      if (inst.qualname) {
+        await expect(mockApi.getSymbol(1, inst.qualname)).resolves.toBeTruthy()
+      }
+    }
+
+    // quick 解释：读本体的 summary，不调 LLM
+    const quick = await mockApi.explainConcept(1, top.concept_id, 'quick')
+    expect(quick.llm_used).toBe(false)
+    expect(quick.summary.length).toBeGreaterThan(0)
+
+    // project 解释：事实从实例派生且带 file:line
+    const project = await mockApi.explainConcept(1, top.concept_id, 'project')
+    expect(project.facts.length).toBe(instances.total)
+    expect(project.facts[0].citation.path).toBe(instances.items[0].path)
+  })
+
+  it('快照携带的流程：非空且步骤有序', async () => {
+    const raw = readFileSync(
+      fileURLToPath(new URL('../public/mock/sample-index.json', import.meta.url)),
+      'utf-8',
+    )
+    provideSnapshot(JSON.parse(raw) as never)
+    const flows = await mockApi.listFlows(1)
+    expect(flows.total).toBeGreaterThan(0)
+    for (const flow of flows.items) {
+      expect(flow.steps.map((s) => s.ordinal)).toEqual([...flow.steps.map((s) => s.ordinal)].sort((a, b) => a - b))
+    }
   })
 })
