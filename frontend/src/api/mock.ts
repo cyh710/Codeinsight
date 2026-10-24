@@ -17,8 +17,13 @@ import type {
   ConceptListItem,
   CreateProjectRequest,
   CreateProjectResponse,
+  EdgeKind,
   FileEntry,
   Flow,
+  GraphEdge,
+  GraphNode,
+  GraphQuery,
+  GraphResponse,
   HealthResponse,
   ListResponse,
   ProjectDetail,
@@ -32,6 +37,7 @@ import type {
   SymbolDetail,
   SymbolListItem,
   SymbolQuery,
+  TimelineResponse,
 } from './types'
 
 // 快照条目（字段比契约少：mock 负责派生缺的部分，见下）。
@@ -214,6 +220,125 @@ let snapEdges: SnapEdge[] = []
 function snapEdgesOf(qualname: string, side: 'src' | 'dst', kind: string): SnapEdge[] {
   const key = side === 'src' ? 'src_qualname' : 'dst_qualname'
   return snapEdges.filter((e) => e.kind === kind && e[key] === qualname)
+}
+
+// ─── 关系图（契约 §4.5）：从同一条边表派生，形状与后端一致 ────
+
+const MOCK_GRAPH_KINDS = new Set<EdgeKind>(['call', 'inherits', 'decorator', 'references'])
+
+function mockGraph(d: Derived, snap: Snapshot, query: GraphQuery): GraphResponse {
+  const allowed = new Set<EdgeKind>(
+    query.kinds && query.kinds.length > 0 ? query.kinds : [...MOCK_GRAPH_KINDS],
+  )
+  const edges: GraphEdge[] = []
+  const seen = new Set<string>()
+  for (const e of snap.edges) {
+    const kind = e.kind as EdgeKind
+    if (!MOCK_GRAPH_KINDS.has(kind) || !allowed.has(kind) || !e.dst_qualname) continue
+    const src = d.symbolsByQualname.get(e.src_qualname)
+    const dst = d.symbolsByQualname.get(e.dst_qualname)
+    if (!src || !dst || src.id === dst.id) continue
+    const key = `${src.id}:${dst.id}:${kind}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    edges.push({
+      src: src.id,
+      dst: dst.id,
+      kind,
+      lineno: e.lineno,
+      confidence: e.confidence,
+      uncertain: e.confidence < 1,
+    })
+  }
+
+  const depthLimit = Math.min(Math.max(query.depth ?? 2, 1), 3)
+  const maxNodes = Math.min(Math.max(query.max_nodes ?? 80, 1), 200)
+  const depths = new Map<number, number | null>()
+  let selected: number[]
+  let truncated = false
+  let center: GraphResponse['center'] = null
+
+  if (query.qualname) {
+    const sym = d.symbolsByQualname.get(query.qualname)
+    if (!sym) {
+      throw new ApiError({
+        code: 'symbol_not_found',
+        title: '符号不存在',
+        hint: '换一个 qualname，或先在符号树里确认它存在',
+        detail: `qualname=${query.qualname}`,
+        status: 404,
+      })
+    }
+    center = { qualname: sym.qualname, path: sym.path, lineno: sym.lineno }
+    selected = [sym.id]
+    depths.set(sym.id, 0)
+    let frontier = [sym.id]
+    for (let level = 0; level < depthLimit && frontier.length > 0; level++) {
+      const current = new Set(frontier)
+      const next: number[] = []
+      for (const edge of edges) {
+        const neighbor = current.has(edge.src)
+          ? edge.dst
+          : current.has(edge.dst)
+            ? edge.src
+            : null
+        if (neighbor === null || depths.has(neighbor)) continue
+        if (selected.length >= maxNodes) {
+          truncated = true
+          continue
+        }
+        depths.set(neighbor, level + 1)
+        selected.push(neighbor)
+        next.push(neighbor)
+      }
+      frontier = next
+    }
+  } else {
+    // 概览：与后端同一条口径——调用度最高的公开函数/类。
+    const hubs = d.symbols
+      .filter((s) => ['function', 'method', 'class'].includes(s.kind) && !s.is_private)
+      .sort(
+        (a, b) =>
+          b.in_degree + b.out_degree - (a.in_degree + a.out_degree) ||
+          a.qualname.localeCompare(b.qualname),
+      )
+    truncated = hubs.length > maxNodes
+    selected = hubs.slice(0, maxNodes).map((s) => s.id)
+    for (const id of selected) depths.set(id, null)
+  }
+
+  const byId = new Map(d.symbols.map((s) => [s.id, s]))
+  const selectedSet = new Set(selected)
+  const nodes: GraphNode[] = selected.flatMap((id) => {
+    const s = byId.get(id)
+    if (!s) return []
+    return [
+      {
+        id: s.id,
+        qualname: s.qualname,
+        name: s.name,
+        kind: s.kind,
+        path: s.path,
+        lineno: s.lineno,
+        end_lineno: s.end_lineno,
+        is_async: s.is_async,
+        is_private: s.is_private,
+        in_degree: s.in_degree,
+        out_degree: s.out_degree,
+        concept_ids: s.concept_ids,
+        depth: depths.get(id) ?? null,
+      },
+    ]
+  })
+  return {
+    mode: center ? 'focus' : 'overview',
+    center,
+    depth: center ? depthLimit : null,
+    kinds: [...allowed],
+    nodes,
+    edges: edges.filter((e) => selectedSet.has(e.src) && selectedSet.has(e.dst)),
+    truncated,
+  }
 }
 
 // ─── 对话回放：事件全部取自真实快照数据 ───────────────────────
@@ -529,6 +654,45 @@ export const mockApi = {
     void id
     // 快照的 flows 为空（A5 未落地）——如实返回空。
     return { items: [], total: 0 }
+  },
+
+  async getGraph(id: number, query: GraphQuery = {}): Promise<GraphResponse> {
+    void id
+    return withDerived((d, snap) => mockGraph(d, snap, query))
+  },
+
+  async getTimeline(id: number, limit = 30): Promise<TimelineResponse> {
+    void id
+    void limit
+    // 快照只对应一次全量索引：如实给一格，不编造历史。
+    return withDerived((d, snap) => ({
+      head: snap.project.head_commit,
+      total: 1,
+      items: [
+        {
+          id: 'run-mock',
+          kind: 'index' as const,
+          mode: 'full' as const,
+          ok: true,
+          at: '2026-10-24T08:31:05Z',
+          base_commit: null,
+          head_commit: snap.project.head_commit,
+          summary: `全量索引：${d.files.length} 个文件、${d.symbols.length} 个符号（mock 快照）`,
+          files: {
+            added: null,
+            modified: null,
+            deleted: null,
+            total: d.files.length,
+          },
+          symbols_changed: null,
+          symbols_added: d.symbols.length,
+          symbols_removed: null,
+          files_total: d.files.length,
+          source: null,
+          stale_design_decisions: [],
+        },
+      ],
+    }))
   },
 
   async getChanges(id: number, since?: string): Promise<ChangesResponse> {

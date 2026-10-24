@@ -7,6 +7,7 @@
  */
 import * as projects from './projects'
 import * as concepts from './concepts'
+import * as graph from './graph'
 import { mockApi } from './mock'
 import { jsonRequest } from './client'
 import { streamQuery } from './stream'
@@ -21,6 +22,7 @@ function realQuery(request: QueryRequest): Promise<QueryResponse> {
 const realApi = {
   ...projects,
   ...concepts,
+  ...graph,
   query: realQuery,
   streamQuery,
 }

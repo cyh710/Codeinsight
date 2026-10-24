@@ -115,20 +115,22 @@
 |---|---|---|---|
 | `GET` | `/health` | 存活 + 索引库状态 | ✅ 已实现 |
 | `GET` | `/projects` | 已索引项目列表 | ✅ 已实现 |
-| `POST` | `/projects` | 导入项目并建索引 | ⬜ M1 |
-| `GET` | `/projects/{id}` | 项目详情 | ⬜ M1 |
-| `GET` | `/projects/{id}/overview` | 项目概览 | ⬜ M2 |
-| `GET` | `/projects/{id}/files` | 文件树 | ⬜ M1 |
-| `GET` | `/projects/{id}/symbols` | 符号列表 | ⬜ M1 |
-| `GET` | `/projects/{id}/symbols/{qualname}` | 符号详情 | ⬜ M2 |
-| `GET` | `/projects/{id}/symbols/{qualname}/callers` | 调用者 | ⬜ M2 |
-| `GET` | `/projects/{id}/symbols/{qualname}/callees` | 被调者 | ⬜ M2 |
-| `GET` | `/projects/{id}/flows` | 关键业务流程 | ⬜ M2 |
-| `GET` | `/projects/{id}/concepts` | 概念列表 | ⬜ M1.5 |
-| `GET` | `/projects/{id}/concepts/{concept_id}` | 概念详情 | ⬜ M1.5 |
-| `GET` | `/projects/{id}/concepts/{concept_id}/instances` | 概念实例 | ⬜ M1.5 |
-| `POST` | `/projects/{id}/concepts/{concept_id}/explain` | 三级深度解释 | ⬜ M1.5 |
+| `POST` | `/projects` | 导入项目并建索引 | ✅ M1 |
+| `GET` | `/projects/{id}` | 项目详情 | ✅ M1 |
+| `GET` | `/projects/{id}/overview` | 项目概览 | ✅ M2 |
+| `GET` | `/projects/{id}/files` | 文件树 | ✅ M1 |
+| `GET` | `/projects/{id}/symbols` | 符号列表 | ✅ M1 |
+| `GET` | `/projects/{id}/symbols/{qualname}` | 符号详情 | ✅ M2 |
+| `GET` | `/projects/{id}/symbols/{qualname}/callers` | 调用者 | ✅ M2 |
+| `GET` | `/projects/{id}/symbols/{qualname}/callees` | 被调者 | ✅ M2 |
+| `GET` | `/projects/{id}/graph` | 符号邻域关系图（可选 `qualname`） | ✅ M8 |
+| `GET` | `/projects/{id}/flows` | 关键业务流程 | ✅ M2 |
+| `GET` | `/projects/{id}/concepts` | 概念列表 | ✅ M1.5 |
+| `GET` | `/projects/{id}/concepts/{concept_id}` | 概念详情 | ✅ M1.5 |
+| `GET` | `/projects/{id}/concepts/{concept_id}/instances` | 概念实例 | ✅ M1.5 |
+| `POST` | `/projects/{id}/concepts/{concept_id}/explain` | 三级深度解释 | ✅ M1.5 |
 | `GET` | `/projects/{id}/changes` | 变更说明 | ✅ M6 |
+| `GET` | `/projects/{id}/timeline` | 索引与变更的时间轴 | ✅ M8 |
 | `POST` | `/query` | 非流式问答 | ✅ M3 |
 | `POST` | `/query/stream` | **SSE** 流式问答 | ✅ M3 |
 | `GET` | `/knowledge/tree` | 内置教材目录（不依赖项目库） | ✅ M3 |
@@ -455,6 +457,51 @@
 
 ---
 
+### 4.5 `GET /projects/{id}/graph` — 符号邻域关系图
+
+**查询参数**
+
+| 参数 | 默认 | 说明 |
+|---|---|---|
+| `qualname` | 无 | 中心符号。不给时返回「高连接度符号」的概览图 |
+| `depth` | `2` | 1–3 跳 |
+| `max_nodes` | `80` | 节点上限，最大 200 |
+| `kinds` | `call,inherits,decorator,references` | 逗号分隔；`imports` 默认不展开 |
+
+```json
+{
+  "mode": "focus",
+  "center": { "qualname": "backend.api.chat.stream_chat", "path": "backend/api/chat.py", "lineno": 42 },
+  "depth": 2,
+  "kinds": ["call", "inherits", "decorator", "references"],
+  "nodes": [
+    {
+      "id": 1832, "qualname": "backend.api.chat.stream_chat", "name": "stream_chat",
+      "kind": "function", "path": "backend/api/chat.py", "lineno": 42, "end_lineno": 88,
+      "is_async": false, "is_private": false,
+      "in_degree": 3, "out_degree": 12, "concept_ids": ["sse"], "depth": 0
+    }
+  ],
+  "edges": [
+    { "src": 1832, "dst": 1900, "kind": "call", "lineno": 51, "confidence": 0.6, "uncertain": true }
+  ],
+  "truncated": false
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| `mode` | `focus`（有中心）或 `overview`（无 `qualname`） |
+| `nodes[].depth` | 距中心的跳数；概览图为 `null` |
+| `nodes[].concept_ids` | 该符号命中的概念——源文档 §2.2 的「登录接口 → 身份验证/数据库/Token」靠它 |
+| `edges[].uncertain` | `confidence < 1`：动态调用等静态分析定不了的关系 |
+| `truncated` | **有节点因上限没返回**。前端必须显示，不能把截断的图当完整图 |
+
+> 只有 `dst_symbol_id` 非空的关系会进图：画不出位置的边不画，不留悬空节点。
+> `qualname` 不存在 → 404 `symbol_not_found`；`depth` / `kinds` 越界 → 400。
+
+---
+
 ## 5. 关键业务流程
 
 ### 5.1 `GET /projects/{id}/flows`
@@ -633,6 +680,69 @@
 > 没有任何变更记录时返回**同形状的空壳**，前端不需要为此写分支。
 > `since` 取这次索引的基准 commit（`index_run.base_commit`）。
 > `stale_design_decisions` 只在**增量**索引时产生——全量重建没有「上一次」可比。
+
+---
+
+### 7.2 `GET /projects/{id}/timeline` — 索引与变更时间轴
+
+**查询参数**：`limit`（默认 30，最大 100）。
+
+```json
+{
+  "head": "c1d2e3f...",
+  "total": 2,
+  "items": [
+    {
+      "id": "run-12",
+      "kind": "index",
+      "mode": "incremental",
+      "ok": true,
+      "at": "2026-10-24T09:12:03Z",
+      "base_commit": "9b5ad71b...",
+      "head_commit": "c1d2e3f...",
+      "summary": "新增队列与背压，拆分 prepare/stream 两段。",
+      "files": { "added": 76, "modified": 68, "deleted": 80, "total": 224 },
+      "symbols_changed": 1036,
+      "symbols_added": 210,
+      "symbols_removed": 180,
+      "files_total": 688,
+      "source": "git",
+      "stale_design_decisions": [
+        { "doc_id": "0012", "title": "使用文件锁保护缓存刷新" }
+      ]
+    },
+    {
+      "id": "change-3",
+      "kind": "change",
+      "mode": null,
+      "ok": true,
+      "at": "2026-10-23T18:02:00Z",
+      "base_commit": null,
+      "head_commit": "aa11bb22",
+      "summary": "外部 agent 记账",
+      "files": { "added": 1, "modified": 0, "deleted": 0, "total": 1 },
+      "symbols_changed": 1,
+      "symbols_added": null,
+      "symbols_removed": null,
+      "files_total": null,
+      "source": "external_agent",
+      "stale_design_decisions": []
+    }
+  ]
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| `kind` | `index`（`index_run`）或 `change`（没有对应索引 run 的 `change_record`，例如 MCP 侧记账） |
+| `mode` | `full` / `incremental`；`change` 为 `null` |
+| `files.added/modified/deleted` | 全量索引不知道逐状态数量时为 `null`，不要当 0 显示 |
+| `files.total` | 增量 = 逐状态之和；全量 = 本次扫描的文件数 |
+| `symbols_changed` | 来自 `change_record`；缺失时退到 `index_run.stats_json`，仍没有则为 `null` |
+| `at` | ISO-8601 UTC；无法确定时为 `null` |
+
+> 只读库、不重算：读侧若重新推导，必然与写侧漂移。
+> 「这次改了哪些文件」的明细仍走 §7.1 `/changes`（可用该条的 `head_commit` 作为 `since`）。
 
 ---
 
@@ -880,3 +990,4 @@ done                                ← 恰好一次，最后
 | 2026-10-24 | 初版，M1 冻结 |
 | 2026-10-24 | M3：`/query` 与 `/query/stream` 实装；`incomplete` 字段加入 §8.1 响应与 §8.3 `answer` 事件（区分「没做完」与 `abstained`「没找到」）。前端 `types.ts` 已同步 |
 | 2026-10-24 | 请求 0001/0005 落地：§8.4 知识扩展——`reading_context` 入参、`knowledge_sources` / `learning_*` / `reading_status` / `knowledge_error` 出参、`answer` 事件带最终 `text`；新增 `/knowledge/*` 三个端点。教材来源与项目 `citations` **永不混用** |
+| 2026-10-24 | M8：新增 §4.5 `/projects/{id}/graph`（BFS 邻域、概念标签、`truncated`）与 §7.2 `/projects/{id}/timeline`。`index_run.started_at` 改存墙钟 ISO 时间（此前误存 `time.monotonic()`） |

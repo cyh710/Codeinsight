@@ -14,11 +14,13 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 import subprocess
 import time
 from contextlib import nullcontext
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
 from codeinsight.cognitive.indexing.chunker import DEFAULT_MAX_CHUNK_LINES, chunk_symbol
@@ -439,6 +441,9 @@ def index_project(
     API 层要用的是 `run_index`——那里连接与记账都归调用方。
     """
     started = time.monotonic()
+    # 墙钟时间单独取：monotonic 只能算耗时，不能当时间戳存（重启后没有意义，
+    # 时间线也就没法按它排序）。finished_at 由 SQLite 的 datetime('now') 写。
+    started_at = datetime.now(UTC).isoformat(timespec="seconds")
     ensure_schema(db_path)
 
     with open_sqlite(db_path) as conn:
@@ -460,6 +465,13 @@ def index_project(
             (project_id,),
         ).fetchone()
         mode = "incremental" if stats.get("changed_symbols") is not None else "full"
+        # 增量特有的数字此前只回了 Stats，库里查不到——时间线要能只读不重算，
+        # 所以把同一份值落进 stats_json（全量时为空对象，不塞假的 0）。
+        extra = {
+            key: stats[key]
+            for key in ("changed_symbols", "stale_design_decisions")
+            if key in stats
+        }
         conn.execute(
             """
             INSERT INTO index_run (project_id, base_commit, head_commit, mode,
@@ -472,10 +484,10 @@ def index_project(
                 base_row[0] if base_row else stats["head_commit"],
                 stats["head_commit"],
                 mode,
-                started,
+                started_at,
                 stats["files"],
                 stats.get("changed_symbols", stats["symbols"]),
-                None,
+                json.dumps(extra, ensure_ascii=False) if extra else None,
             ),
         )
         conn.commit()

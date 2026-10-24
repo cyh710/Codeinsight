@@ -3,10 +3,11 @@
  * 数据来自 `GET /projects/{id}/symbols/{qualname}`（mock 下同样形状）。
  */
 import { useEffect, useState } from 'react'
-import { AlertTriangle, ArrowRightLeft } from 'lucide-react'
+import { AlertTriangle, ArrowRightLeft, Share2 } from 'lucide-react'
 import { api } from '../../api/dataSource'
 import type { RelationRef, SymbolDetail } from '../../api/types'
 import { projectStore } from '../../store/projectStore'
+import { viewStore } from '../../store/viewStore'
 import CodeViewer from './CodeViewer'
 
 function RelationList({ title, items }: { title: string; items: RelationRef[] }) {
@@ -77,7 +78,19 @@ export default function SymbolDetailCard({ qualname }: { qualname: string }) {
   return (
     <article className="space-y-2.5">
       <header>
-        <p className="break-all font-mono text-[11px] text-slate-400">{detail.qualname}</p>
+        <div className="flex items-start gap-2">
+          <p className="min-w-0 flex-1 break-all font-mono text-[11px] text-slate-400">
+            {detail.qualname}
+          </p>
+          <button
+            type="button"
+            onClick={() => viewStore.getState().openGraph(detail.qualname)}
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-500 transition-colors hover:border-accent hover:text-accent"
+            title="以这个符号为中心打开关系图"
+          >
+            <Share2 size={10} strokeWidth={1.8} /> 关系图
+          </button>
+        </div>
         <h3 className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold text-slate-800">
           <span className="rounded bg-accent-soft px-1.5 py-px font-mono text-[10px] font-medium uppercase text-accent">
             {detail.kind}

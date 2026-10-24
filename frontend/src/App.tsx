@@ -11,7 +11,7 @@ import { workbenchStore } from './store/workbenchStore'
 import { isMockMode } from './api/dataSource'
 import type { Citation } from './api/types'
 import LeftPanel from './components/tree/LeftPanel'
-import ChatWindow from './components/chat/ChatWindow'
+import CenterPanel from './components/center/CenterPanel'
 import RightPanel from './components/evidence/RightPanel'
 
 // 引用点击 → 右栏符号详情（无 qualname 时退回文件选中）。
@@ -50,7 +50,7 @@ export default function App() {
 
       <main className="flex min-h-0 flex-1">
         <LeftPanel />
-        <ChatWindow onOpenCitation={openCitation} />
+        <CenterPanel onOpenCitation={openCitation} />
         <RightPanel />
       </main>
     </div>

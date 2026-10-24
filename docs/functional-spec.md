@@ -571,11 +571,15 @@ frontend/src/
 │   ├── types.ts                   新写（类型集中）
 │   ├── projectStore.ts             新写
 │   ├── workbenchStore.ts          新写（当前选中符号/模块/概念）
+│   ├── viewStore.ts               M8：中栏标签页 + 关系图中心
 │   └── chatStore.ts + chatActions.ts  新写（抄织忆 slice 拆分法）
 └── components/
     ├── workbench/                 三栏布局（新写）
     ├── tree/                      文件与符号树（新写）
     ├── chat/                      抄织忆骨架 + 新事件类型
+    ├── center/                    M8：中栏标签栏（对话/关系图/时间线）
+    ├── graph/                     M8：React Flow 关系图（纯函数布局可单测）
+    ├── timeline/                  M8：演进时间线
     ├── evidence/                  证据面板（新写）+ Monaco 只读
     ├── concept/                   ★ 概念卡 + 代码侧 concept chips（新写）
     └── common/                    复制织忆
@@ -585,7 +589,7 @@ frontend/src/
 
 | 项 | 决定 |
 |---|---|
-| 三栏之外的第 4 视图 | **不要**（关系图放 M8，先不加 tab） |
+| 三栏之外的第 4 视图 | **不要**（关系图与时间线是 M8 的**中栏标签页**，整体仍是三栏） |
 | 概念卡形态 | **右栏替换**（不弹层——弹层会挡住证据） |
 | Monaco | **要**，`@monaco-editor/react` 只读 + 懒加载 |
 | 暗色模式 | 要（沿用织忆 `themeStore` + `palettes.ts`） |

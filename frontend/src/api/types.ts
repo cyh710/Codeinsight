@@ -33,6 +33,10 @@ export const EDGE_KINDS = [
 ] as const
 export type EdgeKind = (typeof EDGE_KINDS)[number]
 
+/** 关系图默认展开的边（契约 §4.5）。`imports` 是模块级边，默认不画。 */
+export const GRAPH_EDGE_KINDS = ['call', 'inherits', 'decorator', 'references'] as const
+export type GraphEdgeKind = (typeof GRAPH_EDGE_KINDS)[number]
+
 export const CONCEPT_DEPTHS = ['quick', 'project', 'deep'] as const
 export type ConceptDepth = (typeof CONCEPT_DEPTHS)[number]
 
@@ -309,6 +313,56 @@ export interface SymbolQuery {
 export interface RelationListResponse extends ListResponse<RelationRef> {}
 
 // ─────────────────────────────────────────────────────────────
+// 关系图（契约 §4.5）
+// ─────────────────────────────────────────────────────────────
+
+export interface GraphNode {
+  id: number
+  qualname: string
+  name: string
+  kind: SymbolKind
+  path: string
+  lineno: number
+  end_lineno: number
+  is_async: boolean
+  is_private: boolean
+  in_degree: number
+  out_degree: number
+  /** 该符号命中的概念——节点上的概念标签就靠它（源文档 §2.2）。 */
+  concept_ids: string[]
+  /** 距中心的跳数；概览图为 null。 */
+  depth: number | null
+}
+
+export interface GraphEdge {
+  src: number
+  dst: number
+  kind: EdgeKind
+  lineno: number | null
+  confidence: number
+  /** `confidence < 1`：动态调用等静态分析定不了的关系。 */
+  uncertain: boolean
+}
+
+export interface GraphResponse {
+  mode: 'focus' | 'overview'
+  center: { qualname: string; path: string; lineno: number } | null
+  depth: number | null
+  kinds: EdgeKind[]
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  /** 有节点因上限未返回；前端必须显式提示。 */
+  truncated: boolean
+}
+
+export interface GraphQuery {
+  qualname?: string
+  depth?: number
+  max_nodes?: number
+  kinds?: EdgeKind[]
+}
+
+// ─────────────────────────────────────────────────────────────
 // 流程
 // ─────────────────────────────────────────────────────────────
 
@@ -439,6 +493,37 @@ export interface ChangesResponse {
   }
   tests: TestOutcome[]
   stale_design_decisions: StaleDesignDecision[]
+}
+
+/** 时间线的一格（契约 §7.2）。全量索引不知道逐状态文件数时为 null，不要当 0。 */
+export interface TimelineItem {
+  id: string
+  kind: 'index' | 'change'
+  mode: IndexMode | null
+  ok: boolean
+  at: string | null
+  base_commit: string | null
+  head_commit: string | null
+  summary: string
+  files: {
+    added: number | null
+    modified: number | null
+    deleted: number | null
+    total: number
+  }
+  symbols_changed: number | null
+  symbols_added: number | null
+  symbols_removed: number | null
+  files_total: number | null
+  source: string | null
+  stale_design_decisions: Array<{ doc_id: string; title: string }>
+}
+
+/** `GET /projects/{id}/timeline` 响应（契约 §7.2）。 */
+export interface TimelineResponse {
+  head: string | null
+  total: number
+  items: TimelineItem[]
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -2,8 +2,18 @@
  * Monaco 真身（由 CodeViewer 懒加载，不进首屏 bundle）。
  * 只读；`startLine` 让行号对齐符号在文件里的真实位置。
  */
-import Editor from '@monaco-editor/react'
+import Editor, { loader } from '@monaco-editor/react'
 import type { Monaco } from '@monaco-editor/react'
+// 默认行为是从 jsDelivr 拉 Monaco 的 loader —— 内网/离线环境会永远停在
+// 「编辑器加载中…」。这里改用 npm 包里自带的 monaco，随懒加载 chunk 一起发。
+import * as monaco from 'monaco-editor'
+// 包 exports 把 `monaco-editor/*.js` 映到 `esm/vs/*.js`，所以这里不要再写 esm/vs。
+import EditorWorker from 'monaco-editor/editor/editor.worker.js?worker'
+
+self.MonacoEnvironment = {
+  getWorker: () => new EditorWorker(),
+}
+loader.config({ monaco })
 
 export default function MonacoViewer({ code, language, startLine, highlightRanges }: {
   code: string
