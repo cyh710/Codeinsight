@@ -60,6 +60,18 @@ def test_chinese_and_code_mix() -> None:
     assert len(tokens) > 2
 
 
+def test_chinese_sub_word_bigrams_survive_word_boundary_changes() -> None:
+    """词界不同也要能对上（中文分词器装了 jieba 之后的回归）。
+
+    文档里是「事件处理函数」，词典把它切成 `事件处理 | 函数`；
+    查询里只有「事件」。纯词级 token 下这两边对不上，可它们说的是同一个词。
+    词内 bigram 让「事件」在两边都存在。
+    """
+    assert "事件" in split_identifiers("事件处理函数")
+    assert "函数" in split_identifiers("函数参数")
+    assert "参数" in split_identifiers("函数参数")
+
+
 def test_numbers_are_dropped() -> None:
     """纯数字是噪声：BM25 命中数字几乎不带来语义。"""
     assert "42" not in split_identifiers("timeout=42")

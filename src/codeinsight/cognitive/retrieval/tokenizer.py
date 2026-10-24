@@ -89,10 +89,38 @@ def _split_cjk(run: str) -> list[str]:
     「用户认证」→ `用户 户认 认证`，而不是一个巨型 token。
     bigram 是中文检索里最经典的兜底：不需要词典就不会退化成一个词，
     而 ADR 0003 要消除的正是「一个词」这件事。
+
+    **词级之外同时保留 bigram**（粒度取并集）。理由有两层：
+
+    1. **词界不保证一致**。jieba 的词典不认识项目里的新说法，同一个概念
+       在文档和查询里可能被切成不同的词：
+       文档「事件处理函数」→ `事件处理 | 函数`，查询「事件」→ `事件`。
+       只有词级 token 时两边对不上，可它们说的是同一个词。
+    2. **跨词 bigram 承载短语信号**。「函数参数是什么」这句原话出现在
+       python-functions 里，词级切法会把 `函数参数 | 是 | 什么` 切断，
+       跨词边界的那几个 bigram 全丢了——查询与文档说得一字不差，
+       却看不出「一字不差」。
+
+    所以：词级保精度，字级保召回。两种粒度都入库、都用于查询，
+    分词方式本身就不会成为「命中与否」的唯一决定因素。
+    一次出现内部的重复要去掉（`函数` 两字既是词也是自己的 bigram），
+    但**跨出现**不去重——BM25 的 tf 分量靠词频。
     """
     jieba = _jieba()
     if jieba is not None:
-        return [w for w in (t.strip() for t in jieba.lcut(run)) if w]
+        out: list[str] = []
+        seen: set[str] = set()
+
+        def _emit(token: str) -> None:
+            if token and token not in seen:
+                seen.add(token)
+                out.append(token)
+
+        for word in jieba.lcut(run):
+            _emit(word.strip())
+        for i in range(len(run) - 1):
+            _emit(run[i : i + 2])
+        return out
 
     if len(run) == 1:
         return [run]
