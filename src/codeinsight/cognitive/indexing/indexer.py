@@ -107,15 +107,18 @@ def _resolve_commit(root: Path, ref: str | None) -> tuple[str, str]:
     return commit, branch
 
 
-def _origin_url(root: Path) -> str:
-    """项目根路径：优先用 git origin URL。
+def _root_label(root: Path) -> str:
+    """项目根路径：本地绝对路径。
 
-    用 URL 而不是本地绝对路径，索引库才能跟着仓库走——本地路径进了库，
-    别人就复现不了，公开仓库里还等于泄露本机目录结构。
+    `project.root_path` 的语义是「这个项目指向哪个仓库」——
+    API 层用它做「同名同路径 = 重建索引」的判定，
+    所以这里必须写**调用方给的路径**，不能替它改。
+
+    「公开仓库里不能留本机绝对路径」这个顾虑落在**发布出去的东西**上，
+    不在本地索引库里：索引库在 `.ci/` 里、是被 gitignore 的；
+    真正会被公开的是 `fixtures/sample-index.json`，
+    它的 `root_path` 由 `snapshot.py` 单独写成 git origin URL。
     """
-    url = _git(root, "config", "--get", "remote.origin.url")
-    if url:
-        return url
     return str(root.resolve())
 
 
@@ -380,7 +383,7 @@ def index_project(
     ensure_schema(db_path)
 
     with open_sqlite(db_path) as conn:
-        project_id = _ensure_project(conn, name=name, root_path=_origin_url(Path(root)))
+        project_id = _ensure_project(conn, name=name, root_path=_root_label(Path(root)))
         stats = run_index(
             conn,
             project_id,
@@ -428,9 +431,14 @@ def index_project(
 
 
 def _ensure_project(conn: sqlite3.Connection, *, name: str, root_path: str) -> int:
+    """按名字取项目行；没有就建一个。
+
+    **不覆盖已有行的 `root_path`**：调用方（API 层）拿它做
+    「同名同路径 = 重建索引」的判定，引擎擅自改成 origin URL 之后，
+    第二次导入同一个仓库会被误判成「同名不同路径」而拒掉。
+    """
     row = conn.execute("SELECT id FROM project WHERE name = ?", (name,)).fetchone()
     if row:
-        conn.execute("UPDATE project SET root_path = ? WHERE id = ?", (root_path, row[0]))
         return int(row[0])
     cur = conn.execute(
         "INSERT INTO project (name, root_path) VALUES (?, ?)",

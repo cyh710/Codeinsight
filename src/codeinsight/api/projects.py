@@ -14,6 +14,7 @@ from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
 from codeinsight.api.errors import (
+    ApiFailure,
     bad_request,
     not_found_project,
     not_found_symbol,
@@ -59,24 +60,43 @@ def create_project(body: CreateProjectBody, background: BackgroundTasks) -> dict
     ensure_schema(path)
     conn = open_sqlite(path, row_factory=True)
     try:
-        # 同名项目重复导入：契约定义为 index_running（409），引导用户换名或等完成。
-        dup = conn.execute("SELECT id FROM project WHERE name = ?", (name,)).fetchone()
-        if dup is not None:
-            raise bad_request(
-                f"项目名 {name} 已存在（id={dup['id']}）",
-                hint="换个 name，或直接使用已有项目的 id",
+        # 同名项目：引擎按名字复用项目行，重复导入语义与之对齐——
+        # 同名同路径 = 重建索引（stale 状态的"重新导入可刷新"走的就是这条路）；
+        # 同名不同路径 = 歧义，拒绝。
+        existing = conn.execute(
+            "SELECT id, root_path FROM project WHERE name = ?", (name,)
+        ).fetchone()
+        if existing is not None:
+            if existing["root_path"] != body.root_path:
+                raise bad_request(
+                    f"项目名 {name} 已被另一个路径占用（id={existing['id']}）",
+                    hint="换个 name，或使用已有项目的 id",
+                )
+            running = conn.execute(
+                "SELECT 1 FROM index_run WHERE project_id = ? AND finished_at IS NULL",
+                (existing["id"],),
+            ).fetchone()
+            if running is not None:
+                raise ApiFailure(
+                    status_code=409,
+                    code="index_running",
+                    title="该项目正在索引中",
+                    hint="等当前索引完成后再重建",
+                    detail=f"project_id={existing['id']}",
+                )
+            project_id = int(existing["id"])
+        else:
+            cur = conn.execute(
+                "INSERT INTO project (name, root_path) VALUES (?, ?)", (name, body.root_path)
             )
-        cur = conn.execute(
-            "INSERT INTO project (name, root_path) VALUES (?, ?)", (name, body.root_path)
-        )
-        project_id = int(cur.lastrowid)
-        conn.commit()
+            project_id = int(cur.lastrowid)
+            conn.commit()
     finally:
         conn.close()
 
     # 建索引是异步的（契约 §3.3）：响应 202 后由后台任务推进，
     # 前端轮询 GET /projects/{id} 直到 status !== "indexing"。
-    background.add_task(start_indexing, project_id, body.root_path, body.ref)
+    background.add_task(start_indexing, project_id, name, body.root_path, body.ref)
 
     return {
         "id": project_id,

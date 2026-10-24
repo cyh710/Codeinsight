@@ -1,5 +1,11 @@
 # 0002. 索引引擎入口函数（POST /projects 的建索引接缝）
 
+> **状态：✅ 已解决（2026-10-24）**。A 线合入 `cognitive/indexing.index_project`
+> （按 `db_path + root + name + ref` 整-job 签名，自带 repo_state/index_run 记账），
+> C 线已直接接线；本请求中建议的 `(conn, project_id, ...)` 签名未采用——
+> 引擎侧签名更合理（名字复用语义与落库一致性都在引擎内闭环）。
+> `symbol.path` 冗余列未加，读端点按 JOIN 实现。
+
 - **提出方**：C 线
 - **日期**：2026-10-24
 - **紧急度**：阻塞"导入项目并建索引"真实跑通（读端点不受影响）
@@ -44,38 +50,59 @@ C 线在 `api/indexing.py::_ENGINE_CALLABLE` 一处接上即可，其余不动�
 
 ---
 
-## A 线答复（2026-10-24）
+## A 线答复与最终结论（2026-10-24）
 
-引擎已落地，入口在 `src/codeinsight/cognitive/indexing/indexer.py`：
+引擎已落地，在 `src/codeinsight/cognitive/indexing/indexer.py`：
 
 ```python
-def run_index(
-    conn: sqlite3.Connection,
-    project_id: int,
-    root_path: str | Path,
-    ref: str | None = None,
+def index_project(
+    db_path: str | Path,
     *,
+    root: str | Path,
+    name: str,
+    ref: str | None = None,
     max_chunk_lines: int = DEFAULT_MAX_CHUNK_LINES,
-) -> dict:
-    """扫描 → 解析 → 落库 → repo_state 收尾（不含 index_run 记账）。"""
+) -> IndexResult:
+    """建库 → 建项目行 → 全量索引 → 写 index_run 记账。"""
 ```
 
-签名与请求里提的一致。`main` 上已把 `api/indexing.py::_ENGINE_CALLABLE`
-接成 `run_index`，测试也改成了「真仓库 → ready 且库里有符号」。
+底层还有 `run_index(conn, project_id, root_path, ref)`——它只管数据、
+不管记账，是 `index_project` 的内核。
 
-### 合并时请保留 `run_index` 这条接缝
+### 最终采用 C 线的接法
 
-C 线工作区里有一版未提交的改法：让 API 直接调 `index_project`
-（自己开库、自己写 `index_run`）。两种都能跑，但**记账会重复**：
+C 线收敛后的写法是 **API 层直接调 `index_project`**，引擎自带全套记账
+（`repo_state` + 成功路径的 `index_run`），API 只在引擎抛异常时补一条
+`ok=0` 的 run。
 
-| | `index_run` 行数（一次导入） | 谁负责记账 |
-|---|---|---|
-| `run_index`（本答复） | 1 | API 层 |
-| 直调 `index_project` | 2（引擎一条 + API 失败补偿一条） | 两边都写 |
+**每次导入恰好一条 `index_run`**：
 
-`GET /projects/{id}` 的状态是按 `index_run` 推导的（`ORDER BY id DESC LIMIT 1`），
-多一行会让「这次索引到底成没成」的判断有两个来源。
+| 路径 | `index_run` 行数 |
+|---|---|
+| 成功 | 1（引擎写的） |
+| 失败 | 1（API 层补的 `ok=0`） |
 
-所以合并冲突时以 `run_index(conn, ...)` 为准：
-**连接与 `index_run` 记账归 API 层，引擎只管数据**——这也是请求里写的分工。
-`index_project(db_path, ...)` 保留给 CLI 与测试用，它是 `run_index` 的薄包装。
+状态推导（`ORDER BY id DESC LIMIT 1`）始终只有一个来源 ✓。
+
+> 顺带更正 A 线先前的一处担心：曾以为「引擎写一条 + API 补偿一条」会写成两条，
+> 那是因为 API 层**事先**插了一条 run。C 线最终版本把那条预插去掉了，
+> 所以没有重复。原先提的 `run_index(conn, ...)` 接缝因此不需要——
+> 引擎仍然暴露它，但 API 不用。
+
+### 集成时发现并修掉的一个真 bug
+
+引擎原先会用 git origin URL **覆盖** `project.root_path`。
+但 API 层的「同名同路径 = 重建索引」判定用的就是这一列——
+覆盖之后，第二次导入同一个仓库会被误判成「同名不同路径」而拒掉（400）。
+
+已改为：引擎**不覆盖**已有项目行的 `root_path`；
+`project.root_path` 的语义统一为「这个项目指向哪个仓库（本地路径）」。
+「公开仓库里不留本机绝对路径」这个顾虑落在**发布出去的东西**上：
+索引库在 `.ci/` 里、被 gitignore；真正公开的是 `fixtures/sample-index.json`，
+它的 `root_path` 由 `snapshot.py` 单独写成 git origin URL。
+
+### 关于 `symbol.path`
+
+**不加冗余列。** `symbol` 走 `file_id` JOIN 拿路径只有一次 JOIN，
+而冗余一列意味着**两处可能不一致**（文件改名 / 增量更新时最容易漏）。
+契约里 `symbol` 不带 `path` 字段也已经被前端接受——保持现状。
