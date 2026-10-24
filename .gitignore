@@ -32,6 +32,9 @@ frontend/.vite/
 .env.*
 !.env.example
 
+# 本机 MCP 配置（含本机绝对路径与项目名，不入库；模板见 docs/mcp.md）
+.mcp.json
+
 # 编辑器与系统
 .vscode/
 .idea/
