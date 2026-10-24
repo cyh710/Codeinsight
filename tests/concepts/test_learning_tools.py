@@ -33,7 +33,8 @@ async def test_search_and_read_share_versions_and_never_add_code_citations(regis
     assert not read.error
     assert read.data["knowledge_sources"][0]["target"] == target
     assert target["version"] == read.data["version"]
-    assert target["section_id"] == "overview"
+    # 搜索命中的是文章第一节；第一节叫什么由文章自己定。
+    assert target["section_id"]
     assert "citations" not in read.data
     assert (
         read.content == (await registry.get("read_knowledge_topic").run(target, context(2))).content

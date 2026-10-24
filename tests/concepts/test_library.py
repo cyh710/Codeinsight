@@ -32,30 +32,15 @@ def test_all_topics_have_substantive_content_and_sources(library):
     }
     for topic in library.topics.values():
         sections = {s.id: s.content for s in topic.sections}
-        assert set(sections) >= {
-            "overview",
-            "mechanism",
-            "example",
-            "walkthrough",
-            "pitfalls",
-            "tradeoffs",
-            "sources",
-        }
-        assert (
-            sum(
-                len(sections[s])
-                for s in ("overview", "mechanism", "walkthrough", "pitfalls", "tradeoffs")
-            )
-            >= 400
-        )
+        # 章节结构随文章内容而定：不规定分几节、也不规定叫什么。
+        # 只要求两件事——正文够长，且来源章节在。
+        assert "sources" in sections
+        assert len(topic.sections) >= 3, f"{topic.id} 章节太少"
+        body = "\n".join(s.content for s in topic.sections if s.id != "sources")
+        assert len(body) >= 600, f"{topic.id} 正文太短"
         assert topic.source_ids
-        # 例子里要有可运行的代码块。
-        #
-        # 早先这里断言的是「教学示例」四个字出现在例子的开头——
-        # 那是为了让读者知道这段代码不是被分析项目的代码。
-        # 现在这句免责由界面以角标呈现，正文只留教学内容，
-        # 所以检查的是实质：例子必须真的有代码。
-        assert "```" in sections["example"]
+        # 教材里要有可运行的代码块（含工程概念类，示例也是代码）。
+        assert "```" in body, f"{topic.id} 没有代码示例"
 
 
 def test_summary_comes_from_the_article_body(library):
@@ -85,7 +70,9 @@ def test_summary_comes_from_the_article_body(library):
 def test_beginner_queries_find_readable_explanations(library, query, topic):
     hits = library.search(query)
     assert hits[0].target.topic_id == topic
-    assert hits[0].target.section_id == "overview"
+    # 命中主题时优先它的第一节；第一节叫什么由文章自己定。
+    first = library.get(topic).sections[0].id
+    assert hits[0].target.section_id == first
     assert library.resolve_href(hits[0].target.href) == hits[0].target
     assert all(h.target.section_id not in {"sources", "related"} for h in hits)
 

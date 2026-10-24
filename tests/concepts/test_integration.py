@@ -106,7 +106,8 @@ def test_zero_budget_preserves_search_items_without_claiming_injected_sources(br
 def test_article_level_hit_has_safe_default_section(library):
     target = library.target("sql-database")
     context = library.context([KnowledgeHit(target, "客户端正文", 1, ())])
-    assert context.references[0].target.section_id == "overview"
+    # 没给章节时落到文章第一节——第一节叫什么由文章自己定。
+    assert context.references[0].target.section_id == library.get("sql-database").sections[0].id
     assert "客户端正文" not in context.content
     assert not library.context(
         [replace(context.references[0], target=replace(target, version="old"))]

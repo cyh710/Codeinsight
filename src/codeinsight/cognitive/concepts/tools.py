@@ -73,7 +73,7 @@ class ReadKnowledgeTopicTool:
         "type": "object",
         "properties": {
             "topic_id": {"type": "string"},
-            "section_id": {"type": "string", "description": "稳定章节 ID，默认 overview"},
+            "section_id": {"type": "string", "description": "稳定章节 ID；缺省取文章第一节"},
             "version": {"type": "string", "description": "可选；提供时拒绝过期版本"},
         },
         "required": ["topic_id"],
@@ -87,9 +87,17 @@ class ReadKnowledgeTopicTool:
     async def run(self, arguments: Mapping[str, Any], ctx: ToolContext) -> ToolResult:
         """仅返回实际注入的章节来源；章节导航作为独立结构化数据保留。"""
         topic_id = arguments.get("topic_id")
-        section_id = arguments.get("section_id", "overview")
-        if not isinstance(topic_id, str) or not isinstance(section_id, str):
-            return ToolResult("topic_id 和 section_id 必须为有效字符串。", error="bad_request")
+        section_id = arguments.get("section_id")
+        if not isinstance(topic_id, str):
+            return ToolResult("topic_id 必须为有效字符串。", error="bad_request")
+        if section_id is None:
+            # 缺省读第一节——每篇文章的第一节就是入门那节，章节名随内容而定。
+            topic = self.bridge.library.get(topic_id)
+            if topic is None or not topic.sections:
+                return ToolResult("知识主题或章节不存在，请从目录重新选择。", error="topic_not_found")
+            section_id = topic.sections[0].id
+        if not isinstance(section_id, str):
+            return ToolResult("section_id 必须为有效字符串。", error="bad_request")
         target = self.bridge.library.target(topic_id, section_id)
         if target is None:
             return ToolResult("知识主题或章节不存在，请从目录重新选择。", error="topic_not_found")

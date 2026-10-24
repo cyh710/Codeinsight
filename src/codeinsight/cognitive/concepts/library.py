@@ -316,7 +316,11 @@ class LearningLibrary:
         ).strip()
         exact = self.resolve_term(term)
         if exact:
-            rows.sort(key=lambda row: (row[0] != exact.topic_id, row[1] != "overview", row[2]))
+            # 命中主题时，优先它的**第一节**——每篇文章的第一节就是入门那一节，
+            # 但不再强制叫 overview。
+            exact_topic = self.get(exact.topic_id)
+            first = exact_topic.sections[0].id if exact_topic and exact_topic.sections else ""
+            rows.sort(key=lambda row: (row[0] != exact.topic_id, row[1] != first, row[2]))
         result: list[KnowledgeHit] = []
         for tid, sid, score in rows[: min(limit, 50)]:
             topic = self.topics[tid]
@@ -340,7 +344,10 @@ class LearningLibrary:
         truncated = False
         for hit in hits:
             topic = self.get(hit.target.topic_id)
-            section_id = hit.target.section_id or "overview"
+            # 没指定章节时取文章第一节（每篇的第一节就是入门），
+            # 不再假设它一定叫 overview。
+            default_section = topic.sections[0].id if topic and topic.sections else ""
+            section_id = hit.target.section_id or default_section
             target = self.target(hit.target.topic_id, section_id)
             if topic is None or target is None or target.version != hit.target.version:
                 truncated = True
