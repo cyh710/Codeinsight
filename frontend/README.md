@@ -41,7 +41,7 @@ npm run build
 # 1. 先同步 A 线的新快照底稿
 cp fixtures/sample-index.json frontend/public/mock/sample-index.json
 # 2. 真引擎检出 concepts/flows 并写入 mock 副本与本体 JSON
-uv run python frontend/tools/regen_mock.py --repo "<被测仓库>" --ref agent-v1
+uv run python frontend/tools/regen_mock.py --repo "D:/path/to/some-repo" --ref agent-v1
 ```
 
 工具会做引用完整性过滤：只保留 qualname 命中样本符号的概念实例

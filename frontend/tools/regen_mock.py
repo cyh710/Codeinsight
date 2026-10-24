@@ -13,7 +13,7 @@
 用法（仓库根目录）：
 
     uv run python frontend/tools/regen_mock.py \
-        --repo "<被测仓库>" --ref agent-v1
+        --repo "D:/path/to/some-repo" --ref agent-v1
 
 写完后 `npm run test` 里读真实快照的用例会自动拿到新数据。
 """

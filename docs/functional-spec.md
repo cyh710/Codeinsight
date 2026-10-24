@@ -27,7 +27,8 @@
 <仓库根>-wt-frontend  feat/frontend   C 线
 ```
 
-> 物理环境、合并流程、冲突处理的细节见 [`workspace.md`](workspace.md)。
+> 三条线是同一次开发期的并行分工。合并流程与冲突处理见
+> [`requests/README.md`](requests/README.md) 里的规矩。
 
 ### 0.2 目录所有权（一个目录只有一个 agent 能写）
 

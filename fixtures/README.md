@@ -10,7 +10,7 @@
 **重新生成**：
 
 ```bash
-ci dump-fixture --repo "<被测仓库>" --ref agent-v1 \
+ci dump-fixture --repo "D:/path/to/some-repo" --ref agent-v1 \
                 --name tapestry --out fixtures/sample-index.json
 ```
 

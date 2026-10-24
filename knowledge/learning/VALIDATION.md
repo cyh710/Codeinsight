@@ -105,6 +105,7 @@
 在 B 工作树执行；下列 Python 路径是当前共享开发环境，也可先 `uv sync --extra dev`：
 
 ```powershell
+# <仓库根> 换成你本地这个仓库的绝对路径
 & '<仓库根>/.venv/Scripts/python.exe' -m pytest -q
 & '<仓库根>/.venv/Scripts/python.exe' -m ruff check .
 Set-Location frontend

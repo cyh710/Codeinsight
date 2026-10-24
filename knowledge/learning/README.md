@@ -82,7 +82,7 @@ final = bridge.finalize_answer('SQL 是语言；“表”组织数据，SELECT �
 ## 真实仓库验证
 
 ```powershell
-python -m codeinsight.cognitive.concepts.examples.validate_tapestry --repo '<被测仓库>' --ref agent-v1 --parser-file src/codeinsight/cognitive/parsing/python_parser.py --out .ci/tapestry-concept-review.json
+python -m codeinsight.cognitive.concepts.examples.validate_tapestry --repo 'D:/path/to/some-repo' --ref agent-v1 --parser-file src/codeinsight/cognitive/parsing/python_parser.py --out .ci/tapestry-concept-review.json
 ```
 
 脚本读取 git blob，不读被测仓库未提交文件。验证固定 tag 下全部 389 个 Python 文件，

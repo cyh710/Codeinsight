@@ -147,7 +147,7 @@
 {
   "status": "ok",
   "version": "0.1.0",
-  "db_path": "<仓库根>/.ci/codeinsight.db",
+  "db_path": "D:/path/to/CodeInsight/.ci/codeinsight.db",
   "db_exists": true,
   "schema_applied": true,
   "projects": 1
@@ -167,7 +167,7 @@
   {
     "id": 1,
     "name": "tapestry",
-    "root_path": "<被测仓库>",
+    "root_path": "D:/path/to/some-repo",
     "head_commit": "9b5ad71b...",
     "head_branch": "agent-v1",
     "indexed_at": "2026-10-24T08:31:05Z",
@@ -189,7 +189,7 @@
 
 ```json
 {
-  "root_path": "<被测仓库>",
+  "root_path": "D:/path/to/some-repo",
   "ref": "agent-v1",
   "name": "tapestry"
 }
@@ -207,7 +207,7 @@
 {
   "id": 1,
   "name": "tapestry",
-  "root_path": "<被测仓库>",
+  "root_path": "D:/path/to/some-repo",
   "status": "indexing",
   "head_commit": "9b5ad71b...",
   "head_branch": "agent-v1"
@@ -232,7 +232,7 @@
 {
   "id": 1,
   "name": "tapestry",
-  "root_path": "<被测仓库>",
+  "root_path": "D:/path/to/some-repo",
   "status": "ready",
   "head_commit": "9b5ad71b...",
   "head_branch": "agent-v1",

@@ -25,7 +25,7 @@ uv run ci mcp --project tapestry     # stdio
     "codeinsight": {
       "command": "uv",
       "args": [
-        "run", "--directory", "<仓库根>",
+        "run", "--directory", "D:/path/to/CodeInsight",
         "ci", "mcp", "--project", "tapestry"
       ]
     }
