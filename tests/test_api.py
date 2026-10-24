@@ -136,6 +136,81 @@ def test_project_without_finished_run_is_indexing(client: TestClient) -> None:
     assert client.get("/projects/2").json()["status"] == "indexing"
 
 
+def test_status_compares_the_indexed_ref_not_repo_head(
+    conn: sqlite3.Connection, tmp_path: Path
+) -> None:
+    """按 ref 索引的项目，状态要跟**那个 ref** 比，不是跟仓库 HEAD 比。
+
+    索引 agent-v1、仓库在 main 上时，两个 commit 永远不同——
+    拿索引时的 ref 去比 HEAD 会让索引明明是最新的也显示 stale。
+    """
+    import subprocess
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    env = {
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@t",
+        "PATH": "/usr/bin:/bin:/usr/local/bin",
+        "HOME": str(tmp_path),
+    }
+
+    def git(*args: str) -> str:
+        out = subprocess.run(
+            ["git", "-C", str(repo), *args],
+            capture_output=True,
+            text=True,
+            check=True,
+            env=env,
+        )
+        return out.stdout.strip()
+
+    (repo / "a.py").write_text("x = 1\n", encoding="utf-8")
+    git("init", "-b", "main")
+    git("add", "-A")
+    git("commit", "-m", "init")
+    main_commit = git("rev-parse", "HEAD")
+
+    # 切出 agent-v1，在上面加一个提交
+    git("checkout", "-b", "agent-v1")
+    (repo / "b.py").write_text("y = 2\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-m", "on agent-v1")
+    agent_commit = git("rev-parse", "HEAD")
+
+    # 回到 main，main 上没有 agent-v1 的那个提交
+    git("checkout", "main")
+
+    conn.execute("INSERT INTO project (id, name, root_path) VALUES (3, 'refd', ?)", (str(repo),))
+    conn.execute(
+        "INSERT INTO repo_state (project_id, head_commit, head_branch, indexed_at,"
+        " parser_version, index_epoch) VALUES (3, ?, 'agent-v1', '2026-10-24T08:31:05Z', 't', 1)",
+        (agent_commit,),
+    )
+    conn.execute(
+        "INSERT INTO index_run (project_id, head_commit, mode, started_at, finished_at, ok)"
+        " VALUES (3, ?, 'full', '2026-10-24T08:30:00Z', '2026-10-24T08:31:05Z', 1)",
+        (agent_commit,),
+    )
+    conn.commit()
+
+    from fastapi.testclient import TestClient
+
+    from codeinsight.api.app import create_app
+
+    client = TestClient(create_app())
+    body = client.get("/projects/3").json()
+    # agent-v1 没动过 → 索引是最新的 → ready（不是 stale）
+    assert body["status"] == "ready"
+
+    # 把索引的 commit 改成旧的（比如索引停在 agent-v1 的父提交）→ stale
+    conn.execute("UPDATE repo_state SET head_commit = ? WHERE project_id = 3", (main_commit,))
+    conn.commit()
+    assert client.get("/projects/3").json()["status"] == "stale"
+
+
 def test_unknown_project_404_contract_shape(client: TestClient) -> None:
     res = client.get("/projects/999")
     assert res.status_code == 404

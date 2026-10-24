@@ -177,28 +177,41 @@ def _project_status(conn: sqlite3.Connection, project_id: int, repo: dict[str, A
         return "indexing"
     if not run["ok"]:
         return "failed"
-    # ready 之上还有 stale：索引停在的 commit 与当前 HEAD 不一致。
-    head = _current_head(repo["root_path"])
+    # ready 之上还有 stale：索引停在的 commit 与**被索引的那个 ref**当前位置不一致。
+    #
+    # 比的必须是同一个 ref：项目可以按 --ref 索引（契约 §3.3），
+    # 拿索引时的 ref 去比仓库 HEAD 是错的——索引 agent-v1、仓库在 main 上，
+    # 两个 commit 永远不同，于是永远显示 stale，而索引其实是最新的。
+    head = _ref_head(repo["root_path"], repo.get("head_branch"))
     if head and repo["head_commit"] and head != repo["head_commit"]:
         return "stale"
     return "ready"
 
 
-def _current_head(root_path: str) -> str | None:
-    """尽力取仓库当前 HEAD；取不到（目录被移动/非 git）不影响状态推导。"""
+def _ref_head(root_path: str, ref: str | None) -> str | None:
+    """取被索引的那个 ref 的当前位置；取不到退回仓库 HEAD。
+
+    ref 为空（索引时没指定分支）时用 HEAD。
+    """
     import subprocess
 
-    try:
-        out = subprocess.run(
-            ["git", "-C", root_path, "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=True,
-        )
-        return out.stdout.strip() or None
-    except (subprocess.SubprocessError, OSError):
-        return None
+    for target in (ref, "HEAD") if ref else ("HEAD",):
+        if not target:
+            continue
+        try:
+            out = subprocess.run(
+                ["git", "-C", root_path, "rev-parse", target],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=True,
+            )
+        except (subprocess.SubprocessError, OSError):
+            continue
+        commit = out.stdout.strip()
+        if commit:
+            return commit
+    return None
 
 
 # ─── GET /projects/{id}/files ─────────────────────────────────
