@@ -86,6 +86,14 @@ def test_fact_text_is_plain_not_markdown() -> None:
     assert fact.startswith("入口是 stream")
 
 
+def test_split_bold_markers_leave_no_artifacts() -> None:
+    """跨句的加粗标记切开后会剩孤零零的 `**`，不能变成空推断。"""
+    text = "**结论：主流程没变。**\n**\n**细节见下。"
+    result = split_answer(text, Grounding())
+    assert all(item["text"].strip() not in {"", "**"} for item in result.inferences)
+    assert "**" not in "".join(item["text"] for item in result.inferences)
+
+
 def test_markdown_headings_do_not_become_inferences() -> None:
     """`**核心实现**` 是排版，不是主张——不该出现在推断栏。"""
     text = "**核心实现**\n入口是 stream [backend/core/chat.py:42]。\n1. **底层模型流**\n"

@@ -172,11 +172,11 @@ def split_answer(text: str, grounding: Grounding) -> SplitAnswer:
                         Citation(path, lineno, lineno, match.qualname, match.snippet)
                     )
         elif not _looks_like_heading(cleaned):
+            plain = _plain_text(_strip_markers(cleaned))
+            if not plain:
+                continue  # 只剩排版符号（比如一个孤零零的 `**`），不是主张
             result.inferences.append(
-                {
-                    "text": _plain_text(_strip_markers(cleaned)),
-                    "confidence": DEFAULT_INFERENCE_CONFIDENCE,
-                }
+                {"text": plain, "confidence": DEFAULT_INFERENCE_CONFIDENCE}
             )
 
     result.text = _join_paragraphs(paragraphs)
@@ -246,6 +246,9 @@ def _plain_text(text: str) -> str:
     """
     cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
     cleaned = re.sub(r"__([^_]+)__", r"\1", cleaned)
+    # 模型常把加粗标记跨句写（`**结论：……。**`），按句切开后两边各剩一半，
+    # 上面的成对替换就匹配不到了——残留的 `**` 直接去掉。
+    cleaned = cleaned.replace("**", "")
     cleaned = cleaned.replace("`", "")
     cleaned = re.sub(r"^\s*\d+[.、]\s*", "", cleaned)
     cleaned = re.sub(r"^\s*[-*+]\s+", "", cleaned)
