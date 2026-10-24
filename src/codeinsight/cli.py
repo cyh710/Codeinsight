@@ -4,6 +4,7 @@
 
     ci init-db                 建库建表
     ci import --repo <path>    导入仓库并建索引      (M1)
+    ci search "<query>"        检索并返回 file:line   (M2)
     ci ask "<question>"        对项目提问            (M3)
     ci concepts                列出识别到的技术概念   (M1.5)
     ci explain <concept>       三级深度解释一个概念   (M3)
@@ -177,6 +178,80 @@ def _cmd_eval_locate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_ask(args: argparse.Namespace) -> int:
+    """对项目提问（M3）：Agent 自己决定检索几次、要不要看调用关系。"""
+    import asyncio
+
+    from codeinsight.agent.service import ProjectNotFound, open_agent
+
+    path = db_path(settings.data_dir)
+    if not path.exists():
+        print(f"索引库不存在：{path}（先跑 ci index）")
+        return 1
+
+    conversation_id = args.conversation or ""
+    if not conversation_id:
+        # 一次进程内的提问不共享会话；给个稳定的默认值方便看提示。
+        conversation_id = "cli"
+
+    try:
+        session = open_agent(path, args.project)
+    except (FileNotFoundError, ProjectNotFound) as exc:
+        print(f"打不开项目：{exc}")
+        return 1
+
+    async def ask() -> int:
+        streamed = False
+
+        async def emit(event) -> None:
+            nonlocal streamed
+            if event.type == "delta":
+                sys.stdout.write(event.data.get("text", ""))
+                sys.stdout.flush()
+                streamed = True
+            elif event.type == "tool":
+                if event.data.get("status") == "running":
+                    print(f"\n  ⚙ {event.data.get('summary', '')}", flush=True)
+            elif event.type == "error":
+                print(
+                    f"\n  ✗ {event.data.get('title', '出错')}"
+                    f"（{event.data.get('hint', '')}）",
+                    flush=True,
+                )
+
+        answer = await session.runtime.run(
+            project_id=session.project_id,
+            question=args.question,
+            conversation_id=conversation_id,
+            emit=emit,
+        )
+        if answer.error:
+            return 1
+        if streamed:
+            print()
+        if answer.abstained:
+            print(f"\n[弃答] {answer.abstention_reason}")
+        if answer.facts:
+            print(f"\n事实（{len(answer.facts)} 条，均已校验位置）：")
+            for fact in answer.facts:
+                citation = fact.get("citation") or {}
+                print(f"  · {fact['text']}  [{citation.get('path')}:{citation.get('lineno')}]")
+        if answer.inferences:
+            print(f"\n推断（{len(answer.inferences)} 条，未验证）：")
+            for item in answer.inferences:
+                print(f"  · {item['text']}")
+        if answer.incomplete:
+            print("\n[未完成] 达到轮次上限，没有收尾。")
+        if answer.tools_used:
+            print(f"\n调用工具：{', '.join(answer.tools_used)}")
+        return 0
+
+    try:
+        return asyncio.run(ask())
+    finally:
+        session.close()
+
+
 def _cmd_index(args: argparse.Namespace) -> int:
     """对一个仓库建索引（M1）。"""
     from codeinsight.cognitive.indexing.indexer import index_project
@@ -264,6 +339,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="开哪些通道，逗号分隔：bm25,dense,symbol,concept",
     )
     p.set_defaults(func=_cmd_eval_locate)
+
+    p = sub.add_parser("ask", help="对项目提问（Agent 自己决定检索与追踪方式）")
+    p.add_argument("question", help="问题")
+    p.add_argument("--project", required=True, help="项目名")
+    p.add_argument(
+        "--conversation",
+        default="",
+        help="会话 id：同一个 id = 连续追问（源文档 §2.3-5）",
+    )
+    p.set_defaults(func=_cmd_ask)
 
     p = sub.add_parser("search", help="检索：问一句「X 在哪」")
     p.add_argument("query", help="查询")

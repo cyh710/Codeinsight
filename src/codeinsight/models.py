@@ -163,12 +163,21 @@ class Answer:
 
     事实与推断**分开存放**（源文档 §2.3-6「区分可验证的代码事实与模型推断」）：
     `facts` 里的每一条都必须有 citation；`inferences` 里的明确标注为推断。
+
+    `facts[].citation` 不是模型自报的——运行时拿本回合工具**真正读到过**的位置
+    去校验，对不上的引用删掉并把那句降级成推断（见 `agent/answer.py`）。
     """
 
     text: str = ""
     facts: list[dict[str, Any]] = field(default_factory=list)
-    inferences: list[str] = field(default_factory=list)
+    inferences: list[dict[str, Any]] = field(default_factory=list)
     citations: list[Citation] = field(default_factory=list)
     tools_used: list[str] = field(default_factory=list)
     abstained: bool = False
     abstention_reason: str = ""
+    incomplete: bool = False
+    """走满轮次/调用上限仍未收尾——明确说「没做完」，不硬编答案。"""
+
+    task_id: str = ""
+    model_id: str = ""
+    error: str | None = None

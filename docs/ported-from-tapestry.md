@@ -21,17 +21,15 @@ Tapestry 与 CodeInsight 是**两个独立项目**，解决不同问题：
 | `src/codeinsight/storage/sqlite.py` | `backend/storage/sqlite.py` | 基本照搬。加了 `foreign_keys=ON`、`apply_schema()`、`db_path()` |
 | `src/codeinsight/llm/provider.py` | `backend/llm/client.py` 的 `BaseLLMClient` | **只保留接口形状**。丢掉织忆那层产品化 provider 绑定（`primary_chat` / `provider_registry` / `api_key_store`）——CodeInsight 是单用户本地工具，不需要账号与路由 |
 | `src/codeinsight/agent/tool.py` | `backend/agent/tools.py` 的工具定义模式 | 改为 Protocol + `ToolResult(content/data)` 分离。织忆是数据驱动的 schema 列表 + if/elif 分发，这里用 Protocol 便于加 `mutating` 标记与审批扩展 |
+| `src/codeinsight/llm/transport.py` | `backend/llm/transport.py` | 基本照搬：3 次指数退避 + 抖动、同 origin 连续失败 3 次冷却 20s、**流只在首字节前重试**。错误类型改成本项目的 `UpstreamError` |
+| `src/codeinsight/llm/response_parser.py` | `backend/llm/response_parser.py` | 整份拿 `extract_json()`：围栏 / `<think>` / 尾部闲话 / 字符串内未转义引号 / `{{…}}` 双层包裹 |
+| `src/codeinsight/agent/context.py` | `backend/services/agent_runner.py` 的 `_messages_from_events` | **思路移植，代码重写**：交互组不可拆 + 两层字节预算。上限按代码场景重定（12 KB / 24 KB / 64 KB） |
 
 ## 计划移植（尚未）
 
 | 目标 | 来源 | 备注 |
 |---|---|---|
-| `extract_json()` | `backend/llm/response_parser.py` | M3。织忆那版处理过真实模型的非规范输出（Markdown fence、多余解释、字段类型错误），值得整份拿 |
-| `parse_tool_arguments()` | `backend/llm/tool_arguments.py` | M3。跨 provider 的工具参数解析 |
-| `request_with_retry()` / 熔断 | `backend/llm/transport.py` | M3。3 次指数退避 + 同 origin 失败 3 次冷却 20s |
-| `reciprocal_rank_fusion()` | `backend/core/chunk_bm25.py` | M2。**只取 RRF 这一个函数**；分词器重写为代码分词（织忆那版用 jieba，是给中文角色设定文本用的） |
-| `SiliconFlowEmbedder` | `backend/memory/embedder.py` | M2。但**不沿用 ChromaDB**——CodeInsight 用 SQLite BLOB + numpy 暴力余弦 |
-| 上下文装配思路 | `backend/services/agent_runner.py` 的 `_messages_from_events` | M3。**思路移植，代码重写**：织忆是任务级事件溯源，CodeInsight 是对话级；上限常量按代码场景重定 |
+| `parse_tool_arguments()` | `backend/llm/tool_arguments.py` | 未移植。OpenAI 兼容协议下参数已是 JSON 字符串，`_parse_arguments()` 够用；多 provider 方言是 M7 之后的事 |
 | action digest 审批 | `backend/services/agent_tasks.py` | P2 备用。若将来把执行侧收回自己手里，整套移植 |
 | `classify_action` 权限分类 | `backend/agent/permissions.py` | P2 备用。同上 |
 | **整个前端基建** | `frontend/` | **M4。直接复制**，清单见 [`functional-spec.md` §3.3](functional-spec.md#c3--前端复制织忆前端基建只换业务组件)。含 `vite.config.ts`（SSE proxy）、`src/components/common/` 全 11 个通用件、`src/theme/palettes.ts`、`src/store/themeStore.ts`、`src/api/stream.ts`（SSE 解析 + watchdog）、`src/api/agent.ts`（`jsonRequest` + 错误类）、`src/store/chat*Actions.ts`（slice 拆分法）、`src/components/chat/`（MessageBubble / ChatWindow / InputBox / agentTimeline）、`tests/helpers/http.ts`（SSE 夹具） |

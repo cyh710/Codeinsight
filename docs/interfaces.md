@@ -137,7 +137,7 @@ class Tool(Protocol):
     parameters: Mapping[str, Any]  # JSON Schema
     mutating: bool
 
-    def run(self, arguments: Mapping[str, Any], ctx: ToolContext) -> ToolResult: ...
+    async def run(self, arguments: Mapping[str, Any], ctx: ToolContext) -> ToolResult: ...
 ```
 
 **约定**
@@ -145,9 +145,16 @@ class Tool(Protocol):
   而不是整个回合崩掉。
 - `content` 是给模型看的文本（可能被截断）；`data` 是结构化数据（不进模型上下文，
   但会被引用与前端使用）。**两者分离保证截断 `content` 不破坏 `data` 里的 `file:line`。**
+- `data["citations"]` 是**本回合的 grounded 集合**：运行时拿它校验模型答案里的
+  `[路径:行号]`，对不上的引用会被删掉并降级成推断（`agent/answer.py`）。
+- 为什么是 `async`：`explain_concept(deep)` 要等模型，其余要等 I/O。同步签名会逼
+  调用方在事件循环里 `asyncio.run`，在 FastAPI 里直接炸。
 - v1 全部工具 `mutating=False`。写入与执行交给外部 agent 经 MCP Server 承担。
 
-**v1 工具清单**：见 `src/codeinsight/agent/tools/`（M3 接入）。
+**v1 工具清单**（`agent/tools_{code,knowledge,project}.py`，共 12 个）：
+`search_code` · `find_symbol` · `read_file` · `get_callers` · `get_callees` ·
+`list_concepts` · `explain_concept` · `find_concept_instances` · `get_flow` ·
+`get_changes`（M6 前返回空壳） · `get_design_decisions` · `get_module_overview`。
 
 ---
 
@@ -163,7 +170,14 @@ class LLMProvider(Protocol):
     async def complete_with_tools(
         self, system, messages, tools, *, max_tokens=0, temperature=0.0, tool_choice="auto"
     ) -> ToolCallResponse: ...
+
+    def stream_with_tools(
+        self, system, messages, tools, *, max_tokens=0, temperature=0.0, tool_choice="auto"
+    ) -> AsyncIterator[StreamChunk]: ...
 ```
+
+`StreamChunk(text, tool_calls, finish_reason)`：正文增量边到边交；
+`tool_calls` **只在流末尾**给出——工具参数是分片到达的，拼完之前交出去只是半截 JSON。
 
 **约定**
 - `model_id` 含版本，评测报告必须记录它。
