@@ -10,8 +10,6 @@ HTTP 请求本身不会自动记住上一次是谁访问。会话机制通过一
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 ```http
 HTTP/1.1 200 OK
 Set-Cookie: session_id=example-random-id; HttpOnly; Secure; SameSite=Lax
@@ -38,8 +36,6 @@ HttpOnly 不阻止所有跨站请求问题。关闭标签页不一定使服务�
 - [HTTP 请求与响应](/learn/web-http)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [MDN Web Docs：学习 Web 开发](https://developer.mozilla.org/zh-CN/docs/Learn_web_development)；作者：Mozilla Contributors；CC-BY-SA-4.0。版本：MDN；导入日网页快照（按 2.5 或以后版本许可选用 4.0）; sha256:cf8584055bc8796da9416318ec93ce74a86ce8379fa6bb8a2839dde1c465507c。
 - [FastAPI：依赖注入与安全](https://fastapi.tiangolo.com/tutorial/dependencies/)；作者：Sebastián Ramírez and contributors；MIT。版本：导入日网页快照; sha256:ae1f492784c1ccdc3f7f85f358c3f217f710fc4993ea3759561509601a131d04。

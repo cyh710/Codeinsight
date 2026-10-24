@@ -10,8 +10,6 @@ abc.ABC 与 abstractmethod 可以阻止不完整子类被正常实例化。typin
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 ```python
 from abc import ABC, abstractmethod
 class Searcher(ABC):
@@ -38,7 +36,5 @@ Searcher 声明 search 必须由具体实现提供。它还没有说明列表是
 - [类型注解：把接口约定写出来](/learn/python-annotations)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [Python 3.13 教程与标准库](https://docs.python.org/3.13/tutorial/)；作者：Python Software Foundation；PSF-2.0。版本：Python 3.13; sha256:b1aac4fbe473c2f52e1740cf0695feb217d0c43986e2a8b635de1f08bad5e555。

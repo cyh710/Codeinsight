@@ -10,8 +10,6 @@
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 ```javascript
 const response = await fetch('/api/messages');
 if (!response.ok) throw new Error('读取消息失败');
@@ -38,7 +36,5 @@ fetch 发起网络请求并返回 Promise。await 等待响应对象，不会直
 - [网络请求、取消与失败处理](/learn/js-fetch)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [MDN Web Docs：学习 Web 开发](https://developer.mozilla.org/zh-CN/docs/Learn_web_development)；作者：Mozilla Contributors；CC-BY-SA-4.0。版本：MDN；导入日网页快照（按 2.5 或以后版本许可选用 4.0）; sha256:cf8584055bc8796da9416318ec93ce74a86ce8379fa6bb8a2839dde1c465507c。

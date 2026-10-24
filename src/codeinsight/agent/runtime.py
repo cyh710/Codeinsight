@@ -256,18 +256,17 @@ class AgentRuntime:
                 answer.inferences = []
             if len(grounding) == 0 and not knowledge_only:
                 # 一条证据都没有：模型说的任何话都不是项目事实。
+                # 前端见到 abstained 会整块渲染弃答卡，正文不显示——
+                # 所以这里不再往正文里塞「不是项目事实」的前缀：
+                # 那段话既没人看，又把阅读体验弄脏。
                 answer.abstained = True
-                answer.abstention_reason = "检索与工具调用都没有返回可引用的代码位置"
+                answer.abstention_reason = "没有在这个项目的索引里找到能支撑回答的代码位置"
                 answer.inferences = []
                 answer.facts = []
                 answer.citations = []
-                if not answer.text.strip() or answer.text.strip() == ABSTAIN_TEXT:
-                    answer.text = ABSTAIN_TEXT
-                else:
-                    answer.text = (
-                        "（本项目的索引里没有找到相关代码位置；"
-                        "下面的内容不是项目事实，也没有工具证据支持。）\n\n" + answer.text
-                    )
+                # 正文统一用弃答说明：模型在无证据时说的多半是猜测
+                # （「我猜入口在 main.py」），留着会让人以为那就是答案。
+                answer.text = ABSTAIN_TEXT
 
             if self.learning is not None and prepared is not None:
                 projection = self.learning.finalize_answer(answer.text, prepared)

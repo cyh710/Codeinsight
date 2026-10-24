@@ -12,8 +12,6 @@ SQL 是一种查询和管理数据的语言。数据库负责有组织地保存�
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 ```sql
 -- 方言：PostgreSQL；独立教学数据
 CREATE TABLE products (
@@ -47,7 +45,5 @@ SELECT name, price FROM products WHERE price < 20;
 - [URL、JSON 与 API 契约](/learn/web-api)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [PostgreSQL Tutorial](https://www.postgresql.org/docs/18/tutorial.html)；作者：PostgreSQL Global Development Group；PostgreSQL。版本：PostgreSQL 18; sha256:692fb5b8190798f89f9537a7aae3265c27b3a32dd5b9b63d4a665f009928bb3c。

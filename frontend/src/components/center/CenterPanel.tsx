@@ -45,7 +45,7 @@ export default function CenterPanel({ onOpenCitation }: { onOpenCitation: (c: Ci
           )
         })}
         <span className="ml-auto hidden pr-1 text-[10px] text-slate-400 lg:block">
-          {centerTab === 'chat' && '回答里的事实都带 file:line'}
+          {centerTab === 'chat' && '答案会指出代码位置，可点开看源码'}
           {centerTab === 'graph' && '单击看详情 · 双击跳源码'}
           {centerTab === 'timeline' && '每次索引与变更都可展开'}
         </span>

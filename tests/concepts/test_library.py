@@ -49,7 +49,13 @@ def test_all_topics_have_substantive_content_and_sources(library):
             >= 400
         )
         assert topic.source_ids
-        assert "教学示例" in sections["example"]
+        # 例子里要有可运行的代码块。
+        #
+        # 早先这里断言的是「教学示例」四个字出现在例子的开头——
+        # 那是为了让读者知道这段代码不是被分析项目的代码。
+        # 现在这句免责由界面以角标呈现，正文只留教学内容，
+        # 所以检查的是实质：例子必须真的有代码。
+        assert "```" in sections["example"]
         for sid in topic.source_ids:
             source = library.sources[sid]
             assert len(source.sha256) == 64

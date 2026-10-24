@@ -10,13 +10,15 @@ import KnowledgeDirectory from '../learning/KnowledgeDirectory'
 import KnowledgeArticle from '../learning/KnowledgeArticle'
 import FilePanel from './FilePanel'
 
+// 右栏标题给用户看，不是给开发者看——「符号」「工程概念」这类内部术语
+// 用户读不懂，标题要说清楚这里是什么。
 const titles: Record<string, string> = {
-  evidence: '代码证据',
-  symbol: '符号',
-  concept: '工程概念',
-  file: '代码',
-  knowledge: '阅读',
-  'knowledge-tree': '知识目录',
+  evidence: '找到的代码',
+  symbol: '代码位置',
+  concept: '概念说明',
+  file: '源码',
+  knowledge: '教材',
+  'knowledge-tree': '教材目录',
 }
 
 export default function RightPanel() {
@@ -90,7 +92,7 @@ export default function RightPanel() {
             className="flex items-center gap-1 rounded bg-accent-soft/50 px-2 py-1 text-[11px] text-accent"
           >
             <BookOpen size={13} />
-            知识目录
+            教材目录
           </button>
         </div>
       </div>

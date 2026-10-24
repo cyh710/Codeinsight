@@ -209,7 +209,11 @@ class LearningLibrary:
         topic = self.get(topic_id)
         if topic is None or (section_id and section_id not in {s.id for s in topic.sections}):
             return None
-        return LearningTarget(topic.id, topic.title, topic.version, section_id)
+        section_title = None
+        if section_id:
+            section = next((s for s in topic.sections if s.id == section_id), None)
+            section_title = section.title if section else None
+        return LearningTarget(topic.id, topic.title, topic.version, section_id, section_title)
 
     def resolve_term(
         self, term: str, *, context_topic_id: str | None = None

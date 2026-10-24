@@ -32,7 +32,82 @@ _CITATION = re.compile(r"\[([\w./\\-]+\.(?:py|pyi|tsx?|jsx?|sql|md|toml|ya?ml)):
 DEFAULT_INFERENCE_CONFIDENCE = 0.5
 """模型没给置信度时的默认值：明确低于 1，提醒这是推断。"""
 
-_SENTENCE_END = re.compile(r"(?<=[。！？!?])|\n+")
+_SENTENCE_END = re.compile(r"[。！？!?]+|\n+")
+
+# markdown 块级结构：这些行不能按句子切——切了代码块和列表就废了。
+# 前端是 markdown 渲染器，块的完整性直接决定界面长什么样。
+_FENCE = "```"
+_LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
+
+
+def _markdown_blocks(text: str) -> list[tuple[str, str]]:
+    """把文本切成 (块类型, 块内容) —— 保住 markdown 的块结构。
+
+    块类型：`prose`（普通段落）、`code`（``` 围起来的代码块）、
+    `list`（列表项）、`heading`（标题行）、`blank`（空行，段落分隔）。
+
+    事实/推断的判定要在块**内部**做（一句带引用就是事实），
+    但块的边界必须原样保留——否则代码块被逐句切开、列表项被拆散，
+    前端渲染出来就是一段糊在一起的文字。
+
+    空行单独成块：markdown 靠空行分段，空行没了，段落就连成一片。
+    """
+    blocks: list[tuple[str, str]] = []
+    in_code = False
+    buffer: list[str] = []
+    kind = "prose"
+
+    def flush() -> None:
+        nonlocal buffer, kind
+        if buffer:
+            blocks.append((kind, "".join(buffer)))
+            buffer = []
+        kind = "prose"
+
+    for line in text.splitlines(keepends=True):
+        stripped = line.strip()
+        if stripped.startswith(_FENCE):
+            if in_code:
+                buffer.append(line)
+                flush()
+                in_code = False
+            else:
+                flush()
+                in_code = True
+                kind = "code"
+                buffer.append(line)
+            continue
+        if in_code:
+            buffer.append(line)
+            continue
+        if not stripped:
+            flush()
+            # 空行是段落分隔，保留下来（连续空行合并成一个）。
+            if not blocks or blocks[-1][0] != "blank":
+                blocks.append(("blank", "\n\n"))
+            continue
+        if line.startswith("#"):
+            flush()
+            kind = "heading"
+            buffer.append(line)
+            flush()
+            continue
+        if _LIST_ITEM.match(line):
+            if kind != "list":
+                flush()
+                kind = "list"
+            buffer.append(line)
+            continue
+        flush()
+        kind = "prose"
+        buffer.append(line)
+
+    if in_code and buffer:
+        # 没闭合的围栏：当作代码块收尾，别把内容当散文。
+        blocks.append(("code", "".join(buffer)))
+    else:
+        flush()
+    return blocks
 
 
 @dataclass(frozen=True)
@@ -133,77 +208,110 @@ class SplitAnswer:
 
 
 def split_answer(text: str, grounding: Grounding) -> SplitAnswer:
-    """按句子拆事实/推断，并清掉校验不过的 `file:line`。"""
+    """按句子拆事实/推断，并清掉校验不过的 `file:line`。
+
+    事实/推断的判定在**块内**做，但 markdown 的块结构原样保留——
+    前端是 markdown 渲染器，代码块和列表被逐句切开就会糊成一段。
+    """
     result = SplitAnswer(text="")
     seen_citations: set[tuple[str, int]] = set()
     paragraphs: list[str] = []
 
-    for sentence in _sentences(text):
-        cleaned, cited = _verify(sentence, grounding, result.dropped_citations)
-        paragraphs.append(cleaned)
-        if not cleaned.strip():
+    for kind, block in _markdown_blocks(text):
+        if kind in ("code", "heading", "blank"):
+            # 代码块、标题与空行不是主张：整体保留，不参与事实/推断判定。
+            paragraphs.append(block)
             continue
-        if cited:
-            path, lineno = cited[0]
-            anchor = grounding.nearest(path, lineno)
-            if anchor is None:  # pragma: no cover —— _verify 只放行 grounded 位置
-                continue
-            # 引用落到**模型说的那一行**，不是它所在窗口的起点。
-            # 校验用「窗口包含」判断真伪，但给用户的 `file:line` 必须精确——
-            # 否则读了 1-200 行之后，每条事实都指向第 1 行。
-            result.facts.append(
-                {
-                    "text": _plain_text(_strip_markers(cleaned)),
-                    "citation": {
-                        "path": path,
-                        "lineno": lineno,
-                        "end_lineno": lineno,
-                        "qualname": anchor.qualname,
-                        "snippet": anchor.snippet,
-                    },
-                }
-            )
-            for path, lineno in cited:
-                key = (path, lineno)
-                if key in seen_citations:
+        if kind == "list":
+            # 列表项各占一行：逐项判定，但行尾换行要留住。
+            for item in block.splitlines(keepends=True):
+                if not item.strip():
                     continue
-                seen_citations.add(key)
-                match = grounding.nearest(path, lineno)
-                if match is not None:
-                    result.citations.append(
-                        Citation(path, lineno, lineno, match.qualname, match.snippet)
-                    )
-        elif not _looks_like_heading(cleaned):
-            plain = _plain_text(_strip_markers(cleaned))
-            if not plain:
-                continue  # 只剩排版符号（比如一个孤零零的 `**`），不是主张
-            result.inferences.append({"text": plain, "confidence": DEFAULT_INFERENCE_CONFIDENCE})
+                cleaned, cited = _verify(item, grounding, result.dropped_citations)
+                paragraphs.append(cleaned)
+                _record(cleaned, cited, grounding, result, seen_citations)
+            continue
+        for sentence in _sentences(block):
+            cleaned, cited = _verify(sentence, grounding, result.dropped_citations)
+            paragraphs.append(cleaned)
+            _record(cleaned, cited, grounding, result, seen_citations)
 
     result.text = _join_paragraphs(paragraphs)
     return result
 
 
+def _record(
+    cleaned: str,
+    cited: list[tuple[str, int]],
+    grounding: Grounding,
+    result: SplitAnswer,
+    seen_citations: set[tuple[str, int]],
+) -> None:
+    """把一句归到事实或推断。引用落到**模型说的那一行**，不是窗口起点。"""
+    if not cleaned.strip():
+        return
+    if cited:
+        path, lineno = cited[0]
+        anchor = grounding.nearest(path, lineno)
+        if anchor is None:  # pragma: no cover —— _verify 只放行 grounded 位置
+            return
+        result.facts.append(
+            {
+                "text": _plain_text(_strip_markers(cleaned)),
+                "citation": {
+                    "path": path,
+                    "lineno": lineno,
+                    "end_lineno": lineno,
+                    "qualname": anchor.qualname,
+                    "snippet": anchor.snippet,
+                },
+            }
+        )
+        for path, lineno in cited:
+            key = (path, lineno)
+            if key in seen_citations:
+                continue
+            seen_citations.add(key)
+            match = grounding.nearest(path, lineno)
+            if match is not None:
+                result.citations.append(
+                    Citation(path, lineno, lineno, match.qualname, match.snippet)
+                )
+    elif not _looks_like_heading(cleaned):
+        plain = _plain_text(_strip_markers(cleaned))
+        if not plain:
+            return  # 只剩排版符号（比如一个孤零零的 `**`），不是主张
+        result.inferences.append({"text": plain, "confidence": DEFAULT_INFERENCE_CONFIDENCE})
+
+
 def _sentences(text: str) -> list[str]:
-    """按句末标点与换行切句；保留标点。"""
+    """按句末标点与换行切句；**分隔符保留在原位**。
+
+    早先的实现用 `re.split` 丢掉分隔符，正文里的换行因此全没了——
+    markdown 的段落、列表、代码块糊成一段，界面上像一坨。
+
+    切分结果里：句号等标点跟在句子后面；换行单独成一段。
+    """
     pieces: list[str] = []
     for line in text.splitlines(keepends=True):
         if not line.strip():
             pieces.append(line)
             continue
-        buffer = ""
-        for piece in _SENTENCE_END.split(line):
-            if not piece:
-                continue
+        start = 0
+        for match in _SENTENCE_END.finditer(line):
+            piece = match.group(0)
             if piece in {"。", "！", "？", "!", "?"}:
-                buffer += piece
-                pieces.append(buffer)
-                buffer = ""
+                # 句末标点：连同它前面的正文一起成一段。
+                pieces.append(line[start : match.end()])
+                start = match.end()
             else:
-                if buffer:
-                    pieces.append(buffer)
-                buffer = piece
-        if buffer:
-            pieces.append(buffer)
+                # 换行：先落地正文，换行自己成一段。
+                if match.start() > start:
+                    pieces.append(line[start : match.start()])
+                pieces.append(piece)
+                start = match.end()
+        if start < len(line):
+            pieces.append(line[start:])
     return pieces
 
 
@@ -272,7 +380,13 @@ def _looks_like_heading(text: str) -> bool:
 
 
 def _join_paragraphs(paragraphs: list[str]) -> str:
+    """把段落接回正文。
+
+    连接规则：**空行是段落分隔**——段落之间要留空行（markdown 靠空行分段），
+    段落内部的句子直接相连。空行由 `_markdown_blocks` 以 "\\n\\n" 的形式给出。
+    """
     out = "".join(paragraphs)
+    out = re.sub(r"[ \t]+\n", "\n", out)
     out = re.sub(r"\n{3,}", "\n\n", out)
     return out.strip()
 

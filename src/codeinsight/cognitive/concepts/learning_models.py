@@ -53,6 +53,12 @@ class LearningTarget:
     title: str
     version: str
     section_id: str | None = None
+    section_title: str | None = None
+    """章节标题（如「跟着例子理解」）——给界面用。
+
+    `section_id` 是内部锚点（overview / example / mechanism），
+    直接显示给用户是内部术语，读不懂。
+    """
 
     @property
     def href(self) -> str:

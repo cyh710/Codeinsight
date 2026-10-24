@@ -10,8 +10,6 @@ ORM 把数据库中的表和记录映射为程序中的类与对象，让部分�
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 ```python
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -42,7 +40,5 @@ ORM 提高常规 CRUD 的表达力，但复杂查询和性能分析仍要懂 SQL
 - [连接池：复用连接并限制并发](/learn/connection-pool)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [SQLAlchemy ORM and Core](https://docs.sqlalchemy.org/en/20/intro.html)；作者：SQLAlchemy authors and contributors；MIT。版本：SQLAlchemy 2.0; sha256:db74e1fff59364aa035a0f11028c529ba04c3519dfe1cc9960cea4da6bda7c61。

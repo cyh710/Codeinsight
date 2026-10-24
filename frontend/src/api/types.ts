@@ -674,6 +674,8 @@ export interface KnowledgeSearch {
 export interface LearningTarget {
   topic_id: string
   section_id: string | null
+  /** 章节可读标题（如「跟着例子理解」）；`section_id` 是内部锚点，不给人看。 */
+  section_title?: string | null
   title: string
   version: string
   href: string

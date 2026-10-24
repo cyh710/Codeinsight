@@ -79,9 +79,7 @@ export default function EvidenceList() {
     <div className="space-y-2">
       {items.length === 0 ? (
         <p className="px-1 py-6 text-center text-xs leading-relaxed text-slate-400">
-          还没有证据。
-          <br />
-          提问后，检索命中的代码位置会实时出现在这里。
+          提问后，这里会显示找到的代码位置。
         </p>
       ) : (
         items.map((item, i) => <EvidenceCard key={`${item.path}:${item.lineno}:${i}`} item={item} />)

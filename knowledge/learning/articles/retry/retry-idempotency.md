@@ -10,8 +10,6 @@
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 ```python
 def save_once(store, request_id, text):
     previous = store.get(request_id)
@@ -41,8 +39,6 @@ request_id 表达同一次业务请求。重复且内容相同时返回既有结
 - [HTTP 请求与响应](/learn/web-http)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [Tenacity documentation](https://tenacity.readthedocs.io/en/latest/)；作者：Julien Danjou and contributors；Apache-2.0。版本：导入日网页快照; sha256:5686185039f9fdbabb83fd9264fed03f18fb5c3ebfb43d99cc25a9df315dacff。
 - [PostgreSQL Tutorial](https://www.postgresql.org/docs/18/tutorial.html)；作者：PostgreSQL Global Development Group；PostgreSQL。版本：PostgreSQL 18; sha256:692fb5b8190798f89f9537a7aae3265c27b3a32dd5b9b63d4a665f009928bb3c。

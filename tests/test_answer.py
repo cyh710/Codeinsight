@@ -102,3 +102,45 @@ def test_markdown_headings_do_not_become_inferences() -> None:
 
 def test_cited_locations_extracts_claims() -> None:
     assert cited_locations("看 [a.py:1] 和 [b/c.ts:20-30]") == [("a.py", 1), ("b/c.ts", 20)]
+
+
+def test_markdown_structure_survives_the_split() -> None:
+    """markdown 块结构必须原样保留。
+
+    早先的实现按句子切分并丢掉分隔符，正文的换行全没了——
+    1419 字的回答只剩 2 个换行，代码块和列表糊成一段，
+    界面看起来像一坨。前端是 markdown 渲染器，结构就是长相。
+    """
+    md = (
+        "**核心概念**\n"
+        "\n"
+        "- **表**：由列定义结构。\n"
+        "- **约束**：如 `PRIMARY KEY`。\n"
+        "\n"
+        "```sql\n"
+        "CREATE TABLE products (\n"
+        "  id integer PRIMARY KEY\n"
+        ");\n"
+        "```\n"
+        "\n"
+        "入口是 stream [backend/core/chat.py:42]。\n"
+    )
+    result = split_answer(md, _grounding())
+
+    # 段落之间的空行
+    assert "**核心概念**\n\n- **表**" in result.text
+    # 列表项各占一行
+    assert "- **表**：由列定义结构。\n- **约束**" in result.text
+    # 代码块完整
+    assert "```sql\nCREATE TABLE products (\n  id integer PRIMARY KEY\n);\n```" in result.text
+    # 事实/推断判定仍然生效
+    assert len(result.facts) == 1
+    assert result.facts[0]["citation"]["path"] == "backend/core/chat.py"
+
+
+def test_code_block_is_not_treated_as_a_claim() -> None:
+    """代码块里的文字不是主张——不该进推断栏。"""
+    md = "```python\n# 这条注释不是主张\nx = 1\n```\n"
+    result = split_answer(md, _grounding())
+    assert result.inferences == []
+    assert "x = 1" in result.text

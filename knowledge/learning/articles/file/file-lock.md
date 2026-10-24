@@ -10,8 +10,6 @@
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 ```python
 from filelock import FileLock
 from pathlib import Path
@@ -38,8 +36,6 @@ FileLock 在进入代码块前尝试取得约定锁，写入完成或异常离�
 - [上下文管理器：把进入与退出配对](/learn/context-manager)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [filelock tutorial](https://py-filelock.readthedocs.io/en/latest/)；作者：filelock contributors；Unlicense。版本：导入日网页快照; sha256:d35da14ac06904caaf1f1252d8281a3170ff79919e609ffe79cf3c228c12d541。
 - [Python 3.13 教程与标准库](https://docs.python.org/3.13/tutorial/)；作者：Python Software Foundation；PSF-2.0。版本：Python 3.13; sha256:b1aac4fbe473c2f52e1740cf0695feb217d0c43986e2a8b635de1f08bad5e555。

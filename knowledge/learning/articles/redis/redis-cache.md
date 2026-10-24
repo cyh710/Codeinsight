@@ -10,8 +10,6 @@
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 ```python
 def load_title(cache, key, compute):
     cached = cache.get(key)
@@ -40,7 +38,5 @@ def load_title(cache, key, compute):
 - [索引与查询代价](/learn/sql-indexes)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [Redis Python client documentation](https://redis.readthedocs.io/en/stable/examples.html)；作者：Redis contributors；MIT。版本：导入日网页快照; sha256:f40fbfab62a3d0323ff1bdd4f86b135cc83876ad59bfc39716ba87140319035c。

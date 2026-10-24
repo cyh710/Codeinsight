@@ -10,8 +10,6 @@ Hooks 让函数组件使用状态、Effect 等 React 能力，自定义 Hook 则
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 ```jsx
 import { useState } from 'react';
 
@@ -44,7 +42,5 @@ useQueryText 组合了输入状态和清空动作。SearchBox 在顶层调用它
 - [状态提升与 Context](/learn/react-lifting)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [React 中文文档](https://zh-hans.react.dev/learn)；作者：React contributors and Chinese translators；CC-BY-4.0。版本：React 19；导入日网页快照; sha256:09ea40c4754c86de7a56932ec640aa2d9e634097c8eae09ac45ded52e6e637ad。

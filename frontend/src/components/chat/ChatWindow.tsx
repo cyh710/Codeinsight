@@ -40,11 +40,9 @@ export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Cit
             <div className="mt-10 text-center">
               <h2 className="text-sm font-semibold text-slate-500">问点什么，从代码里找答案</h2>
               <p className="mt-1.5 text-xs leading-relaxed text-slate-400">
-                回答分「事实」与「推断」两栏：事实都带 file:line 出处，可点进右栏查看；
+                问代码，比如「对话流在哪个文件实现？」，答案会指出具体位置，点开就能看到源码。
                 <br />
-                推断是模型的主观判断，显式标注置信度。
-                <br />
-                也可以问“SQL 是什么”，从回答中的链接和右侧知识目录继续学习。
+                问概念，比如「SQL 是什么？」，答案里的链接可以打开教材继续读。
               </p>
             </div>
           )}

@@ -10,8 +10,6 @@ Effect 在适当的提交阶段之后执行，依赖变化时会重新同步。�
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 下面展示函数组件内部的 Effect 片段，不是可单独运行的模块。组件需要导入 useEffect，
 并使用 useState 建立 setTopic、setError；loadTopic 应是模块中导入的稳定异步函数。
 若 loadTopic 来自会变化的 props，应把它也列入依赖数组。教学例子只展示陈旧结果保护，
@@ -49,7 +47,5 @@ Effect 使外部同步明确，但太多相互更新状态的 Effect 会形成�
 - [网络请求、取消与失败处理](/learn/js-fetch)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [React 中文文档](https://zh-hans.react.dev/learn)；作者：React contributors and Chinese translators；CC-BY-4.0。版本：React 19；导入日网页快照; sha256:09ea40c4754c86de7a56932ec640aa2d9e634097c8eae09ac45ded52e6e637ad。

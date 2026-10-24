@@ -10,8 +10,6 @@ INNER JOIN 保留匹配记录；LEFT JOIN 还保留左侧未匹配记录，右�
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 ```sql
 -- PostgreSQL；users 与 messages 为教学表
 SELECT m.id, m.text, u.name
@@ -40,7 +38,5 @@ m 和 u 是表别名。按 user_id 与 id 的相等关系查找发送者。若�
 - [ORM：对象与关系数据之间的映射](/learn/orm)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [PostgreSQL Tutorial](https://www.postgresql.org/docs/18/tutorial.html)；作者：PostgreSQL Global Development Group；PostgreSQL。版本：PostgreSQL 18; sha256:692fb5b8190798f89f9537a7aae3265c27b3a32dd5b9b63d4a665f009928bb3c。

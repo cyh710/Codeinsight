@@ -214,7 +214,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation }: M
         {!message.streaming && message.knowledgeSources && message.knowledgeSources.length > 0 && (
           <details className="mt-2 text-[10px] leading-6 text-slate-400">
             <summary className="cursor-pointer">
-              教材依据 · {new Set(message.knowledgeSources.map((s) => s.target.topic_id)).size}{' '}
+              来自内置教材 · {new Set(message.knowledgeSources.map((s) => s.target.topic_id)).size}{' '}
               个主题
             </summary>
             {message.knowledgeSources.map((s) => (
@@ -224,7 +224,8 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation }: M
                 onClick={() => workbenchStore.getState().openKnowledge(s.target)}
                 className="block text-left text-accent hover:underline"
               >
-                {s.target.title} · {s.target.section_id}
+                {s.target.title}
+                {s.target.section_title ? ` · ${s.target.section_title}` : ''}
               </button>
             ))}
           </details>

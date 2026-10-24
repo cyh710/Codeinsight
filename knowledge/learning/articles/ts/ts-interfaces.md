@@ -10,8 +10,6 @@ interface 常用于描述对象契约并支持声明合并，type 可以为联�
 
 ## 跟着例子理解 {#example}
 
-以下是独立教学示例，不代表被分析项目的实际代码。
-
 ```typescript
 interface Topic {
   id: string;
@@ -41,7 +39,5 @@ Topic 要求 id 与 title 为字符串，summary 可以缺失。TopicResult 明�
 - [为 React props 与事件声明类型](/learn/ts-react)
 
 ## 来源与版本 {#sources}
-
-本文为参考下列资料独立组织的中文教学讲解，示例为本项目编写。不把原文示例描述为用户项目事实。借鉴、翻译及改编部分保留相应来源许可；含 CC BY-SA 的文章文本按 CC BY-SA 4.0 分发，与应用代码许可分开。
 
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)；作者：Microsoft Corporation and contributors；CC-BY-4.0。版本：Handbook；导入日网页快照; sha256:9ac056d32d3ff58bb0a62c73c0495899ca985c26ca1e49690fe560b861f7aa68。
