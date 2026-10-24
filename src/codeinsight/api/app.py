@@ -13,6 +13,7 @@ from codeinsight.api.errors import install_error_handlers
 from codeinsight.api.health import router as health_router
 from codeinsight.api.insights import router as insights_router
 from codeinsight.api.knowledge import router as knowledge_router
+from codeinsight.api.learning import router as learning_router
 from codeinsight.api.overview import router as overview_router
 from codeinsight.api.projects import router as projects_router
 from codeinsight.api.query import router as query_router
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
     app.include_router(projects_router)
     app.include_router(overview_router)
     app.include_router(knowledge_router)
+    app.include_router(learning_router)
     app.include_router(insights_router)
     app.include_router(query_router)
 

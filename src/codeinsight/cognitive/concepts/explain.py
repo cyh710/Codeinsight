@@ -14,7 +14,7 @@ from codeinsight.models import ConceptDepth, ConceptInstance
 
 
 def _citation(path: str, lineno: int, qualname: str | None) -> dict:
-    return {"path": path, "lineno": lineno, "end_lineno": lineno, "qualname": qualname}
+    return {"path": path, "lineno": lineno, "end_lineno": lineno, "qualname": qualname, "snippet": ""}
 
 
 async def explain(

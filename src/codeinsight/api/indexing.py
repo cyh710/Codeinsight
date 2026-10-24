@@ -16,6 +16,7 @@ import json
 import subprocess
 
 from codeinsight.api.errors import bad_request
+from codeinsight.cognitive.concepts.assets import knowledge_directory
 from codeinsight.cognitive.indexing import index_project
 from codeinsight.config import settings
 from codeinsight.storage.sqlite import db_path, open_sqlite
@@ -52,6 +53,7 @@ def start_indexing(project_id: int, name: str, root_path: str, ref: str | None) 
             name=name,
             ref=ref,
             max_chunk_lines=settings.max_chunk_lines,
+            concepts_dir=knowledge_directory("concepts"),
         )
     except Exception as exc:
         # 引擎失败不算 API 失败：项目状态如实转 failed，错误写进 run 的

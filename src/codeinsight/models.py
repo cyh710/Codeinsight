@@ -181,6 +181,12 @@ class Answer:
     evidence: list[dict[str, Any]] = field(default_factory=list)
     """本回合检索到的证据（`chunk_id` / 路径 / 分数 / 命中通道），前端右栏用。"""
 
+    knowledge_sources: list[dict[str, Any]] = field(default_factory=list)
+    learning_entries: list[dict[str, Any]] = field(default_factory=list)
+    learning_targets: list[dict[str, Any]] = field(default_factory=list)
+    reading_status: str = "none"
+    knowledge_error: str | None = None
+
     task_id: str = ""
     model_id: str = ""
     error: dict[str, Any] | None = None

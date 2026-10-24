@@ -18,6 +18,11 @@ from codeinsight.agent.context import ContextBudget
 from codeinsight.agent.runtime import AgentRuntime, RuntimeConfig
 from codeinsight.agent.session import ConversationStore
 from codeinsight.agent.tools import ToolServices, build_tools
+from codeinsight.cognitive.concepts.assets import knowledge_directory
+from codeinsight.cognitive.concepts.integration import LearningBridge
+from codeinsight.cognitive.concepts.learning_models import KnowledgeError
+from codeinsight.cognitive.concepts.library import LearningLibrary
+from codeinsight.cognitive.concepts.service import KnowledgeService
 from codeinsight.cognitive.embedding.siliconflow import SiliconFlowEmbedder
 from codeinsight.cognitive.retrieval.retriever import (
     ALL_LANES,
@@ -146,7 +151,18 @@ def open_agent(
         concepts_dir=Path(concepts_dir) if concepts_dir else None,
         provider=provider,
     )
+    # 知识资产损坏时保留已有代码问答；教学端点会单独报告加载错误。
+    learning = None
+    try:
+        learning = LearningBridge(
+            KnowledgeService(LearningLibrary(knowledge_directory("learning")))
+        )
+    except KnowledgeError as exc:
+        import logging
+
+        logging.getLogger(__name__).warning("内置知识库暂不可用：%s", exc)
     runtime = AgentRuntime(
+        learning=learning,
         provider=provider,
         registry=build_tools(services),
         store=store if store is not None else _DEFAULT_STORE,

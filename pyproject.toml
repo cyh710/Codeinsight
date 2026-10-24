@@ -14,6 +14,7 @@ dependencies = [
     "httpx>=0.27",
     "numpy>=2.0",
     "jieba>=0.42",
+    "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -47,3 +48,7 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 ignore = ["E501"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"knowledge/concepts" = "codeinsight/knowledge/concepts"
+"knowledge/learning" = "codeinsight/knowledge/learning"

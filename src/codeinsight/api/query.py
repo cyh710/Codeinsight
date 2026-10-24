@@ -45,6 +45,7 @@ class QueryBody(BaseModel):
     project_id: int
     question: str
     conversation_id: str | None = None
+    reading_context: dict[str, Any] | None = None
 
 
 def _open_session(project_id: int) -> AgentSession:
@@ -81,6 +82,11 @@ async def query(body: QueryBody) -> dict[str, Any]:
             project_id=session.project_id,
             question=body.question,
             conversation_id=body.conversation_id or "",
+            **(
+                {"reading_context": body.reading_context}
+                if body.reading_context is not None
+                else {}
+            ),
         )
     finally:
         session.close()
@@ -113,6 +119,11 @@ async def query(body: QueryBody) -> dict[str, Any]:
         "abstention_reason": answer.abstention_reason,
         "incomplete": answer.incomplete,
         "evidence": answer.evidence,
+        "knowledge_sources": answer.knowledge_sources,
+        "learning_entries": answer.learning_entries,
+        "learning_targets": answer.learning_targets,
+        "reading_status": answer.reading_status,
+        "knowledge_error": answer.knowledge_error,
     }
 
 
@@ -137,6 +148,11 @@ async def query_stream(body: QueryBody) -> StreamingResponse:
                 project_id=session.project_id,
                 question=body.question,
                 conversation_id=body.conversation_id or "",
+                **(
+                    {"reading_context": body.reading_context}
+                    if body.reading_context is not None
+                    else {}
+                ),
                 emit=emit,
             )
         finally:

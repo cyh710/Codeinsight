@@ -1,0 +1,327 @@
+--- a/src/codeinsight/models.py
++++ b/src/codeinsight/models.py
+@@ -181,6 +181,12 @@
+     evidence: list[dict[str, Any]] = field(default_factory=list)
+     """本回合检索到的证据（`chunk_id` / 路径 / 分数 / 命中通道），前端右栏用。"""
+ 
++    knowledge_sources: list[dict[str, Any]] = field(default_factory=list)
++    learning_entries: list[dict[str, Any]] = field(default_factory=list)
++    learning_targets: list[dict[str, Any]] = field(default_factory=list)
++    reading_status: str = "none"
++    knowledge_error: str | None = None
++
+     task_id: str = ""
+     model_id: str = ""
+     error: dict[str, Any] | None = None
+--- a/src/codeinsight/agent/runtime.py
++++ b/src/codeinsight/agent/runtime.py
+@@ -27,6 +27,8 @@
+ from codeinsight.agent.prompts import SYSTEM_PROMPT
+ from codeinsight.agent.session import ConversationStore, Focus
+ from codeinsight.agent.tool import ToolContext, ToolRegistry
++from codeinsight.cognitive.concepts.answer_policy import LEARNING_PROMPT, can_answer_from_knowledge
++from codeinsight.cognitive.concepts.integration import LearningBridge
+ from codeinsight.llm.provider import ToolCall
+ from codeinsight.models import Answer
+ 
+@@ -64,6 +66,7 @@
+         repo_root: str = "",
+         budget: ContextBudget | None = None,
+         config: RuntimeConfig | None = None,
++        learning: LearningBridge | None = None,
+     ) -> None:
+         self.provider = provider
+         self.registry = registry
+@@ -72,6 +75,7 @@
+         self.repo_root = repo_root
+         self.budget = budget or ContextBudget()
+         self.config = config or RuntimeConfig()
++        self.learning = learning
+ 
+     async def run(
+         self,
+@@ -80,6 +84,7 @@
+         question: str,
+         conversation_id: str = "",
+         emit: Emit | None = None,
++        reading_context: dict[str, Any] | None = None,
+     ) -> Answer:
+         task_id = new_task_id()
+         answer = Answer(task_id=task_id, model_id=str(getattr(self.provider, "model_id", "")))
+@@ -109,8 +114,20 @@
+         grounding = Grounding()
+         focus = self.store.focus(conversation_id)
+         final_text = ""
++        prepared = None
+ 
+         try:
++            if self.learning is not None:
++                goal, prepared = self.learning.prepare_goal(
++                    question,
++                    reading_context=reading_context,
++                    max_message_bytes=min(self.budget.max_message_bytes, self.budget.max_turn_bytes),
++                    max_knowledge_bytes=self.budget.max_tool_result_bytes,
++                )
++                answer.reading_status = prepared.reading_status
++                answer.knowledge_error = prepared.error
++                if ledger is not None:
++                    ledger.record(task_id, "knowledge.prepared", prepared.as_tool_result().data)
+             for _turn in range(self.config.max_model_turns):
+                 messages, _dropped = assemble(prior, current, goal, self.budget)
+                 text, calls = await self._one_turn(messages, emit)
+@@ -218,7 +235,13 @@
+             answer.inferences = split.inferences
+             answer.citations = split.citations
+ 
+-            if len(grounding) == 0:
++            knowledge_only = can_answer_from_knowledge(
++                question, answer.text, prepared,
++                dropped_citations=split.dropped_citations, incomplete=answer.incomplete,
++            )
++            if knowledge_only and len(grounding) == 0:
++                answer.inferences = []
++            if len(grounding) == 0 and not knowledge_only:
+                 # 一条证据都没有：模型说的任何话都不是项目事实。
+                 answer.abstained = True
+                 answer.abstention_reason = "检索与工具调用都没有返回可引用的代码位置"
+@@ -233,11 +256,23 @@
+                         "下面的内容不是项目事实，也没有工具证据支持。）\n\n" + answer.text
+                     )
+ 
++            if self.learning is not None and prepared is not None:
++                projection = self.learning.finalize_answer(answer.text, prepared)
++                answer.text = projection["text"]
++                answer.knowledge_sources = projection["knowledge_sources"]
++                answer.learning_entries = projection["learning_entries"]
++                answer.learning_targets = projection["learning_targets"]
+             await _emit(
+                 emit,
+                 RuntimeEvent(
+                     "answer",
+                     {
++                        "text": answer.text,
++                        "knowledge_sources": answer.knowledge_sources,
++                        "learning_entries": answer.learning_entries,
++                        "learning_targets": answer.learning_targets,
++                        "reading_status": answer.reading_status,
++                        "knowledge_error": answer.knowledge_error,
+                         "facts": answer.facts,
+                         "inferences": answer.inferences,
+                         "citations": _citations_payload(answer),
+@@ -284,7 +319,7 @@
+         text_parts: list[str] = []
+         calls: list[ToolCall] = []
+         async for chunk in self.provider.stream_with_tools(
+-            SYSTEM_PROMPT,
++            SYSTEM_PROMPT + (LEARNING_PROMPT if self.learning is not None else ""),
+             messages,
+             self.registry.schemas(),
+             max_tokens=self.config.max_tokens,
+--- a/src/codeinsight/agent/service.py
++++ b/src/codeinsight/agent/service.py
+@@ -18,6 +18,11 @@
+ from codeinsight.agent.runtime import AgentRuntime, RuntimeConfig
+ from codeinsight.agent.session import ConversationStore
+ from codeinsight.agent.tools import ToolServices, build_tools
++from codeinsight.cognitive.concepts.assets import knowledge_directory
++from codeinsight.cognitive.concepts.integration import LearningBridge
++from codeinsight.cognitive.concepts.library import LearningLibrary
++from codeinsight.cognitive.concepts.learning_models import KnowledgeError
++from codeinsight.cognitive.concepts.service import KnowledgeService
+ from codeinsight.cognitive.embedding.siliconflow import SiliconFlowEmbedder
+ from codeinsight.cognitive.retrieval.retriever import (
+     ALL_LANES,
+@@ -146,7 +151,15 @@
+         concepts_dir=Path(concepts_dir) if concepts_dir else None,
+         provider=provider,
+     )
++    # 知识资产损坏时保留已有代码问答；教学端点会单独报告加载错误。
++    learning = None
++    try:
++        learning = LearningBridge(KnowledgeService(LearningLibrary(knowledge_directory("learning"))))
++    except KnowledgeError as exc:
++        import logging
++        logging.getLogger(__name__).warning("内置知识库暂不可用：%s", exc)
+     runtime = AgentRuntime(
++        learning=learning,
+         provider=provider,
+         registry=build_tools(services),
+         store=store if store is not None else _DEFAULT_STORE,
+--- a/src/codeinsight/api/query.py
++++ b/src/codeinsight/api/query.py
+@@ -45,6 +45,7 @@
+     project_id: int
+     question: str
+     conversation_id: str | None = None
++    reading_context: dict[str, Any] | None = None
+ 
+ 
+ def _open_session(project_id: int) -> AgentSession:
+@@ -81,6 +82,7 @@
+             project_id=session.project_id,
+             question=body.question,
+             conversation_id=body.conversation_id or "",
++            **({"reading_context": body.reading_context} if body.reading_context is not None else {}),
+         )
+     finally:
+         session.close()
+@@ -113,6 +115,11 @@
+         "abstention_reason": answer.abstention_reason,
+         "incomplete": answer.incomplete,
+         "evidence": answer.evidence,
++        "knowledge_sources": answer.knowledge_sources,
++        "learning_entries": answer.learning_entries,
++        "learning_targets": answer.learning_targets,
++        "reading_status": answer.reading_status,
++        "knowledge_error": answer.knowledge_error,
+     }
+ 
+ 
+@@ -137,6 +144,7 @@
+                 project_id=session.project_id,
+                 question=body.question,
+                 conversation_id=body.conversation_id or "",
++                **({"reading_context": body.reading_context} if body.reading_context is not None else {}),
+                 emit=emit,
+             )
+         finally:
+--- a/src/codeinsight/api/learning.py
++++ b/src/codeinsight/api/learning.py
+@@ -0,0 +1,32 @@
++"""内置知识 API：全局教材不依赖项目库或模型服务。"""
++from typing import Any
++from fastapi import APIRouter, Query
++from codeinsight.api.errors import ApiFailure
++from codeinsight.cognitive.concepts.assets import knowledge_directory
++from codeinsight.cognitive.concepts.integration import LearningBridge
++from codeinsight.cognitive.concepts.learning_models import KnowledgeError
++from codeinsight.cognitive.concepts.library import LearningLibrary
++from codeinsight.cognitive.concepts.service import KnowledgeService
++
++router = APIRouter(tags=["learning"])
++
++def _bridge() -> LearningBridge:
++    try:
++        return LearningBridge(KnowledgeService(LearningLibrary(knowledge_directory("learning"))))
++    except KnowledgeError as exc:
++        raise ApiFailure(status_code=503, code="internal_error", title="知识库暂不可用", hint="请检查知识资产安装。", detail=str(exc)) from exc
++
++@router.get("/knowledge/tree")
++def knowledge_tree() -> dict[str, Any]:
++    return _bridge().tree().data
++
++@router.get("/knowledge/topics/{topic_id}")
++def knowledge_topic(topic_id: str) -> dict[str, Any]:
++    result = _bridge().topic(topic_id)
++    if result.error:
++        raise ApiFailure(status_code=404, code="not_found", title="知识主题不存在", hint="请从知识目录重新选择。")
++    return result.data
++
++@router.get("/knowledge/search")
++def knowledge_search(q: str = "", limit: int = Query(default=5, ge=1, le=50)) -> dict[str, Any]:
++    return _bridge().search(q, limit).data
+--- a/src/codeinsight/api/app.py
++++ b/src/codeinsight/api/app.py
+@@ -13,6 +13,7 @@
+ from codeinsight.api.health import router as health_router
+ from codeinsight.api.insights import router as insights_router
+ from codeinsight.api.knowledge import router as knowledge_router
++from codeinsight.api.learning import router as learning_router
+ from codeinsight.api.overview import router as overview_router
+ from codeinsight.api.projects import router as projects_router
+ from codeinsight.api.query import router as query_router
+@@ -29,6 +30,7 @@
+     app.include_router(projects_router)
+     app.include_router(overview_router)
+     app.include_router(knowledge_router)
++    app.include_router(learning_router)
+     app.include_router(insights_router)
+     app.include_router(query_router)
+ 
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -14,6 +14,7 @@
+     "httpx>=0.27",
+     "numpy>=2.0",
+     "jieba>=0.42",
++    "PyYAML>=6.0",
+ ]
+ 
+ [project.optional-dependencies]
+@@ -47,3 +48,7 @@
+ [tool.ruff.lint]
+ select = ["E", "F", "I", "UP", "B"]
+ ignore = ["E501"]
++
++[tool.hatch.build.targets.wheel.force-include]
++"knowledge/concepts" = "codeinsight/knowledge/concepts"
++"knowledge/learning" = "codeinsight/knowledge/learning"
+--- a/frontend/src/api/types.ts
++++ b/frontend/src/api/types.ts
+@@ -449,10 +449,11 @@
+   question: string
+   /** 带同一个值 = 连续追问。 */
+   conversation_id?: string
++  reading_context?: KnowledgeReadingContext
+ }
+ 
+ /** `POST /query` 响应（契约 §8.1）。 */
+-export interface QueryResponse {
++export interface QueryResponse extends KnowledgeAnswerMetadata {
+   text: string
+   facts: Fact[]
+   inferences: Inference[]
+@@ -496,7 +497,8 @@
+   concepts: string[]
+ }
+ 
+-export interface SseAnswerEvent {
++export interface SseAnswerEvent extends KnowledgeAnswerMetadata {
++  text?: string
+   facts: Fact[]
+   inferences: Inference[]
+   citations: Citation[]
+@@ -541,3 +543,43 @@
+ export type SseEvent = {
+   [K in SseEventName]: { event: K; data: SseEventMap[K] }
+ }[SseEventName]
++
++/** 请求 0001 的知识扩展；知识来源不能当作项目 Citation。 */
++export interface KnowledgeReadingContext {
++  kind: 'knowledge'
++  topic_id: string
++  section_id?: string | null
++  version: string
++}
++export interface LearningTarget {
++  topic_id: string
++  section_id: string | null
++  title: string
++  version: string
++  href: string
++}
++export interface KnowledgeSource {
++  id: string
++  title: string
++  author: string
++  url: string
++  version: string
++  license: string
++  license_url: string
++  retrieved_at: string
++  sha256: string
++  modifications: string
++}
++export interface KnowledgeHit {
++  target: LearningTarget
++  snippet: string
++  score: number
++  sources: KnowledgeSource[]
++}
++export interface KnowledgeAnswerMetadata {
++  knowledge_sources?: KnowledgeHit[]
++  learning_entries?: LearningTarget[]
++  learning_targets?: LearningTarget[]
++  reading_status?: string
++  knowledge_error?: string | null
++}

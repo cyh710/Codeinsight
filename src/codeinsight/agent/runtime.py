@@ -27,6 +27,8 @@ from codeinsight.agent.ledger import EventLedger, new_task_id
 from codeinsight.agent.prompts import SYSTEM_PROMPT
 from codeinsight.agent.session import ConversationStore, Focus
 from codeinsight.agent.tool import ToolContext, ToolRegistry
+from codeinsight.cognitive.concepts.answer_policy import LEARNING_PROMPT, can_answer_from_knowledge
+from codeinsight.cognitive.concepts.integration import LearningBridge
 from codeinsight.llm.provider import ToolCall
 from codeinsight.models import Answer
 
@@ -64,6 +66,7 @@ class AgentRuntime:
         repo_root: str = "",
         budget: ContextBudget | None = None,
         config: RuntimeConfig | None = None,
+        learning: LearningBridge | None = None,
     ) -> None:
         self.provider = provider
         self.registry = registry
@@ -72,6 +75,7 @@ class AgentRuntime:
         self.repo_root = repo_root
         self.budget = budget or ContextBudget()
         self.config = config or RuntimeConfig()
+        self.learning = learning
 
     async def run(
         self,
@@ -80,6 +84,7 @@ class AgentRuntime:
         question: str,
         conversation_id: str = "",
         emit: Emit | None = None,
+        reading_context: dict[str, Any] | None = None,
     ) -> Answer:
         task_id = new_task_id()
         answer = Answer(task_id=task_id, model_id=str(getattr(self.provider, "model_id", "")))
@@ -103,14 +108,88 @@ class AgentRuntime:
             ),
         )
 
-        prior = self.store.history(conversation_id)
+        session_key = f"{project_id}:{conversation_id}"
+        prior = self.store.history(session_key)
         goal = {"role": "user", "content": question}
         current: list[dict[str, Any]] = []
         grounding = Grounding()
-        focus = self.store.focus(conversation_id)
+        focus = self.store.focus(session_key)
         final_text = ""
+        prepared = None
 
         try:
+            if self.learning is not None:
+                goal, prepared = self.learning.prepare_goal(
+                    question,
+                    reading_context=(
+                        None
+                        if reading_context and reading_context.get("kind") == "code"
+                        else reading_context
+                    ),
+                    max_message_bytes=min(
+                        self.budget.max_message_bytes, self.budget.max_turn_bytes
+                    ),
+                    max_knowledge_bytes=self.budget.max_tool_result_bytes,
+                )
+                answer.reading_status = prepared.reading_status
+                answer.knowledge_error = prepared.error
+                if ledger is not None:
+                    ledger.record(task_id, "knowledge.prepared", prepared.as_tool_result().data)
+            if reading_context and reading_context.get("kind") == "code":
+                path = reading_context.get("path")
+                line = reading_context.get("lineno", 1)
+                end = reading_context.get("end_lineno", line + 80 if isinstance(line, int) else 1)
+                valid = (
+                    isinstance(path, str)
+                    and bool(path.strip())
+                    and isinstance(line, int)
+                    and not isinstance(line, bool)
+                    and line > 0
+                    and isinstance(end, int)
+                    and not isinstance(end, bool)
+                    and end >= line
+                    and reading_context.get("project_id") == project_id
+                )
+                if valid:
+                    call = ToolCall(
+                        id=f"reading-{task_id}",
+                        name="read_file",
+                        arguments={"path": path, "start_line": line, "end_line": end},
+                    )
+                    current.append(_assistant_message("读取当前代码目标。", [call]))
+                    if ledger is not None:
+                        ledger.record(
+                            task_id,
+                            "assistant.tool_calls",
+                            {
+                                "content": "读取当前代码目标。",
+                                "tool_calls": [
+                                    {"id": call.id, "name": call.name, "arguments": call.arguments}
+                                ],
+                            },
+                        )
+                    focus = await self._invoke_tool(
+                        call,
+                        project_id=project_id,
+                        conversation_id=conversation_id,
+                        answer=answer,
+                        grounding=grounding,
+                        focus=focus,
+                        current=current,
+                        ledger=ledger,
+                        emit=emit,
+                    )
+                    answer.reading_status = "ok" if len(grounding) else "not_found"
+                    answer.knowledge_error = (
+                        None if len(grounding) else "未能从当前项目索引读取这个代码目标。"
+                    )
+                else:
+                    answer.reading_status = "invalid"
+                    answer.knowledge_error = "代码目标需要当前 project_id、有效 path 和行号范围。"
+                if answer.knowledge_error:
+                    current.append(
+                        {"role": "user", "content": "服务端阅读目标检查：" + answer.knowledge_error}
+                    )
             for _turn in range(self.config.max_model_turns):
                 messages, _dropped = assemble(prior, current, goal, self.budget)
                 text, calls = await self._one_turn(messages, emit)
@@ -138,70 +217,17 @@ class AgentRuntime:
                         result_text = "本轮工具调用次数已达上限，未执行。"
                         current.append(_tool_message(call.id, result_text))
                         continue
-                    if call.name not in self.registry.names:
-                        await _emit(
-                            emit,
-                            RuntimeEvent(
-                                "tool",
-                                {"name": call.name, "status": "error", "summary": "未知工具"},
-                            ),
-                        )
-                        current.append(
-                            _tool_message(call.id, f"错误：没有名为 {call.name} 的工具。")
-                        )
-                        continue
-                    await _emit(
-                        emit,
-                        RuntimeEvent(
-                            "tool",
-                            {
-                                "name": call.name,
-                                "status": "running",
-                                "summary": _summarize(call),
-                            },
-                        ),
+                    focus = await self._invoke_tool(
+                        call,
+                        project_id=project_id,
+                        conversation_id=conversation_id,
+                        answer=answer,
+                        grounding=grounding,
+                        focus=focus,
+                        current=current,
+                        ledger=ledger,
+                        emit=emit,
                     )
-                    tool = self.registry.get(call.name)
-                    assert tool is not None
-                    result = await tool.run(
-                        call.arguments,
-                        ToolContext(
-                            project_id=project_id,
-                            repo_root=self.repo_root,
-                            conversation_id=conversation_id,
-                        ),
-                    )
-                    if call.name not in answer.tools_used:
-                        answer.tools_used.append(call.name)
-                    focus = _update_focus(focus, call.name, result.data)
-                    _absorb_grounding(grounding, result.data)
-                    _collect_evidence(answer, call.name, result.data)
-                    await _emit_evidence(emit, call.name, result.data)
-                    await _emit(
-                        emit,
-                        RuntimeEvent(
-                            "tool",
-                            {
-                                "name": call.name,
-                                "status": "error" if result.error else "ok",
-                                "summary": _result_summary(result.error, result.data),
-                            },
-                        ),
-                    )
-                    payload = {
-                        "name": call.name,
-                        "arguments": call.arguments,
-                        "content": result.content,
-                        "data": result.data,
-                        "truncated": result.truncated,
-                        "error": result.error,
-                    }
-                    if ledger is not None:
-                        ledger.record(task_id, "tool.finished", payload)
-                    content = result.content
-                    if result.error:
-                        content = f"（{result.error}）{content}"
-                    current.append(_tool_message(call.id, content))
             else:
                 answer.incomplete = True
                 final_text = ""
@@ -218,7 +244,16 @@ class AgentRuntime:
             answer.inferences = split.inferences
             answer.citations = split.citations
 
-            if len(grounding) == 0:
+            knowledge_only = can_answer_from_knowledge(
+                question,
+                answer.text,
+                prepared,
+                dropped_citations=split.dropped_citations,
+                incomplete=answer.incomplete,
+            )
+            if knowledge_only:
+                answer.inferences = []
+            if len(grounding) == 0 and not knowledge_only:
                 # 一条证据都没有：模型说的任何话都不是项目事实。
                 answer.abstained = True
                 answer.abstention_reason = "检索与工具调用都没有返回可引用的代码位置"
@@ -233,11 +268,23 @@ class AgentRuntime:
                         "下面的内容不是项目事实，也没有工具证据支持。）\n\n" + answer.text
                     )
 
+            if self.learning is not None and prepared is not None:
+                projection = self.learning.finalize_answer(answer.text, prepared)
+                answer.text = projection["text"]
+                answer.knowledge_sources = projection["knowledge_sources"]
+                answer.learning_entries = projection["learning_entries"]
+                answer.learning_targets = projection["learning_targets"]
             await _emit(
                 emit,
                 RuntimeEvent(
                     "answer",
                     {
+                        "text": answer.text,
+                        "knowledge_sources": answer.knowledge_sources,
+                        "learning_entries": answer.learning_entries,
+                        "learning_targets": answer.learning_targets,
+                        "reading_status": answer.reading_status,
+                        "knowledge_error": answer.knowledge_error,
                         "facts": answer.facts,
                         "inferences": answer.inferences,
                         "citations": _citations_payload(answer),
@@ -251,7 +298,9 @@ class AgentRuntime:
             answer.error = _error_payload(exc)
             await _emit(emit, RuntimeEvent("error", answer.error))
         finally:
-            status = "failed" if answer.error else ("abstained" if answer.abstained else "completed")
+            status = (
+                "failed" if answer.error else ("abstained" if answer.abstained else "completed")
+            )
             if ledger is not None:
                 if not answer.error:
                     ledger.record(
@@ -274,8 +323,87 @@ class AgentRuntime:
             )
 
         if answer.error is None:
-            self.store.record_turn(conversation_id, question, answer.text, focus=focus)
+            self.store.record_turn(session_key, question, answer.text, focus=focus)
         return answer
+
+    async def _invoke_tool(
+        self,
+        call: ToolCall,
+        *,
+        project_id: int,
+        conversation_id: str,
+        answer: Answer,
+        grounding: Grounding,
+        focus: Focus,
+        current: list[dict[str, Any]],
+        ledger: EventLedger | None,
+        emit: Emit | None,
+    ) -> Focus:
+        """代码阅读目标与模型工具调用走同一证据、账本和事件路径。"""
+        task_id = answer.task_id
+        if call.name not in self.registry.names:
+            await _emit(
+                emit,
+                RuntimeEvent(
+                    "tool",
+                    {"name": call.name, "status": "error", "summary": "未知工具"},
+                ),
+            )
+            current.append(_tool_message(call.id, f"错误：没有名为 {call.name} 的工具。"))
+            return focus
+        await _emit(
+            emit,
+            RuntimeEvent(
+                "tool",
+                {
+                    "name": call.name,
+                    "status": "running",
+                    "summary": _summarize(call),
+                },
+            ),
+        )
+        tool = self.registry.get(call.name)
+        assert tool is not None
+        result = await tool.run(
+            call.arguments,
+            ToolContext(
+                project_id=project_id,
+                repo_root=self.repo_root,
+                conversation_id=conversation_id,
+            ),
+        )
+        if call.name not in answer.tools_used:
+            answer.tools_used.append(call.name)
+        focus = _update_focus(focus, call.name, result.data)
+        _absorb_grounding(grounding, result.data)
+        _collect_evidence(answer, call.name, result.data)
+        await _emit_evidence(emit, call.name, result.data)
+        await _emit(
+            emit,
+            RuntimeEvent(
+                "tool",
+                {
+                    "name": call.name,
+                    "status": "error" if result.error else "ok",
+                    "summary": _result_summary(result.error, result.data),
+                },
+            ),
+        )
+        payload = {
+            "name": call.name,
+            "arguments": call.arguments,
+            "content": result.content,
+            "data": result.data,
+            "truncated": result.truncated,
+            "error": result.error,
+        }
+        if ledger is not None:
+            ledger.record(task_id, "tool.finished", payload)
+        content = result.content
+        if result.error:
+            content = f"（{result.error}）{content}"
+        current.append(_tool_message(call.id, content))
+        return focus
 
     async def _one_turn(
         self, messages: list[dict[str, Any]], emit: Emit | None
@@ -284,7 +412,7 @@ class AgentRuntime:
         text_parts: list[str] = []
         calls: list[ToolCall] = []
         async for chunk in self.provider.stream_with_tools(
-            SYSTEM_PROMPT,
+            SYSTEM_PROMPT + (LEARNING_PROMPT if self.learning is not None else ""),
             messages,
             self.registry.schemas(),
             max_tokens=self.config.max_tokens,
@@ -355,9 +483,7 @@ def _update_focus(focus: Focus, tool_name: str, data: dict[str, Any]) -> Focus:
             paths=tuple(item.get("path") for item in items[:3] if item.get("path")),
         )
     if tool_name in {"list_concepts", "explain_concept", "find_concept_instances"}:
-        concept_id = data.get("concept_id") or (
-            items[0].get("concept_id") if items else None
-        )
+        concept_id = data.get("concept_id") or (items[0].get("concept_id") if items else None)
         if concept_id:
             return focus.merge(concept_ids=(*focus.concept_ids, str(concept_id)))
     if tool_name == "get_module_overview" and data.get("path"):

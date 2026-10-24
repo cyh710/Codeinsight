@@ -2,7 +2,7 @@
  * 前端状态类型总集（组织法抄织忆：一个项目一个 `types.ts` 集中放）。
  * 与后端交换的形状一律用 `../api/types.ts` 的冻结类型，这里只放**前端视图状态**。
  */
-import type { Citation, Fact, Inference, RetrievalLane, ToolStatus } from '../api/types'
+import type { Citation, Fact, Inference, RetrievalLane, ToolStatus, LearningTarget, KnowledgeHit, ReadingContext } from '../api/types'
 
 // ─── 对话 ─────────────────────────────────────────────────────
 
@@ -43,6 +43,10 @@ export interface ChatMessage {
   tools?: ToolTimelineItem[]
   /** 本轮积累的证据（边流边长，右栏实时渲染）。 */
   evidence?: PanelEvidence[]
+  knowledgeSources?: KnowledgeHit[]
+  learningEntries?: LearningTarget[]
+  learningTargets?: LearningTarget[]
+  knowledgeError?: string | null
 }
 
 export interface ChatStore {
@@ -56,6 +60,7 @@ export interface ChatStore {
   sendMessage: (projectId: number, question: string) => Promise<void>
   stopStreaming: () => void
   reset: () => void
+  switchProject: (projectId: number) => void
 }
 
 // ─── 项目 ─────────────────────────────────────────────────────
@@ -85,6 +90,9 @@ export type RightPanel =
   | { mode: 'evidence' }
   | { mode: 'symbol'; qualname: string }
   | { mode: 'concept'; conceptId: string }
+  | { mode: 'knowledge-tree' }
+  | { mode: 'knowledge'; target: LearningTarget }
+  | { mode: 'file'; path: string; lineno: number }
 
 export interface WorkbenchStore {
   selectedPath: string | null
@@ -94,12 +102,24 @@ export interface WorkbenchStore {
   expandedFiles: Record<string, boolean>
   treeFilter: string
   rightPanel: RightPanel
+  history: Array<{ panel: RightPanel; path: string | null; reading: ReadingContext | null }>
+  historyIndex: number
+  reading: ReadingContext | null
+  scrollPositions: Record<string, number>
 
-  selectFile: (path: string) => void
-  selectSymbol: (qualname: string, path: string) => void
+  selectFile: (path: string, lineno?: number) => void
+  selectSymbol: (qualname: string, path: string, lineno?: number) => void
   openConcept: (conceptId: string) => void
   backToEvidence: () => void
   toggleDir: (path: string) => void
   toggleFile: (path: string) => void
   setTreeFilter: (q: string) => void
+  openKnowledge: (target: LearningTarget) => void
+  openKnowledgeTree: () => void
+  goBack: () => void
+  goForward: () => void
+  returnToCode: () => void
+  setReading: (reading: ReadingContext | null) => void
+  saveScroll: (key: string, position: number) => void
+  resetProject: () => void
 }

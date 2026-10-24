@@ -8,15 +8,36 @@ deep 依赖 LLM Provider（A 线 M3），未接入前返回 upstream_error 并�
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
+from dataclasses import asdict
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 from codeinsight.api.errors import ApiFailure, not_found_concept
 from codeinsight.api.projects import connect_db, require_project
+from codeinsight.agent.service import build_provider
+from codeinsight.cognitive.concepts.assets import knowledge_directory
+from codeinsight.cognitive.concepts.explain import explain
+from codeinsight.cognitive.concepts.library import LearningLibrary
+from codeinsight.cognitive.concepts.learning_models import KnowledgeError, Relation
+from codeinsight.cognitive.concepts.ontology import Concept, DetectionRules
+from codeinsight.config import settings
+from codeinsight.models import ConceptDepth, ConceptInstance
 
 router = APIRouter(tags=["concepts"])
+_PROVIDER_FACTORY: Callable[[], Any] | None = None
+
+
+def _learning_targets(concept_id: str) -> list[dict]:
+    try:
+        library = LearningLibrary(knowledge_directory("learning"))
+    except KnowledgeError:
+        # 教材安装错误不阻断已有项目证据；知识端点会给出独立错误。
+        return []
+    return [{**asdict(library.target(t.id)), "href": library.target(t.id).href}
+            for t in library.topics_for_concept(concept_id)]
+
 
 
 def _concept_row(conn: Any, concept_id: str) -> dict[str, Any]:
@@ -109,6 +130,7 @@ def get_concept(project_id: int, concept_id: str) -> dict[str, Any]:
         c = _concept_row(conn, concept_id)
         return {
             "concept_id": c["id"],
+            "learning_targets": _learning_targets(c["id"]),
             "name": c["name"],
             "category": c["category"],
             "summary": c["summary"],
@@ -150,63 +172,40 @@ class ExplainBody(BaseModel):
 
 
 @router.post("/projects/{project_id}/concepts/{concept_id}/explain")
-def explain_concept(project_id: int, concept_id: str, body: ExplainBody) -> dict[str, Any]:
-    if body.depth not in ("quick", "project", "deep"):
-        raise ApiFailure(
-            status_code=400,
-            code="bad_request",
-            title="参数不合法",
-            hint="depth 取 quick | project | deep",
-            detail=f"depth={body.depth}",
-        )
+async def explain_concept(project_id: int, concept_id: str, body: ExplainBody) -> dict[str, Any]:
+    """复用 B 解释服务；低置信候选不升级为事实，deep 失败保留教材。"""
+    try:
+        depth = ConceptDepth(body.depth)
+    except ValueError as exc:
+        raise ApiFailure(status_code=400, code="bad_request", title="参数不合法", hint="depth 取 quick | project | deep") from exc
     conn = connect_db(project_id)
     try:
         require_project(conn, project_id)
         c = _concept_row(conn, concept_id)
         instances = _instances(conn, project_id, concept_id)
-
-        if body.depth == "deep":
-            raise ApiFailure(
-                status_code=502,
-                code="upstream_error",
-                title="深度解释暂不可用",
-                hint="deep 依赖 LLM Provider（A 线 M3 接入后开放）；quick 与 project 现在可用",
-                detail="llm provider not wired",
-            )
-
-        if body.depth == "quick":
-            return {
-                "concept_id": c["id"],
-                "depth": "quick",
-                "summary": c["summary"],
-                "facts": [],
-                "inferences": [],
-                "instances": instances,
-                "llm_used": False,
-            }
-
-        # project：位置事实全部从索引派生（源文档 §2.6），不进 inferences。
-        facts = [
-            {
-                "text": f"{inst['evidence']}（{inst['path']}:{inst['lineno']}）",
-                "citation": {
-                    "path": inst["path"],
-                    "lineno": inst["lineno"],
-                    "end_lineno": inst["lineno"],
-                    "qualname": inst["qualname"],
-                    "snippet": "",
-                },
-            }
-            for inst in instances
-        ]
-        return {
-            "concept_id": c["id"],
-            "depth": "project",
-            "summary": c["summary"],
-            "facts": facts,
-            "inferences": [],
-            "instances": instances,
-            "llm_used": False,
-        }
+        concept = Concept(
+            id=c["id"], name=c["name"], category=c["category"], summary=c["summary"],
+            principles=c["principles"] or "", tradeoffs=c["tradeoffs"] or "",
+            alternatives=c["alternatives"] or "", references=tuple(c["references"]),
+            detection=DetectionRules(),
+        )
+        views = [ConceptInstance(**{k: i[k] for k in ("concept_id", "path", "lineno", "qualname", "symbol_id", "evidence", "confidence")}) for i in instances]
+        names = {i.qualname for i in views if i.qualname}
+        relations = []
+        if names and depth != ConceptDepth.QUICK:
+            marks = ",".join("?" for _ in names)
+            rows = conn.execute(
+                "SELECT src.qualname, COALESCE(dst.qualname, e.dst_name), f.path, e.lineno, e.confidence "
+                "FROM edge e JOIN symbol src ON src.id = e.src_symbol_id "
+                "JOIN file f ON f.id = src.file_id LEFT JOIN symbol dst ON dst.id = e.dst_symbol_id "
+                f"WHERE e.project_id = ? AND (src.qualname IN ({marks}) OR dst.qualname IN ({marks})) LIMIT 60",
+                (project_id, *names, *names),
+            ).fetchall()
+            relations = [Relation(*row) for row in rows if row[3] and row[3] > 0]
+        provider = None
+        if depth == ConceptDepth.DEEP:
+            provider = _PROVIDER_FACTORY() if _PROVIDER_FACTORY is not None else (build_provider() if settings.llm_api_key else None)
+        result = await explain(concept, instances=views, relations=relations, depth=depth, provider=provider)
+        return {**asdict(result), "instances": instances, "learning_targets": _learning_targets(concept_id)}
     finally:
         conn.close()
