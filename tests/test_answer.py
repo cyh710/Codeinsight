@@ -77,5 +77,22 @@ def test_no_grounding_means_no_facts() -> None:
     assert result.citations == []
 
 
+def test_fact_text_is_plain_not_markdown() -> None:
+    """卡片不是 Markdown 渲染区：加粗与行内代码标记要去掉。"""
+    result = split_answer("1. **入口**是 `stream` [backend/core/chat.py:42]。", _grounding())
+    fact = result.facts[0]["text"]
+    assert "**" not in fact
+    assert "`" not in fact
+    assert fact.startswith("入口是 stream")
+
+
+def test_markdown_headings_do_not_become_inferences() -> None:
+    """`**核心实现**` 是排版，不是主张——不该出现在推断栏。"""
+    text = "**核心实现**\n入口是 stream [backend/core/chat.py:42]。\n1. **底层模型流**\n"
+    result = split_answer(text, _grounding())
+    assert len(result.facts) == 1
+    assert result.inferences == []
+
+
 def test_cited_locations_extracts_claims() -> None:
     assert cited_locations("看 [a.py:1] 和 [b/c.ts:20-30]") == [("a.py", 1), ("b/c.ts", 20)]

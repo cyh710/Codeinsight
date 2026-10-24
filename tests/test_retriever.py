@@ -288,3 +288,28 @@ def test_concept_lane_returns_instances(seeded: sqlite3.Connection) -> None:
     results = lane.search("JWT 认证怎么做的", k=5)
     assert results
     assert results[0][0] == 1
+
+
+def test_concept_ids_are_deduplicated_on_evidence(seeded: sqlite3.Connection) -> None:
+    """同一符号被同一概念的多条规则命中时，证据上的概念标签只能出现一次。
+
+    `import jwt` 和 `call jwt.decode` 各产生一条实例——不去重的话前端会
+    渲染出重复的 chip，React 还会报重复 key。
+    """
+    seeded.execute(
+        "INSERT INTO concept (id, name, category, summary, detection_json)"
+        " VALUES ('jwt', 'JWT 令牌认证', 'auth', '用签名令牌承载身份声明。', '{}')"
+    )
+    seeded.executemany(
+        "INSERT INTO concept_instance (project_id, concept_id, symbol_id, file_id, path,"
+        " lineno, qualname, evidence, confidence)"
+        " VALUES (1, 'jwt', 1, 1, 'a.py', ?, 'a.authenticate_user', ?, 1.0)",
+        [(1, "import jwt"), (3, "call jwt.decode")],
+    )
+    seeded.commit()
+
+    retriever = Retriever(seeded)
+    evidence = retriever.retrieve("authenticate_user", k=5, project_id=1)
+    jwt_ids = [item.concept_ids for item in evidence if item.qualname == "a.authenticate_user"]
+    assert jwt_ids
+    assert jwt_ids[0].count("jwt") == 1

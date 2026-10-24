@@ -335,11 +335,14 @@ class Retriever:
         placeholders = ",".join("?" for _ in symbol_ids)
         rows = self._conn.execute(
             f"""
-            SELECT symbol_id, concept_id FROM concept_instance
+            SELECT DISTINCT symbol_id, concept_id FROM concept_instance
             WHERE project_id = ? AND symbol_id IN ({placeholders})
             """,
             (project_id, *symbol_ids),
         ).fetchall()
+        # `DISTINCT` 是必须的：同一个符号可能在同一概念上被多条规则命中
+        # （`import jwt` 与 `call jwt.decode` 各一条实例），不去重的话
+        # 前端会渲染出重复的概念标签，React 还会报重复 key。
         out: dict[int, list[str]] = {}
         for symbol_id, concept_id in rows:
             out.setdefault(int(symbol_id), []).append(concept_id)

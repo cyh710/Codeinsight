@@ -151,7 +151,7 @@ def split_answer(text: str, grounding: Grounding) -> SplitAnswer:
             # 否则读了 1-200 行之后，每条事实都指向第 1 行。
             result.facts.append(
                 {
-                    "text": _strip_markers(cleaned).strip(),
+                    "text": _plain_text(_strip_markers(cleaned)),
                     "citation": {
                         "path": path,
                         "lineno": lineno,
@@ -173,7 +173,10 @@ def split_answer(text: str, grounding: Grounding) -> SplitAnswer:
                     )
         elif not _looks_like_heading(cleaned):
             result.inferences.append(
-                {"text": _strip_markers(cleaned).strip(), "confidence": DEFAULT_INFERENCE_CONFIDENCE}
+                {
+                    "text": _plain_text(_strip_markers(cleaned)),
+                    "confidence": DEFAULT_INFERENCE_CONFIDENCE,
+                }
             )
 
     result.text = _join_paragraphs(paragraphs)
@@ -234,9 +237,35 @@ def _strip_markers(text: str) -> str:
     return re.sub(r"[ \t]{2,}", " ", cleaned)
 
 
+def _plain_text(text: str) -> str:
+    """去掉 Markdown 标记，留纯文本。
+
+    事实栏与推断栏是结构化卡片，不是 Markdown 渲染区——
+    正文里的 `**编排层**`、行内代码反引号、列表编号留在卡片里只是噪声。
+    聊天正文（`Answer.text`）保持原样，那里本来就按 Markdown 渲染。
+    """
+    cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+    cleaned = re.sub(r"__([^_]+)__", r"\1", cleaned)
+    cleaned = cleaned.replace("`", "")
+    cleaned = re.sub(r"^\s*\d+[.、]\s*", "", cleaned)
+    cleaned = re.sub(r"^\s*[-*+]\s+", "", cleaned)
+    return cleaned.strip()
+
+
 def _looks_like_heading(text: str) -> bool:
+    """标题行不是结论。
+
+    模型爱用 `**核心实现**` 当小标题；如果把它也收进推断栏，用户会看到
+    一堆「**核心实现**」「**HTTP 入口**」这样的条目——它们不是主张，
+    只是排版。`#` 标题、纯列表符号、整行加粗都按标题处理。
+    """
     stripped = text.strip()
-    return bool(re.fullmatch(r"#{1,6}\s+.*", stripped) or re.fullmatch(r"[*\-]\s*", stripped))
+    if re.fullmatch(r"#{1,6}\s+.*", stripped) or re.fullmatch(r"[*\-]\s*", stripped):
+        return True
+    if re.fullmatch(r"\*\*[^*]+\*\*[:：]?", stripped):
+        return True
+    # 「1. **小标题**」这种编号标题同理。
+    return bool(re.fullmatch(r"\d+[.、]\s*\*\*[^*]+\*\*[:：]?", stripped))
 
 
 def _join_paragraphs(paragraphs: list[str]) -> str:
