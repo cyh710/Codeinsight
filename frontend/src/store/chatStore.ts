@@ -11,6 +11,7 @@ import { createStore } from 'zustand'
 import { api } from '../api/dataSource'
 import type { SseEvent } from '../api/types'
 import type { ChatMessage, ChatStore, ToolTimelineItem } from './types'
+import { workbenchStore } from './workbenchStore'
 
 type Set = (partial: Partial<ChatStore> | ((s: ChatStore) => Partial<ChatStore>)) => void
 type Get = () => ChatStore
@@ -41,7 +42,12 @@ export function applySseEvent(
         // 同名工具 running → ok/error：更新最后一行而不是追加，
         // 否则时间线一行变两行。
         const last = tools[tools.length - 1]
-        if (last && last.name === item.name && last.status === 'running' && item.status !== 'running') {
+        if (
+          last &&
+          last.name === item.name &&
+          last.status === 'running' &&
+          item.status !== 'running'
+        ) {
           tools[tools.length - 1] = item
         } else {
           tools.push(item)
@@ -68,11 +74,17 @@ export function applySseEvent(
     case 'answer':
       return patch((m) => ({
         ...m,
+        text: event.data.text ?? m.text,
         facts: event.data.facts,
         inferences: event.data.inferences,
         citations: event.data.citations,
         abstained: event.data.abstained,
+        incomplete: event.data.incomplete,
         abstentionReason: event.data.reason,
+        knowledgeSources: event.data.knowledge_sources ?? [],
+        learningEntries: event.data.learning_entries ?? [],
+        learningTargets: event.data.learning_targets ?? [],
+        knowledgeError: event.data.knowledge_error,
       }))
     case 'error':
       // 只记录，不中断：契约保证 done 仍会来，由 done 统一收尾。
@@ -91,30 +103,78 @@ export function applySseEvent(
 }
 
 export function createChatActions(set: Set, get: Get) {
+  let activeProject: number | null = null
+  const saved = new Map<number, { messages: ChatMessage[]; conversationId: string }>()
   return {
+    switchProject: (projectId: number) => {
+      if (activeProject === projectId) return
+      const s = get()
+      if (activeProject !== null)
+        saved.set(activeProject, {
+          messages: s.messages.map((m) =>
+            m.streaming
+              ? {
+                  ...m,
+                  streaming: false,
+                  error: {
+                    code: 'aborted',
+                    title: '切换项目后已停止这次回答',
+                    hint: '原对话已保留，可以继续提问。',
+                  },
+                }
+              : m,
+          ),
+          conversationId: s.conversationId,
+        })
+      s._abortController?.abort()
+      activeProject = projectId
+      set({
+        messages: saved.get(projectId)?.messages ?? [],
+        conversationId: saved.get(projectId)?.conversationId ?? '',
+        streaming: false,
+        _abortController: null,
+      })
+    },
     sendMessage: async (projectId: number, question: string) => {
+      if (activeProject === null) activeProject = projectId
       const state = get()
       if (state.streaming) return
       const assistantId = `assistant-${Date.now()}`
       const controller = new AbortController()
+      const conversationId = state.conversationId || `project-${projectId}-${crypto.randomUUID()}`
+      const reading = workbenchStore.getState().reading
 
       set({
         messages: [
           ...state.messages,
-          { id: `user-${Date.now()}`, role: 'user', text: question, timestamp: new Date().toISOString() },
-          { id: assistantId, role: 'assistant', text: '', streaming: true, timestamp: new Date().toISOString() },
+          {
+            id: `user-${Date.now()}`,
+            role: 'user',
+            text: question,
+            timestamp: new Date().toISOString(),
+          },
+          {
+            id: assistantId,
+            role: 'assistant',
+            text: '',
+            streaming: true,
+            timestamp: new Date().toISOString(),
+          },
         ],
         streaming: true,
         _abortController: controller,
+        conversationId,
       })
 
       const result = await api.streamQuery(
         {
           project_id: projectId,
           question,
-          ...(state.conversationId ? { conversation_id: state.conversationId } : {}),
+          conversation_id: conversationId,
+          ...(reading ? { reading_context: reading } : {}),
         },
         (event) => {
+          if (get()._abortController !== controller || activeProject !== projectId) return
           if (event.event === 'meta') {
             // meta 的 conversation_id 是后端的权威值
             set((s) => ({ conversationId: event.data.conversation_id || s.conversationId }))
@@ -123,6 +183,7 @@ export function createChatActions(set: Set, get: Get) {
         },
         controller.signal,
       )
+      if (get()._abortController !== controller || activeProject !== projectId) return
 
       // 收尾：流结束（正常 done / watchdog / 网络）都走这里，不留 streaming=true。
       set((s) => ({
@@ -132,7 +193,13 @@ export function createChatActions(set: Set, get: Get) {
                 ...m,
                 streaming: false,
                 ...(result.error && !m.error
-                  ? { error: { code: result.error.code, title: result.error.title, hint: result.error.hint } }
+                  ? {
+                      error: {
+                        code: result.error.code,
+                        title: result.error.title,
+                        hint: result.error.hint,
+                      },
+                    }
                   : {}),
                 ...(result.aborted && !m.text && !m.error
                   ? { error: { code: 'aborted', title: '已停止', hint: '这次回答没有完成。' } }
@@ -149,7 +216,8 @@ export function createChatActions(set: Set, get: Get) {
       get()._abortController?.abort()
     },
 
-    reset: () => set({ messages: [], streaming: false, conversationId: '', _abortController: null }),
+    reset: () =>
+      set({ messages: [], streaming: false, conversationId: '', _abortController: null }),
   }
 }
 

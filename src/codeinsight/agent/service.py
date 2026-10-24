@@ -36,7 +36,7 @@ from codeinsight.cognitive.retrieval.retriever import (
 from codeinsight.config import Settings
 from codeinsight.config import settings as default_settings
 from codeinsight.llm.openai_compat import LLMNotConfigured, OpenAICompatProvider
-from codeinsight.storage.sqlite import open_sqlite
+from codeinsight.storage.sqlite import ensure_schema, open_sqlite
 
 DEFAULT_AGENT_LANES = frozenset({LANE_BM25, LANE_SYMBOL, LANE_CONCEPT, LANE_DENSE})
 
@@ -98,6 +98,7 @@ def open_agent(
     if not path.exists():
         raise FileNotFoundError(f"索引库不存在：{path}（先跑 ci index）")
 
+    ensure_schema(path)
     conn = open_sqlite(path, row_factory=True)
     if isinstance(project, int):
         row = conn.execute(
@@ -140,6 +141,13 @@ def open_agent(
         max_tool_result_bytes=12_000,
     )
     provider = provider if provider is not None else build_provider(conf)
+
+    if concepts_dir is not None:
+        from codeinsight.cognitive.indexing.concepts_sync import refresh_project_concepts
+
+        if Path(concepts_dir) == Path("knowledge/concepts"):
+            concepts_dir = knowledge_directory("concepts")
+        refresh_project_concepts(conn, project_id=project_id, knowledge_dir=concepts_dir)
 
     services = ToolServices(
         conn=conn,

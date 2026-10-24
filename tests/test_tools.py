@@ -130,13 +130,32 @@ async def test_callees_mark_uncertain_edges(conn, tmp_path) -> None:
 
 
 async def test_read_file_numbers_lines(conn, tmp_path) -> None:
+    import hashlib
+
     (tmp_path / "a.py").write_text(SOURCE_A, encoding="utf-8")
+    conn.execute(
+        "UPDATE file SET content_sha256 = ? WHERE project_id = 1 AND path = 'a.py'",
+        (hashlib.sha256((tmp_path / "a.py").read_bytes()).hexdigest(),),
+    )
     tool = ReadFileTool(_services(conn, tmp_path))
     result = await tool.run({"path": "a.py", "start_line": 3, "end_line": 5}, _ctx())
     assert result.error is None
     assert "3  line 3" in result.content
     assert "5  line 5" in result.content
     assert result.data["citations"][0]["lineno"] == 3
+
+
+async def test_read_file_does_not_cite_changed_unindexed_source(conn, tmp_path) -> None:
+    (tmp_path / "a.py").write_text("changed source", encoding="utf-8")
+    result = await ReadFileTool(_services(conn, tmp_path)).run({"path": "a.py"}, _ctx())
+    assert result.error == "stale_source" and not result.data.get("citations")
+
+
+async def test_read_file_does_not_create_out_of_range_citation(conn, tmp_path) -> None:
+    result = await ReadFileTool(_services(conn, tmp_path)).run(
+        {"path": "a.py", "start_line": 10000}, _ctx()
+    )
+    assert result.error == "bad_request" and not result.data.get("citations")
 
 
 async def test_read_file_rejects_unknown_path(conn, tmp_path) -> None:
@@ -167,6 +186,15 @@ async def test_find_concept_instances(conn, tmp_path) -> None:
     result = await tool.run({"concept_id": "jwt"}, _ctx())
     assert result.data["items"][0]["evidence"] == "call jwt.decode"
     assert result.data["citations"][0]["lineno"] == 5
+
+
+async def test_concept_uncertainty_is_in_model_text_not_only_metadata(conn, tmp_path) -> None:
+    conn.execute("UPDATE concept_instance SET confidence = 0.4")
+    result = await FindConceptInstancesTool(_services(conn, tmp_path)).run(
+        {"concept_id": "jwt"}, _ctx()
+    )
+    assert "待核对" in result.content and "confidence=0.4" in result.content
+    assert result.data["items"][0]["confidence"] == 0.4
 
 
 async def test_registry_has_twelve_readonly_tools(conn, tmp_path) -> None:

@@ -2,7 +2,16 @@
  * 前端状态类型总集（组织法抄织忆：一个项目一个 `types.ts` 集中放）。
  * 与后端交换的形状一律用 `../api/types.ts` 的冻结类型，这里只放**前端视图状态**。
  */
-import type { Citation, Fact, Inference, RetrievalLane, ToolStatus, LearningTarget, KnowledgeHit, ReadingContext } from '../api/types'
+import type {
+  Citation,
+  Fact,
+  Inference,
+  RetrievalLane,
+  ToolStatus,
+  LearningTarget,
+  KnowledgeHit,
+  ReadingContext,
+} from '../api/types'
 
 // ─── 对话 ─────────────────────────────────────────────────────
 
@@ -38,6 +47,7 @@ export interface ChatMessage {
   inferences?: Inference[]
   citations?: Citation[]
   abstained?: boolean
+  incomplete?: boolean
   abstentionReason?: string
   /** 本轮的工具时间线（边流边长）。 */
   tools?: ToolTimelineItem[]
@@ -88,7 +98,7 @@ export interface ProjectStore {
 /** 右栏形态：证据面板，或概念卡（**右栏替换**，已对齐 C-Q3）。 */
 export type RightPanel =
   | { mode: 'evidence' }
-  | { mode: 'symbol'; qualname: string }
+  | { mode: 'symbol'; qualname: string; lineno?: number }
   | { mode: 'concept'; conceptId: string }
   | { mode: 'knowledge-tree' }
   | { mode: 'knowledge'; target: LearningTarget }
@@ -106,6 +116,8 @@ export interface WorkbenchStore {
   historyIndex: number
   reading: ReadingContext | null
   scrollPositions: Record<string, number>
+  directoryQuery: string
+  setDirectoryQuery: (query: string) => void
 
   selectFile: (path: string, lineno?: number) => void
   selectSymbol: (qualname: string, path: string, lineno?: number) => void

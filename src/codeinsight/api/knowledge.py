@@ -8,25 +8,35 @@ deep 依赖 LLM Provider（A 线 M3），未接入前返回 upstream_error 并�
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
 from dataclasses import asdict
+from typing import Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from codeinsight.agent.service import build_provider
 from codeinsight.api.errors import ApiFailure, not_found_concept
 from codeinsight.api.projects import connect_db, require_project
-from codeinsight.agent.service import build_provider
 from codeinsight.cognitive.concepts.assets import knowledge_directory
+from codeinsight.cognitive.concepts.builtin import concept_context
 from codeinsight.cognitive.concepts.explain import explain
-from codeinsight.cognitive.concepts.library import LearningLibrary
 from codeinsight.cognitive.concepts.learning_models import KnowledgeError, Relation
+from codeinsight.cognitive.concepts.library import LearningLibrary
 from codeinsight.cognitive.concepts.ontology import Concept, DetectionRules
+from codeinsight.cognitive.indexing.concepts_sync import refresh_project_concepts
 from codeinsight.config import settings
 from codeinsight.models import ConceptDepth, ConceptInstance
 
 router = APIRouter(tags=["concepts"])
 _PROVIDER_FACTORY: Callable[[], Any] | None = None
+
+
+def _prepare_project(conn: Any, project_id: int) -> None:
+    require_project(conn, project_id)
+    refresh_project_concepts(
+        conn, project_id=project_id, knowledge_dir=knowledge_directory("concepts")
+    )
 
 
 def _learning_targets(concept_id: str) -> list[dict]:
@@ -35,9 +45,10 @@ def _learning_targets(concept_id: str) -> list[dict]:
     except KnowledgeError:
         # 教材安装错误不阻断已有项目证据；知识端点会给出独立错误。
         return []
-    return [{**asdict(library.target(t.id)), "href": library.target(t.id).href}
-            for t in library.topics_for_concept(concept_id)]
-
+    return [
+        {**asdict(library.target(t.id)), "href": library.target(t.id).href}
+        for t in library.topics_for_concept(concept_id)
+    ]
 
 
 def _concept_row(conn: Any, concept_id: str) -> dict[str, Any]:
@@ -92,7 +103,7 @@ def list_concepts(
 ) -> dict[str, Any]:
     conn = connect_db(project_id)
     try:
-        require_project(conn, project_id)
+        _prepare_project(conn, project_id)
         # 概念列表按"本项目有实例"的 concept 表做 LEFT JOIN——没实例的概念
         # 对这个项目没有意义（实例由检测器派生，ADR 0011）。
         where = ["ci.project_id = ?"]
@@ -126,7 +137,7 @@ def list_concepts(
 def get_concept(project_id: int, concept_id: str) -> dict[str, Any]:
     conn = connect_db(project_id)
     try:
-        require_project(conn, project_id)
+        _prepare_project(conn, project_id)
         c = _concept_row(conn, concept_id)
         return {
             "concept_id": c["id"],
@@ -158,7 +169,7 @@ def get_concept(project_id: int, concept_id: str) -> dict[str, Any]:
 def list_concept_instances(project_id: int, concept_id: str) -> dict[str, Any]:
     conn = connect_db(project_id)
     try:
-        require_project(conn, project_id)
+        _prepare_project(conn, project_id)
         if conn.execute("SELECT 1 FROM concept WHERE id = ?", (concept_id,)).fetchone() is None:
             raise not_found_concept(concept_id)
         items = _instances(conn, project_id, concept_id)
@@ -177,19 +188,45 @@ async def explain_concept(project_id: int, concept_id: str, body: ExplainBody) -
     try:
         depth = ConceptDepth(body.depth)
     except ValueError as exc:
-        raise ApiFailure(status_code=400, code="bad_request", title="参数不合法", hint="depth 取 quick | project | deep") from exc
+        raise ApiFailure(
+            status_code=400,
+            code="bad_request",
+            title="参数不合法",
+            hint="depth 取 quick | project | deep",
+        ) from exc
     conn = connect_db(project_id)
     try:
-        require_project(conn, project_id)
+        _prepare_project(conn, project_id)
         c = _concept_row(conn, concept_id)
         instances = _instances(conn, project_id, concept_id)
         concept = Concept(
-            id=c["id"], name=c["name"], category=c["category"], summary=c["summary"],
-            principles=c["principles"] or "", tradeoffs=c["tradeoffs"] or "",
-            alternatives=c["alternatives"] or "", references=tuple(c["references"]),
+            id=c["id"],
+            name=c["name"],
+            category=c["category"],
+            summary=c["summary"],
+            principles=c["principles"] or "",
+            tradeoffs=c["tradeoffs"] or "",
+            alternatives=c["alternatives"] or "",
+            references=tuple(c["references"]),
             detection=DetectionRules(),
         )
-        views = [ConceptInstance(**{k: i[k] for k in ("concept_id", "path", "lineno", "qualname", "symbol_id", "evidence", "confidence")}) for i in instances]
+        views = [
+            ConceptInstance(
+                **{
+                    k: i[k]
+                    for k in (
+                        "concept_id",
+                        "path",
+                        "lineno",
+                        "qualname",
+                        "symbol_id",
+                        "evidence",
+                        "confidence",
+                    )
+                }
+            )
+            for i in instances
+        ]
         names = {i.qualname for i in views if i.qualname}
         relations = []
         if names and depth != ConceptDepth.QUICK:
@@ -204,8 +241,30 @@ async def explain_concept(project_id: int, concept_id: str, body: ExplainBody) -
             relations = [Relation(*row) for row in rows if row[3] and row[3] > 0]
         provider = None
         if depth == ConceptDepth.DEEP:
-            provider = _PROVIDER_FACTORY() if _PROVIDER_FACTORY is not None else (build_provider() if settings.llm_api_key else None)
-        result = await explain(concept, instances=views, relations=relations, depth=depth, provider=provider)
-        return {**asdict(result), "instances": instances, "learning_targets": _learning_targets(concept_id)}
+            provider = (
+                _PROVIDER_FACTORY()
+                if _PROVIDER_FACTORY is not None
+                else (build_provider() if settings.llm_api_key else None)
+            )
+        textbook = concept_context(concept_id) if depth == ConceptDepth.DEEP else None
+        result = await explain(
+            concept,
+            instances=views,
+            relations=relations,
+            depth=depth,
+            provider=provider,
+            knowledge_content=textbook.content if textbook else "",
+            knowledge_sources=[hit.target.href for hit in textbook.references] if textbook else (),
+        )
+        return {
+            **asdict(result),
+            "instances": instances,
+            "learning_targets": _learning_targets(concept_id)
+            + (
+                [{**asdict(hit.target), "href": hit.target.href} for hit in textbook.references]
+                if textbook
+                else []
+            ),
+        }
     finally:
         conn.close()

@@ -13,17 +13,40 @@ import type { Citation } from './api/types'
 import LeftPanel from './components/tree/LeftPanel'
 import ChatWindow from './components/chat/ChatWindow'
 import RightPanel from './components/evidence/RightPanel'
+import { getKnowledgeTopic } from './api/learning'
 
 // 引用点击 → 右栏符号详情（无 qualname 时退回文件选中）。
 function openCitation(c: Citation) {
-  if (c.qualname) workbenchStore.getState().selectSymbol(c.qualname, c.path)
-  else workbenchStore.getState().selectFile(c.path)
+  if (c.qualname) workbenchStore.getState().selectSymbol(c.qualname, c.path, c.lineno)
+  else workbenchStore.getState().selectFile(c.path, c.lineno)
 }
 
 export default function App() {
   const initProject = projectStore.getState().init
   useEffect(() => {
-    void initProject()
+    let alive = true
+    void initProject().then(async () => {
+      const match = /^\/learn\/([a-z][a-z0-9-]*)$/.exec(window.location.pathname)
+      if (!match) return
+      try {
+        const topic = await getKnowledgeTopic(match[1])
+        if (alive)
+          workbenchStore
+            .getState()
+            .openKnowledge({
+              topic_id: topic.id,
+              title: topic.title,
+              version: topic.version,
+              section_id: window.location.hash.slice(1) || null,
+              href: window.location.pathname + window.location.hash,
+            })
+      } catch {
+        if (alive) workbenchStore.getState().openKnowledgeTree()
+      }
+    })
+    return () => {
+      alive = false
+    }
   }, [initProject])
 
   const projectsError = useStore(projectStore, (s) => s.error)

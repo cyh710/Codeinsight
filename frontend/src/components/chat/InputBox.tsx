@@ -7,10 +7,12 @@ import { useStore } from 'zustand'
 import { Send, Square } from 'lucide-react'
 import { chatStore } from '../../store/chatStore'
 import { projectStore } from '../../store/projectStore'
+import { workbenchStore } from '../../store/workbenchStore'
 
 export default function InputBox() {
   const streaming = useStore(chatStore, (s) => s.streaming)
   const projectId = useStore(projectStore, (s) => s.currentProjectId)
+  const reading = useStore(workbenchStore, (s) => s.reading)
   const [value, setValue] = useState('')
   const taRef = useRef<HTMLTextAreaElement>(null)
 
@@ -24,12 +26,32 @@ export default function InputBox() {
 
   return (
     <div className="border-t border-slate-200/70 bg-bg-elevated/80 px-4 py-3">
+      {reading && (
+        <div className="mb-2 flex items-center gap-2 text-[11px] text-slate-400">
+          <span className="truncate">
+            {reading.kind === 'knowledge'
+              ? '正在结合当前阅读章节提问'
+              : `结合代码 ${reading.path}:${reading.lineno} 提问`}
+          </span>
+          <button
+            aria-label="取消阅读上下文"
+            className="ml-auto text-slate-400 hover:text-accent"
+            onClick={() => workbenchStore.getState().setReading(null)}
+          >
+            取消关联
+          </button>
+        </div>
+      )}
       <div className="flex items-end gap-2 rounded-2xl border border-[var(--chat-input-border)] bg-[var(--chat-input-background)] px-3 py-2 shadow-[var(--chat-input-shadow)]">
         <textarea
           ref={taRef}
           rows={1}
           className="max-h-40 min-h-[24px] flex-1 resize-none bg-transparent text-sm leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
-          placeholder={projectId === null ? '先在左栏选择一个项目…' : '问这个项目的代码，例如：对话流程是怎么走的？'}
+          placeholder={
+            projectId === null
+              ? '先在左栏选择一个项目…'
+              : '问这个项目的代码，例如：对话流程是怎么走的？'
+          }
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {

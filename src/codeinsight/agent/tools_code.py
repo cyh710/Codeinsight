@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 from typing import Any
 
@@ -70,7 +71,12 @@ class SearchCodeTool(BaseTool):
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "检索词：标识符、概念或一句中文问题"},
-            "top_k": {"type": "integer", "description": "返回条数，默认 8", "minimum": 1, "maximum": 20},
+            "top_k": {
+                "type": "integer",
+                "description": "返回条数，默认 8",
+                "minimum": 1,
+                "maximum": 20,
+            },
         },
         "required": ["query"],
     }
@@ -140,7 +146,10 @@ class FindSymbolTool(BaseTool):
     parameters = {
         "type": "object",
         "properties": {
-            "name": {"type": "string", "description": "符号名，可带模块前缀（如 backend.api.pet.stream_chat）"}
+            "name": {
+                "type": "string",
+                "description": "符号名，可带模块前缀（如 backend.api.pet.stream_chat）",
+            }
         },
         "required": ["name"],
     }
@@ -198,8 +207,7 @@ class FindSymbolTool(BaseTool):
 class ReadFileTool(BaseTool):
     name = "read_file"
     description = (
-        "读取索引版本（某个 commit）里的源码片段，带行号。"
-        "需要看具体实现细节时用；一次最多 200 行。"
+        "读取索引版本（某个 commit）里的源码片段，带行号。需要看具体实现细节时用；一次最多 200 行。"
     )
     parameters = {
         "type": "object",
@@ -216,7 +224,7 @@ class ReadFileTool(BaseTool):
         if not path:
             return self.result("缺少 path 参数。", error="bad_request")
         row = self.services.conn.execute(
-            "SELECT path, line_count FROM file WHERE project_id = ? AND path = ?",
+            "SELECT path, line_count, content_sha256 FROM file WHERE project_id = ? AND path = ?",
             (self.services.project_id, path),
         ).fetchone()
         if row is None:
@@ -228,19 +236,21 @@ class ReadFileTool(BaseTool):
 
         total = int(row["line_count"] or 0)
         start = max(1, int(arguments.get("start_line") or 1))
+        if start > total:
+            return self.result("起始行超出文件范围。", error="bad_request")
         end = int(arguments.get("end_line") or start + MAX_READ_LINES - 1)
         end = min(end, start + MAX_READ_LINES - 1, max(total, start))
         try:
             blobs = read_blobs(self.services.root, self.services.ref, [path])
+            if hashlib.sha256(blobs[path]).hexdigest() != row["content_sha256"]:
+                return self.result("源码与索引不一致，请重建索引。", error="stale_source")
             body = blobs[path].decode("utf-8", "replace")
         except Exception as exc:  # noqa: BLE001 —— 工具不能抛
             return self.result(f"读取失败：{exc}", error="read_failed")
 
         lines = body.splitlines()
         selected = lines[start - 1 : end]
-        numbered = "\n".join(
-            f"{start + offset:>6}  {text}" for offset, text in enumerate(selected)
-        )
+        numbered = "\n".join(f"{start + offset:>6}  {text}" for offset, text in enumerate(selected))
         header = f"{path}:{start}-{end}（共 {total} 行）"
         return self.result(
             f"{header}\n{numbered}",
@@ -313,12 +323,18 @@ class _RelationTool(BaseTool):
             edge_line = int(edge["edge_line"] or 0)
             if self.outgoing:
                 callee = edge["dst_qualname"] or edge["dst_name"]
-                where = f" → {callee}（{edge['dst_path']}:{edge['dst_lineno']}）" if edge["dst_path"] else f" → {callee}"
+                where = (
+                    f" → {callee}（{edge['dst_path']}:{edge['dst_lineno']}）"
+                    if edge["dst_path"]
+                    else f" → {callee}"
+                )
             else:
                 where = f" ← {edge['src_qualname']}"
             lines.append(f"- {edge['src_path']}:{edge_line}  {where}{mark}")
             # 引用落在**调用点**（源文件的那一行）：这是读者要去看的地方。
-            citations.append(Citation(edge["src_path"], edge_line, edge_line, edge["src_qualname"], ""))
+            citations.append(
+                Citation(edge["src_path"], edge_line, edge_line, edge["src_qualname"], "")
+            )
             items.append(
                 {
                     "src_qualname": edge["src_qualname"],
@@ -366,8 +382,7 @@ class GetCalleesTool(_RelationTool):
 class GetModuleOverviewTool(BaseTool):
     name = "get_module_overview"
     description = (
-        "查看一个模块（文件）的职责、docstring 与主要符号。"
-        "回答「这个模块是干什么的」时用。"
+        "查看一个模块（文件）的职责、docstring 与主要符号。回答「这个模块是干什么的」时用。"
     )
     parameters = {
         "type": "object",

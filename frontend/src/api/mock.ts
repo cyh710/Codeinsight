@@ -314,6 +314,7 @@ function buildReplay(d: Derived, question: string): SseEvent[] {
       ],
       citations: [],
       abstained: false,
+      incomplete: false,
       reason: '',
     },
   })
@@ -604,6 +605,7 @@ export const mockApi = {
           citations: event.data.citations,
           tools_used: ['search_code', 'get_callers'],
           abstained: event.data.abstained,
+          incomplete: event.data.incomplete,
           abstention_reason: event.data.reason,
           evidence: [],
         }
@@ -616,6 +618,7 @@ export const mockApi = {
       citations: [],
       tools_used: [],
       abstained: true,
+      incomplete: false,
       abstention_reason: 'mock 回放未产出答案',
       evidence: [],
     }

@@ -7,6 +7,8 @@ import { api } from '../api/dataSource'
 import { waitForIndexing } from '../api/importFlow'
 import type { FileEntry, ProjectSummary, SymbolListItem } from '../api/types'
 import type { ProjectStore } from './types'
+import { chatStore } from './chatStore'
+import { workbenchStore } from './workbenchStore'
 
 const STORAGE_KEY = 'ci.projectId'
 
@@ -43,8 +45,10 @@ async function loadProjectData(
       api.listProjectSymbols(projectId, { limit: 500 }),
     ])
     const symbols: SymbolListItem[] = [...symbolsRes.items]
+    if (projectStore.getState().currentProjectId !== projectId) return
     set({ currentDetail: detail, files, symbols, loading: false })
   } catch (e) {
+    if (projectStore.getState().currentProjectId !== projectId) return
     const msg = e instanceof Error ? e.message : String(e)
     set({ loading: false, error: msg })
   }
@@ -66,10 +70,10 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
       const projects = await api.listProjects()
       set({ projects })
       const stored = loadStoredProjectId()
-      const preferred =
-        projects.find((p) => p.id === stored)?.id ?? projects[0]?.id ?? null
+      const preferred = projects.find((p) => p.id === stored)?.id ?? projects[0]?.id ?? null
       if (preferred !== null) {
         set({ currentProjectId: preferred })
+        chatStore.getState().switchProject(preferred)
         storeProjectId(preferred)
         await loadProjectData(set, preferred)
       }
@@ -81,6 +85,8 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
   selectProject: async (id: number) => {
     if (get().currentProjectId === id) return
     set({ currentProjectId: id })
+    chatStore.getState().switchProject(id)
+    workbenchStore.getState().resetProject()
     storeProjectId(id)
     await loadProjectData(set, id)
   },
@@ -96,6 +102,8 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
       })
       // 列表刷新 + 立即切到新项目（此时 status=indexing，状态行开始转圈）。
       set({ currentProjectId: created.id, currentDetail: null })
+      chatStore.getState().switchProject(created.id)
+      workbenchStore.getState().resetProject()
       storeProjectId(created.id)
       try {
         set({ projects: await api.listProjects() })
@@ -104,10 +112,10 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
       }
       const detail = await waitForIndexing((id) => api.getProject(id), created.id, {
         // onTick 让状态行（索引中/失败）实时跟着走。
-        onTick: (d) => set({ currentDetail: d }),
+        onTick: (d) => { if (get().currentProjectId === created.id) set({ currentDetail: d }) },
       })
-      set({ currentDetail: detail })
-      if (detail.status === 'ready') {
+      if (get().currentProjectId === created.id) set({ currentDetail: detail })
+      if (detail.status === 'ready' && get().currentProjectId === created.id) {
         await loadProjectData(set, created.id)
       }
       // failed/stale：数据保持空/旧，状态行如实呈现，不额外弹错。

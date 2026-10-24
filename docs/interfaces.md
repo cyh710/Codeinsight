@@ -236,3 +236,16 @@ def db_path(data_dir, name="codeinsight.db") -> Path
 保证账本和模型看到的永远一致（源文档 §3.1 第四层末句的精神）。
 
 > 对应源文档 §3.2「上下文管理」。
+
+## 11. 学习接入（请求 0005）
+
+`LearningBridge.prepare_goal(question, max_message_bytes=..., reading_context=...)`
+返回目标消息和 `PreparedKnowledge`。Agent 对同一回合保留快照，最终通过
+`finalize_answer` 输出知识来源、正文目标和最多三项学习入口，不重复检索更换版本。
+代码阅读目标走现有 `read_file` 的同一执行/事件/账本路径，教材不注入代码证据集合。
+`knowledge_directory` 只查 CodeInsight 安装包或源码资产，不依赖被分析项目的工作目录。
+`build_learning_tools` 提供可选异步知识工具；首版 Agent 默认通过有界前置检索注入，
+原 12 个项目工具及代码检索评测通道保持独立。
+
+schema 2 增加 `concept_rule_version(id,fingerprint)`，repo_state.concept_version 保持 INTEGER。
+正文变化只更新本体文案；指纹变化才触发相应项目的概念重新检测，输入为冻结 Git 源码。

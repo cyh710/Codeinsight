@@ -16,8 +16,8 @@ python -m pytest tests/concepts -q
 ```
 
 普通加载、阅读和检索不需要网络或模型密钥。概念 YAML 加载需要 PyYAML；
-已在 `docs/requests/0001-built-in-learning-library.md` 申请 A 线声明依赖。
-当前验证使用现有项目环境中已经安装的 PyYAML，不把偶然安装当成干净安装验收。
+已在 pyproject 与 lock 中声明；wheel 包含教材、本体和来源许可。
+资产由 CodeInsight 包或源码目录定位，不从被分析仓库或进程工作目录查找。
 
 ## 接入约定
 
@@ -58,17 +58,17 @@ final = bridge.finalize_answer('SQL 是语言；“表”组织数据，SELECT �
 问题，但不能把“这里”假装解释成功。`kind='code'` 明确交给 A 线重新读取项目代码。
 客户端附带的 title/snippet/body 不会进入模型。`knowledge_sources` 只列实际注入章节；
 正文的学习链接在 `learning_targets` 中独立保存，不因链接存在就伪造已引用来源。
-这些字段是 B 线接入建议，正式 HTTP 契约仍由 A 冻结、C 注册路由。
+这些兼容增量已依请求 0005 接入本分支；正式字段见 `docs/api-contract.md` §11。
 纯指代续问缺少目标时标记 `missing`，不把通用词检索产生的碰巧命中当作答案。
 同名术语根据当前文章语言消歧：React 中的“函数”指向 JavaScript 函数；
 没有足够上下文的歧义词保持普通文字。“请求”这样的通用词不独立当作 HTTP。
 
 - 默认复用 A 线 `split_identifiers`，入库与查询使用同一实例；也可通过 `tokenizer=` 注入对照实现。
-  当前环境未安装 jieba，共享分词器按 A 线实现回退到中文二元词，不将此结果描述为 jieba 验证。
+  当前接线使用 A 线已声明的 jieba，并保留中文二元词；未安装时仍有共享回退实现。
 - 搜索返回章节而不是整本书；来源与版本不藏在可截断正文里。
 - `reading_context(target)` 从本地资产重新读取，不信任客户端正文；旧版本/旧章节标记截断/失效。
 - `link_answer` 对正文首次出现的术语加链接，不触碰代码块、行内代码和已有链接。
-- `/learn/{topic_id}#{section_id}` 是 C 线需要拦截的阅读目标，不是已经部署的网站。
+- `/learn/{topic_id}#{section_id}` 由工作台拦截后打开右栏；未知目标保持文字。
 - 正文的 `{#section_id}` 是资产锚点标记；C 可按 sections 的 id/title/content 渲染，
   将 id 绑定到标题，不把锚点标记作为面向用户的正文显示。
 - `KnowledgeService` 分别保存项目 commit/index_epoch。未注册项目返回 not_indexed，
@@ -112,8 +112,23 @@ python -m codeinsight.cognitive.concepts.examples.score_review --review .ci/huma
 - 含 CC BY-SA 来源的文章文本按 CC BY-SA 4.0 分发；本项目新写的教学片段不视为原书代码。
 - 来源原始网页缓存位于 `.ci/source-snapshots/`，锁定哈希可用于核验，普通用户无需重新下载。
 
-## 尚待 A/C 完成的集成
+## 已接入的页面与验证
 
-全局知识 API、最终 SSE 增量字段、Agent 自动检索注入、实际点击导航、滚动恢复、
-干净安装依赖及 wheel 内资产打包，均属于请求 0001 的跨线事项。
-B 线的离线样例不是上述交互已经实现的证明。
+本分支已接入知识 API、Agent 有界知识上下文、普通/SSE 最终元数据，
+以及目录搜索、章节阅读、内部链接、项目实例、往返导航和阅读位置恢复。
+正文与代码共用右栏；客户端只传阅读目标，服务器重新取证。
+旧版本会提示更新，项目切换会停止旧请求并隔离上下文。
+
+```powershell
+python -m pytest -q
+cd frontend
+npm ci
+npm test
+npm run build
+npm run test:browser
+```
+
+浏览器测试使用本机 Edge；可通过 `CI_TEST_PYTHON` 指定项目 Python 环境。
+测试自建临时 Git/SQLite 和假 Provider，连接真实 API；不是静态 mock 页面验收。
+安装包验证与固定织忆 `agent-v1` 验证详见 `VALIDATION.md`。
+真实模型质量和独立人工阅读/精确率验收仍单独报告。

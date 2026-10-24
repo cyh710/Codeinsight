@@ -47,7 +47,7 @@ def link_answer(
         or r"(?!x)x",
         re.IGNORECASE,
     )
-    visited: dict[str, LearningTarget] = {}
+    visited: dict[tuple[str, str | None], LearningTarget] = {}
     seen_terms: set[str] = set()
 
     def replace(match: re.Match[str]) -> str:
@@ -69,7 +69,7 @@ def link_answer(
         if target is None or normalized in seen_terms:
             return term
         seen_terms.add(normalized)
-        visited[target.topic_id] = target
+        visited[(target.topic_id, target.section_id)] = target
         return f"[{term}]({target.href})"
 
     pieces: list[str] = []
@@ -80,7 +80,7 @@ def link_answer(
         for label, href in re.findall(r"\[([^\]]*)\]\((/learn/[^)]+)\)", protected):
             target = library.resolve_href(href)
             if target is not None:
-                visited.setdefault(target.topic_id, target)
+                visited.setdefault((target.topic_id, target.section_id), target)
                 seen_terms.add(re.sub(r"\s+", "", label).casefold())
         pieces.append(protected)
         cursor = match.end()

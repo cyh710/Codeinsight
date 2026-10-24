@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import Any
@@ -79,6 +80,11 @@ class LearningBridge:
                     _target(self.library.target(t)) for t in topic.prerequisites
                 ],
                 "related_targets": [_target(self.library.target(t)) for t in topic.related],
+                "learning_targets": [
+                    _target(self.library.resolve_href(href))
+                    for href in dict.fromkeys(re.findall(r"\]\((/learn/[^)]+)\)", topic.body))
+                    if self.library.resolve_href(href) is not None
+                ],
             },
         )
 

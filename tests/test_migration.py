@@ -62,6 +62,21 @@ def test_second_call_is_current(tmp_path: Path) -> None:
     assert ensure_schema(path) == "current"
 
 
+def test_v1_adds_rule_version_mapping_without_losing_project(tmp_path: Path) -> None:
+    path = tmp_path / "v1.db"
+    ensure_schema(path)
+    with open_sqlite(path) as conn:
+        conn.execute("INSERT INTO project (name, root_path) VALUES ('keep-project', '/fixture')")
+        conn.execute("DROP TABLE concept_rule_version")
+        conn.execute("PRAGMA user_version = 1")
+        conn.commit()
+    assert ensure_schema(path) == "migrated"
+    with open_sqlite(path) as conn:
+        assert conn.execute("SELECT name FROM project").fetchone()[0] == "keep-project"
+        assert conn.execute("SELECT COUNT(*) FROM concept_rule_version").fetchone()[0] == 0
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+
+
 def test_legacy_db_is_migrated_in_place(tmp_path: Path) -> None:
     path = tmp_path / "legacy.db"
     _make_legacy_db(path)

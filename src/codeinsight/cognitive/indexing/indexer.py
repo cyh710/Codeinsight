@@ -339,6 +339,7 @@ def run_index(
         # ── 概念同步（可选）─────────────────────────────────────
         concept_count = 0
         concept_instances = 0
+        concept_version = 0
         if concepts_dir:
             from codeinsight.cognitive.indexing.concepts_sync import sync_concepts
 
@@ -350,6 +351,7 @@ def run_index(
             )
             concept_count = sync.concepts
             concept_instances = sync.instances
+            concept_version = sync.version
 
         # ── 向量（可选）───────────────────────────────────────
         embedded = 0
@@ -364,16 +366,17 @@ def run_index(
         conn.execute(
             """
             INSERT INTO repo_state (project_id, head_commit, head_branch, indexed_at,
-                                    parser_version, index_epoch)
-            VALUES (?, ?, ?, datetime('now'), ?, ?)
+                                    parser_version, index_epoch, concept_version)
+            VALUES (?, ?, ?, datetime('now'), ?, ?, ?)
             ON CONFLICT(project_id) DO UPDATE SET
                 head_commit = excluded.head_commit,
                 head_branch = excluded.head_branch,
                 indexed_at = excluded.indexed_at,
                 parser_version = excluded.parser_version,
-                index_epoch = excluded.index_epoch
+                index_epoch = excluded.index_epoch,
+                concept_version = excluded.concept_version
             """,
-            (project_id, head_commit, head_branch, PARSER_VERSION, next_epoch),
+            (project_id, head_commit, head_branch, PARSER_VERSION, next_epoch, concept_version),
         )
 
         conn.commit()

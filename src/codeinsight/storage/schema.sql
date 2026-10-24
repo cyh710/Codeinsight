@@ -1,4 +1,9 @@
 -- CodeInsight · SQLite schema
+-- 检测规则指纹单独编号；教材文章与本体文案变化不使规则版本递增。
+CREATE TABLE IF NOT EXISTS concept_rule_version (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fingerprint TEXT NOT NULL UNIQUE
+);
 --
 -- 原则（源文档 §3.1 第四层末句）：
 --   「项目认知信息与实际代码版本关联，在代码变化后执行必要的增量更新，

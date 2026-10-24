@@ -374,6 +374,8 @@ export interface ExplainConceptRequest {
 }
 
 export interface ConceptExplanation {
+  learning_targets?: LearningTarget[]
+  error?: string | null
   concept_id: string
   depth: ConceptDepth
   summary: string

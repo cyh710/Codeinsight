@@ -245,15 +245,22 @@ def test_explain_quick_reads_ontology_without_llm(client: TestClient) -> None:
 def test_explain_project_derives_facts_from_index(client: TestClient) -> None:
     body = client.post("/projects/1/concepts/demo-cache/explain", json={"depth": "project"}).json()
     assert body["llm_used"] is False
-    assert len(body["facts"]) == 2
+    assert len(body["facts"]) == 3  # 一处确定检测证据与两条索引关系。
     assert body["facts"][0]["citation"]["path"] == "src/a.py"
-    assert body["inferences"] == []
+    assert body["inferences"][0]["confidence"] == 0.7
+    assert "import redis" in body["inferences"][0]["text"]
+    assert not any("import redis" in f["text"] for f in body["facts"])
 
 
-def test_explain_deep_until_llm_wired(client: TestClient) -> None:
+def test_explain_deep_without_provider_preserves_textbook(client: TestClient, monkeypatch) -> None:
+    from codeinsight.api import knowledge
+
+    monkeypatch.setattr(knowledge, "_PROVIDER_FACTORY", lambda: None)
     res = client.post("/projects/1/concepts/demo-cache/explain", json={"depth": "deep"})
-    assert res.status_code == 502
-    assert err(res.json())["code"] == "upstream_error"
+    assert res.status_code == 200
+    assert res.json()["llm_used"] is False
+    assert res.json()["error"] and res.json()["summary"]
+    assert len(res.json()["facts"]) == 3
 
 
 def test_concept_not_found(client: TestClient) -> None:

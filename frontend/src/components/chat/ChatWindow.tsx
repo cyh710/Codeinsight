@@ -43,6 +43,8 @@ export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Cit
                 回答分「事实」与「推断」两栏：事实都带 file:line 出处，可点进右栏查看；
                 <br />
                 推断是模型的主观判断，显式标注置信度。
+                <br />
+                也可以问“SQL 是什么”，从回答中的链接和右侧知识目录继续学习。
               </p>
             </div>
           )}
