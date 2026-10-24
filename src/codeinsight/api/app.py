@@ -15,6 +15,7 @@ from codeinsight.api.insights import router as insights_router
 from codeinsight.api.knowledge import router as knowledge_router
 from codeinsight.api.overview import router as overview_router
 from codeinsight.api.projects import router as projects_router
+from codeinsight.api.query import router as query_router
 from codeinsight.config import settings
 
 
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
     app.include_router(overview_router)
     app.include_router(knowledge_router)
     app.include_router(insights_router)
+    app.include_router(query_router)
 
     @app.get("/")
     def root() -> dict[str, str]:

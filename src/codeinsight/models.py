@@ -178,6 +178,10 @@ class Answer:
     incomplete: bool = False
     """走满轮次/调用上限仍未收尾——明确说「没做完」，不硬编答案。"""
 
+    evidence: list[dict[str, Any]] = field(default_factory=list)
+    """本回合检索到的证据（`chunk_id` / 路径 / 分数 / 命中通道），前端右栏用。"""
+
     task_id: str = ""
     model_id: str = ""
-    error: str | None = None
+    error: dict[str, Any] | None = None
+    """上游/运行错误（契约 §0.3 的 `{code,title,hint}`），不是给用户看的正文。"""

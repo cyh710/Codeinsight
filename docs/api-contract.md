@@ -129,8 +129,8 @@
 | `GET` | `/projects/{id}/concepts/{concept_id}/instances` | 概念实例 | ⬜ M1.5 |
 | `POST` | `/projects/{id}/concepts/{concept_id}/explain` | 三级深度解释 | ⬜ M1.5 |
 | `GET` | `/projects/{id}/changes` | 变更说明 | ⬜ M6 |
-| `POST` | `/query` | 非流式问答 | ⬜ M3 |
-| `POST` | `/query/stream` | **SSE** 流式问答 | ⬜ M3 |
+| `POST` | `/query` | 非流式问答 | ✅ M3 |
+| `POST` | `/query/stream` | **SSE** 流式问答 | ✅ M3 |
 
 ---
 
@@ -668,6 +668,7 @@
   "tools_used": ["search_code", "get_callers", "get_flow"],
   "abstained": false,
   "abstention_reason": "",
+  "incomplete": false,
   "evidence": [
     { "chunk_id": 512, "path": "backend/api/chat.py", "lineno": 42, "end_lineno": 60, "qualname": "backend.api.chat.stream_chat", "snippet": "...", "score": 0.87, "lanes": ["bm25", "symbol"], "concept_ids": [] }
   ]
@@ -680,6 +681,7 @@
 | `inferences[]` | `{text, confidence}`——**模型推断，显式标注** |
 | `abstained` | `true` = 检索无命中，**明确弃答** |
 | `abstention_reason` | `abstained=true` 时必填，其它情况为空串 |
+| `incomplete` | `true` = 走满轮次/工具上限仍未收尾。**与 `abstained` 是两回事**：一个是「没找到」，一个是「没做完」，界面提示不能混用 |
 | `evidence` | 本次用到的证据（前端右栏渲染） |
 
 > **`abstained=true` 时 `text` 也要写清楚"没找到"**，不能是空的。
@@ -764,9 +766,12 @@ data: <json>
   "inferences": [ { "text": "整体是同步编排", "confidence": 0.7 } ],
   "citations": [ { "path": "backend/api/chat.py", "lineno": 42, "end_lineno": 60, "qualname": "backend.api.chat.stream_chat", "snippet": "..." } ],
   "abstained": false,
-  "reason": ""
+  "reason": "",
+  "incomplete": false
 }
 ```
+
+> `incomplete` 与 `abstained` 同 §8.1：前者是「没做完」，后者是「没找到」，不能合并提示。
 
 > `facts` 与 `inferences` **必须分开显示**（ADR 0007）。
 > `facts[].citation` **必须有**——没有 `file:line` 的 fact 不该出现在 `facts` 里。
@@ -833,3 +838,4 @@ done                                ← 恰好一次，最后
 | 日期 | 变更 |
 |---|---|
 | 2026-10-24 | 初版，M1 冻结 |
+| 2026-10-24 | M3：`/query` 与 `/query/stream` 实装；`incomplete` 字段加入 §8.1 响应与 §8.3 `answer` 事件（区分「没做完」与 `abstained`「没找到」）。**唯一一处字段新增**，前端 `types.ts` 已同步 |

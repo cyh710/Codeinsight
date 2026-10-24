@@ -72,7 +72,7 @@ def build_provider(settings: Settings | None = None) -> OpenAICompatProvider:
 
 def open_agent(
     db_path: str | Path,
-    project_name: str,
+    project: str | int,
     *,
     store: ConversationStore | None = None,
     provider=None,
@@ -83,19 +83,28 @@ def open_agent(
     config: RuntimeConfig | None = None,
     settings: Settings | None = None,
 ) -> AgentSession:
-    """打开某个项目的 Agent 会话。"""
+    """打开某个项目的 Agent 会话。
+
+    `project` 可以是项目名（CLI）或项目 id（API）——两种入口走同一套装配，
+    否则 CLI 能跑、接口缺一路的情况迟早出现，而且没人会发现。
+    """
     conf = settings or default_settings
     path = Path(db_path)
     if not path.exists():
         raise FileNotFoundError(f"索引库不存在：{path}（先跑 ci index）")
 
     conn = open_sqlite(path, row_factory=True)
-    row = conn.execute(
-        "SELECT id, name, root_path FROM project WHERE name = ?", (project_name,)
-    ).fetchone()
+    if isinstance(project, int):
+        row = conn.execute(
+            "SELECT id, name, root_path FROM project WHERE id = ?", (project,)
+        ).fetchone()
+    else:
+        row = conn.execute(
+            "SELECT id, name, root_path FROM project WHERE name = ?", (project,)
+        ).fetchone()
     if row is None:
         conn.close()
-        raise ProjectNotFound(project_name)
+        raise ProjectNotFound(str(project))
 
     project_id = int(row["id"])
     state = conn.execute(

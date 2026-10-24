@@ -114,6 +114,7 @@ class SearchCodeTool(BaseTool):
                 "query": query,
                 "items": [
                     {
+                        "chunk_id": item.chunk_id,
                         "path": item.path,
                         "lineno": item.lineno,
                         "end_lineno": item.end_lineno,

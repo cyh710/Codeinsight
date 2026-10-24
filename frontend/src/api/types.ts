@@ -460,6 +460,8 @@ export interface QueryResponse {
   tools_used: string[]
   abstained: boolean
   abstention_reason: string
+  /** 走满轮次/工具上限仍未收尾。true 时要提示「没分析完」，不能当成正常答案。 */
+  incomplete: boolean
   evidence: Evidence[]
 }
 
@@ -500,6 +502,8 @@ export interface SseAnswerEvent {
   citations: Citation[]
   abstained: boolean
   reason: string
+  /** 未收尾（轮次/工具上限）。与 abstained 是两回事。 */
+  incomplete: boolean
 }
 
 export interface SseErrorEvent {

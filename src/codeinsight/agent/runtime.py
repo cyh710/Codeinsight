@@ -175,6 +175,7 @@ class AgentRuntime:
                         answer.tools_used.append(call.name)
                     focus = _update_focus(focus, call.name, result.data)
                     _absorb_grounding(grounding, result.data)
+                    _collect_evidence(answer, call.name, result.data)
                     await _emit_evidence(emit, call.name, result.data)
                     await _emit(
                         emit,
@@ -362,6 +363,33 @@ def _update_focus(focus: Focus, tool_name: str, data: dict[str, Any]) -> Focus:
     if tool_name == "get_module_overview" and data.get("path"):
         return focus.merge(module=data.get("module"), paths=(data["path"],))
     return focus
+
+
+def _collect_evidence(answer: Answer, tool_name: str, data: dict[str, Any]) -> None:
+    """把检索命中的完整字段留在 Answer 上，供非流式端点组装 `evidence`。
+
+    流式的 `evidence` 事件按契约 §8.3 只要 6 个字段；`chunk_id` / `score`
+    是 §8.1 才有的，所以放在这里而不是事件里——事件词汇表是冻结的。
+    """
+    if tool_name != "search_code":
+        return
+    seen = {item.get("chunk_id") for item in answer.evidence}
+    for item in data.get("items") or []:
+        if item.get("chunk_id") in seen:
+            continue
+        answer.evidence.append(
+            {
+                "chunk_id": item.get("chunk_id"),
+                "path": item.get("path"),
+                "lineno": item.get("lineno"),
+                "end_lineno": item.get("end_lineno"),
+                "qualname": item.get("qualname"),
+                "snippet": str(item.get("snippet") or "")[:400],
+                "score": item.get("score", 0.0),
+                "lanes": item.get("lanes") or [],
+                "concept_ids": item.get("concepts") or [],
+            }
+        )
 
 
 async def _emit_evidence(emit: Emit | None, tool_name: str, data: dict[str, Any]) -> None:
