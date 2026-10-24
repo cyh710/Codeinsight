@@ -53,9 +53,7 @@ def get_graph(
         require_project(conn, project_id)
         edge_kinds = _parse_kinds(kinds)
         if not edge_kinds:
-            raise bad_request(
-                "至少要保留一种边类型", hint=f"可选：{', '.join(GRAPH_EDGE_KINDS)}"
-            )
+            raise bad_request("至少要保留一种边类型", hint=f"可选：{', '.join(GRAPH_EDGE_KINDS)}")
         if not 1 <= depth <= MAX_DEPTH:
             raise bad_request(f"depth 必须在 1..{MAX_DEPTH}", hint="更大范围请分次探索")
         max_nodes = max(1, min(max_nodes, MAX_NODES))
@@ -176,9 +174,7 @@ def _bfs(
     return selected, distances, candidates, truncated
 
 
-def _unvisited_endpoint(
-    src: int, dst: int, distances: dict[int, int]
-) -> tuple[int | None, int]:
+def _unvisited_endpoint(src: int, dst: int, distances: dict[int, int]) -> tuple[int | None, int]:
     """一条边里「尚未访问的那一端」；两端都访问过或是同一个节点则没有。"""
     if src == dst:
         return None, src
@@ -313,9 +309,7 @@ def _concepts_of(conn: sqlite3.Connection, ids: Sequence[int]) -> dict[int, list
     return out
 
 
-def _degree_map(
-    conn: sqlite3.Connection, ids: Sequence[int], column: str
-) -> dict[int, int]:
+def _degree_map(conn: sqlite3.Connection, ids: Sequence[int], column: str) -> dict[int, int]:
     out: dict[int, int] = {}
     for chunk in _chunks(ids):
         ph = _placeholders(len(chunk))
@@ -395,7 +389,9 @@ def build_timeline(conn: sqlite3.Connection, project_id: int, *, limit: int = 30
         (project_id, limit),
     ).fetchall()
     for run in runs:
-        run_id, base, commit, mode, started_at, finished_at, ok, files_total, files_changed = run[:9]
+        run_id, base, commit, mode, started_at, finished_at, ok, files_total, files_changed = run[
+            :9
+        ]
         symbols_added, symbols_removed, stats_raw = run[9], run[10], run[11]
         change = conn.execute(
             """
@@ -418,9 +414,7 @@ def build_timeline(conn: sqlite3.Connection, project_id: int, *, limit: int = 30
             modified = _record_count(modified_raw, files=True)
             deleted = _record_count(removed_raw, files=True)
             symbols_changed = (
-                _record_count(added_raw)
-                + _record_count(removed_raw)
-                + _record_count(modified_raw)
+                _record_count(added_raw) + _record_count(removed_raw) + _record_count(modified_raw)
             )
         stats = _json(stats_raw, {})
         if symbols_changed is None and isinstance(stats, dict):
@@ -495,9 +489,7 @@ def build_timeline(conn: sqlite3.Connection, project_id: int, *, limit: int = 30
                 "total": (added or 0) + (modified or 0) + (deleted or 0),
             },
             "symbols_changed": (
-                _record_count(added_raw)
-                + _record_count(removed_raw)
-                + _record_count(modified_raw)
+                _record_count(added_raw) + _record_count(removed_raw) + _record_count(modified_raw)
             ),
             "symbols_added": None,
             "symbols_removed": None,

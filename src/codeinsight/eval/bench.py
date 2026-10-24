@@ -84,11 +84,7 @@ def build_tasks(
                 )
             )
         elif kind == "concept":
-            tasks.extend(
-                _concept_tasks(
-                    conn, project_id=project_id, n=n_per_kind, seed=seed
-                )
-            )
+            tasks.extend(_concept_tasks(conn, project_id=project_id, n=n_per_kind, seed=seed))
         else:
             raise ValueError(f"未知题型：{kind}（可用：name, docstring, concept）")
     return tasks
@@ -151,9 +147,7 @@ def _concept_tasks(
     return tasks
 
 
-def persist_tasks(
-    conn: sqlite3.Connection, *, project_id: int, tasks: list[BenchTask]
-) -> int:
+def persist_tasks(conn: sqlite3.Connection, *, project_id: int, tasks: list[BenchTask]) -> int:
     """写入 `eval_task`（幂等）。返回写入条数。"""
     for task in tasks:
         conn.execute(

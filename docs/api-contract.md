@@ -995,5 +995,56 @@ done                                ← 恰好一次，最后
 |---|---|
 | 2026-10-24 | 初版，M1 冻结 |
 | 2026-10-24 | M3：`/query` 与 `/query/stream` 实装；`incomplete` 字段加入 §8.1 响应与 §8.3 `answer` 事件（区分「没做完」与 `abstained`「没找到」）。前端 `types.ts` 已同步 |
-| 2026-10-24 | 请求 0001/0005 落地：§8.4 知识扩展——`reading_context` 入参、`knowledge_sources` / `learning_*` / `reading_status` / `knowledge_error` 出参、`answer` 事件带最终 `text`；新增 `/knowledge/*` 三个端点。教材来源与项目 `citations` **永不混用** |
+| 2026-10-24 | 请求 0001/0003/0005 落地：§8.4 知识扩展——`reading_context` 入参、`knowledge_sources` / `learning_*` / `reading_status` / `knowledge_error` 出参、`answer` 事件带最终 `text`；新增 `/knowledge/*` 三个端点。教材来源与项目 `citations` **永不混用** |
 | 2026-10-24 | M8：新增 §4.5 `/projects/{id}/graph`（BFS 邻域、概念标签、`truncated`）与 §7.2 `/projects/{id}/timeline`。`index_run.started_at` 改存墙钟 ISO 时间（此前误存 `time.monotonic()`） |
+| 2026-10-24 | 左栏按需拉符号：`/projects/{id}/symbols` 的 `path` / `q` 过滤转义 LIKE 通配符（`_` 是普通字符），`path` 同时支持精确路径 OR 目录前缀 |
+
+## 11. 内置知识与阅读上下文
+
+全局教材与项目库分开，浏览不要求已导入项目，也不需要模型密钥。
+
+| 方法 | 路径 | 返回 |
+|---|---|---|
+| GET | `/knowledge/tree` | `{groups:[{title,topics:[{id,title,summary,version,href}]}],version}` |
+| GET | `/knowledge/topics/{topic_id}` | 文章及稳定章节、版本、来源、前置/关联目标与已解析正文目标 |
+| GET | `/knowledge/search?q=&limit=` | `{items:KnowledgeHit[],total,version,knowledge_sources}`；limit 1–50，默认 5 |
+| GET | `/projects/{id}/knowledge/topics/{topic_id}/instances` | 当前项目关联概念实例、head_commit、index_epoch、status；最多 50 项，非完整召回证明 |
+| GET | `/projects/{id}/code?path=&start_line=&end_line=` | 索引对应源码窗口 `{path,start_line,end_line,content,head_commit}`，最多 200 行 |
+
+`LearningTarget` 为 `{topic_id,section_id:null|string,title,version,href}`。
+站内地址固定 `/learn/{topic_id}#{section_id}`（章节可省略）；不可解析时保持普通文字。
+`KnowledgeHit` 为 `{target,snippet,score,sources}`，source 包含作者、原始 URL、来源版本、
+许可/许可 URL、获取时间、快照 SHA256 和修改说明。知识引用不能转换成项目 Citation。
+
+文章包含 `id/title/group/summary/body/sections[{id,title,content}]/version/dialect/concept_ids`，
+以及 `sources/prerequisite_targets/related_targets/learning_targets`。
+Markdown `{#section_id}` 是内部锚点标记，前端按 sections 渲染，不显示该标记。
+未知主题返回 404；未知/旧章节的历史链接打开当前文章并提示更新。
+
+`POST /query` 与 `/query/stream` 增加可选 `reading_context`：
+
+```json
+{"kind":"knowledge","topic_id":"python-functions","section_id":"example","version":"文章SHA256"}
+```
+
+或代码目标：
+
+```json
+{"kind":"code","project_id":1,"path":"store.py","lineno":3,"end_lineno":6}
+```
+
+代码目标必须绑定本次项目。服务端重读目标，忽略客户端 snippet/body 等说明。
+知识旧版本/删除章节/预算不足用 `reading_status` 和 `knowledge_error` 明确降级，
+其中 `none/ok/missing/invalid/not_found/stale/outside_budget` 表示相应状态。
+
+普通问答响应及 SSE 最终 `answer` 增加以下字段，其他字段保持原约定：
+
+- `knowledge_sources: KnowledgeHit[]`：实际纳入本回合上下文的教材章节。
+- `learning_targets: LearningTarget[]`：正文可点击的已解析目标，数量不受推荐上限限制。
+- `learning_entries: LearningTarget[]`：末尾推荐，至多三项。
+- `reading_status: string`、`knowledge_error: null|string`：阅读目标处理状态，软错误不丢弃教材。
+- SSE 最终 `text`：校验后的完整正文，前端替换增量正文，恢复站内链接可点击状态。
+
+"SQL 是什么"有教材时不因无代码位置弃答；"这个项目哪里用了 SQL"仍须真实项目证据。
+quick/project 不访问 Provider；deep 无配置/失败时 200 返回已有教材与证据，
+`error` 写明降级原因、`llm_used=false`。概念详情的 `learning_targets` 指向相关教材。

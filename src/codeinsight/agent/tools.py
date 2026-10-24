@@ -124,8 +124,6 @@ def build_tools(services: ToolServices) -> ToolRegistry:
         from codeinsight.cognitive.concepts.tools import build_learning_tools
 
         tools.extend(
-            build_learning_tools(
-                services.learning, max_bytes=services.budget.max_tool_result_bytes
-            )
+            build_learning_tools(services.learning, max_bytes=services.budget.max_tool_result_bytes)
         )
     return ToolRegistry(tools)

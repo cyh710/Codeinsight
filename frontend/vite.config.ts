@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { env } from 'node:process'
 
 // 端口 8020 是 CodeInsight 后端（契约 §0.1）。与织忆同构：
 // 浏览器一律走 /api 前缀，proxy 负责剥掉前缀转发。
@@ -16,7 +17,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8020',
+        target: env.CI_API_TARGET || 'http://127.0.0.1:8020',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
         configure: (proxy) => {

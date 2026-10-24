@@ -499,8 +499,8 @@ function buildReplay(d: Derived, snap: Snapshot, question: string): SseEvent[] {
       ],
       citations: [],
       abstained: false,
-      reason: '',
       incomplete: false,
+      reason: '',
     },
   })
   events.push({ event: 'done', data: { abstained: false, reason: '' } })

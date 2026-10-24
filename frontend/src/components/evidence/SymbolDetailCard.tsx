@@ -2,13 +2,14 @@
  * 符号详情卡：定义（Monaco 只读）+ 调用者/被调者（不确定的标 ⚠）。
  * 数据来自 `GET /projects/{id}/symbols/{qualname}`（mock 下同样形状）。
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AlertTriangle, ArrowRightLeft, Share2 } from 'lucide-react'
 import { api } from '../../api/dataSource'
 import type { RelationRef, SymbolDetail } from '../../api/types'
 import { projectStore } from '../../store/projectStore'
 import { viewStore } from '../../store/viewStore'
 import CodeViewer from './CodeViewer'
+import { panelKey, workbenchStore } from '../../store/workbenchStore'
 
 function RelationList({ title, items }: { title: string; items: RelationRef[] }) {
   if (items.length === 0) return null
@@ -17,7 +18,10 @@ function RelationList({ title, items }: { title: string; items: RelationRef[] })
       <h4 className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{title}</h4>
       <ul className="mt-1 space-y-1">
         {items.slice(0, 12).map((r, i) => (
-          <li key={`${r.qualname}:${i}`} className="flex items-start gap-1.5 text-[11px] leading-relaxed">
+          <li
+            key={`${r.qualname}:${i}`}
+            className="flex items-start gap-1.5 text-[11px] leading-relaxed"
+          >
             {r.uncertain ? (
               <span
                 className="mt-px flex shrink-0 items-center gap-0.5 text-warning"
@@ -28,7 +32,10 @@ function RelationList({ title, items }: { title: string; items: RelationRef[] })
             ) : (
               <span className="mt-px shrink-0 text-slate-300">·</span>
             )}
-            <span className="min-w-0 truncate font-mono text-slate-600" title={`${r.path}:${r.lineno}`}>
+            <span
+              className="min-w-0 truncate font-mono text-slate-600"
+              title={`${r.path}:${r.lineno}`}
+            >
               {r.qualname}
             </span>
             <span className="ml-auto shrink-0 font-mono text-[10px] text-slate-400">
@@ -36,15 +43,20 @@ function RelationList({ title, items }: { title: string; items: RelationRef[] })
             </span>
           </li>
         ))}
-        {items.length > 12 && (
-          <li className="text-[10px] text-slate-400">…共 {items.length} 条</li>
-        )}
+        {items.length > 12 && <li className="text-[10px] text-slate-400">…共 {items.length} 条</li>}
       </ul>
     </div>
   )
 }
 
-export default function SymbolDetailCard({ qualname }: { qualname: string }) {
+export default function SymbolDetailCard({
+  qualname,
+  focusLine,
+}: {
+  qualname: string
+  focusLine?: number
+}) {
+  const root = useRef<HTMLElement>(null)
   const projectId = projectStore.getState().currentProjectId
   // 状态带"属于哪个 qualname"的键：换符号时旧数据自然失效（显示加载态），
   // 不用在 effect 里同步清空——同步 setState 会触发级联渲染。
@@ -57,8 +69,10 @@ export default function SymbolDetailCard({ qualname }: { qualname: string }) {
     api
       .getSymbol(projectId, qualname)
       .then((d) => alive && setState({ for: qualname, detail: d }))
-      .catch((e) =>
-        alive && setFailed({ for: qualname, message: e instanceof Error ? e.message : String(e) }),
+      .catch(
+        (e) =>
+          alive &&
+          setFailed({ for: qualname, message: e instanceof Error ? e.message : String(e) }),
       )
     return () => {
       alive = false
@@ -67,6 +81,23 @@ export default function SymbolDetailCard({ qualname }: { qualname: string }) {
 
   const error = failed?.for === qualname ? failed.message : ''
   const detail = state?.for === qualname ? state.detail : null
+  useLayoutEffect(() => {
+    if (!detail || projectId === null) return
+    workbenchStore
+      .getState()
+      .setReading({
+        kind: 'code',
+        project_id: projectId,
+        path: detail.path,
+        lineno: focusLine ?? detail.lineno,
+        end_lineno: Math.max(focusLine ?? detail.lineno, detail.end_lineno),
+      })
+    const scroll = root.current?.closest('[data-reading-scroll]') as HTMLElement | null
+    if (scroll)
+      scroll.scrollTop =
+        workbenchStore.getState().scrollPositions[panelKey(workbenchStore.getState().rightPanel)] ??
+        0
+  }, [detail, projectId, focusLine])
 
   if (error) {
     return <p className="px-1 py-6 text-center text-xs text-danger">{error}</p>
@@ -76,7 +107,7 @@ export default function SymbolDetailCard({ qualname }: { qualname: string }) {
   }
 
   return (
-    <article className="space-y-2.5">
+    <article ref={root} data-reading-ready className="space-y-2.5">
       <header>
         <div className="flex items-start gap-2">
           <p className="min-w-0 flex-1 break-all font-mono text-[11px] text-slate-400">
@@ -111,10 +142,34 @@ export default function SymbolDetailCard({ qualname }: { qualname: string }) {
       )}
 
       <CodeViewer
+        viewKey={`${projectId}:${qualname}`}
         code={detail.source}
         language={detail.path.endsWith('.py') ? 'python' : 'text'}
         startLine={detail.lineno}
+        highlightLines={
+          focusLine
+            ? [
+                [
+                  Math.max(1, focusLine - detail.lineno + 1),
+                  Math.max(1, focusLine - detail.lineno + 1),
+                ],
+              ]
+            : []
+        }
       />
+      {detail.concept_ids.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {detail.concept_ids.map((id) => (
+            <button
+              key={id}
+              onClick={() => workbenchStore.getState().openConcept(id)}
+              className="rounded bg-warning/10 px-2 py-1 text-[11px] text-warning"
+            >
+              了解 {id}
+            </button>
+          ))}
+        </div>
+      )}
 
       {detail.ambiguous && detail.alternatives && detail.alternatives.length > 0 && (
         <p className="rounded-lg bg-warning/10 px-2.5 py-1.5 text-[11px] text-warning">

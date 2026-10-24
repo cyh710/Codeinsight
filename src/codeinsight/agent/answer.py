@@ -81,7 +81,9 @@ class Grounding:
 
     def add_instances(self, instances: Iterable[ConceptInstance]) -> None:
         for instance in instances:
-            self.add(GroundedFile(instance.path, instance.lineno, instance.lineno, instance.qualname))
+            self.add(
+                GroundedFile(instance.path, instance.lineno, instance.lineno, instance.qualname)
+            )
 
     def add_citations(self, citations: Iterable[Citation]) -> None:
         for item in citations:
@@ -175,9 +177,7 @@ def split_answer(text: str, grounding: Grounding) -> SplitAnswer:
             plain = _plain_text(_strip_markers(cleaned))
             if not plain:
                 continue  # 只剩排版符号（比如一个孤零零的 `**`），不是主张
-            result.inferences.append(
-                {"text": plain, "confidence": DEFAULT_INFERENCE_CONFIDENCE}
-            )
+            result.inferences.append({"text": plain, "confidence": DEFAULT_INFERENCE_CONFIDENCE})
 
     result.text = _join_paragraphs(paragraphs)
     return result

@@ -114,9 +114,7 @@ def _sole_project(path: Path) -> str:
         return names[0]
     if not names:
         raise ProjectNotFound("这个实例还没有索引任何项目（先跑 ci index）")
-    raise ProjectNotFound(
-        f"有多个项目，必须用 --project 指定：{', '.join(names)}"
-    )
+    raise ProjectNotFound(f"有多个项目，必须用 --project 指定：{', '.join(names)}")
 
 
 def list_tools(runtime: McpRuntime) -> list[types.Tool]:
@@ -133,7 +131,9 @@ def list_tools(runtime: McpRuntime) -> list[types.Tool]:
     return tools
 
 
-async def call_tool(runtime: McpRuntime, name: str, arguments: dict[str, Any]) -> types.CallToolResult:
+async def call_tool(
+    runtime: McpRuntime, name: str, arguments: dict[str, Any]
+) -> types.CallToolResult:
     """分发一次调用。**不抛异常**：工具失败也要让外部 agent 看到可读原因。"""
     if name == "list_projects":
         return _projects_result(runtime)

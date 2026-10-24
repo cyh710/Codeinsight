@@ -89,14 +89,34 @@ def _answer(**overrides) -> Answer:
 
 def _events() -> list[RuntimeEvent]:
     return [
-        RuntimeEvent("meta", {"task_id": "t1", "conversation_id": "", "model": "fake", "tools": []}),
+        RuntimeEvent(
+            "meta", {"task_id": "t1", "conversation_id": "", "model": "fake", "tools": []}
+        ),
         RuntimeEvent("tool", {"name": "search_code", "status": "running", "summary": "搜索"}),
-        RuntimeEvent("evidence", {"path": "backend/api/chat.py", "lineno": 42, "end_lineno": 60,
-                                  "qualname": "backend.api.chat.chat_stream", "snippet": "x",
-                                  "lanes": ["bm25"], "concepts": []}),
+        RuntimeEvent(
+            "evidence",
+            {
+                "path": "backend/api/chat.py",
+                "lineno": 42,
+                "end_lineno": 60,
+                "qualname": "backend.api.chat.chat_stream",
+                "snippet": "x",
+                "lanes": ["bm25"],
+                "concepts": [],
+            },
+        ),
         RuntimeEvent("delta", {"text": "入口是"}),
-        RuntimeEvent("answer", {"facts": [], "inferences": [], "citations": [],
-                                "abstained": False, "reason": "", "incomplete": False}),
+        RuntimeEvent(
+            "answer",
+            {
+                "facts": [],
+                "inferences": [],
+                "citations": [],
+                "abstained": False,
+                "reason": "",
+                "incomplete": False,
+            },
+        ),
         RuntimeEvent("done", {"abstained": False, "reason": ""}),
     ]
 

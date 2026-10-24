@@ -109,11 +109,11 @@ class AgentRuntime:
         )
 
         session_key = f"{project_id}:{conversation_id}"
-        prior = self.store.history(session_key)
+        prior = self.store.history(session_key) if conversation_id else []
         goal = {"role": "user", "content": question}
         current: list[dict[str, Any]] = []
         grounding = Grounding()
-        focus = self.store.focus(session_key)
+        focus = self.store.focus(session_key) if conversation_id else Focus()
         final_text = ""
         prepared = None
 
@@ -323,7 +323,7 @@ class AgentRuntime:
                 ),
             )
 
-        if answer.error is None:
+        if answer.error is None and conversation_id:
             self.store.record_turn(session_key, question, answer.text, focus=focus)
         return answer
 

@@ -117,7 +117,9 @@ def assemble(
 
     返回 `(messages, 丢掉了多少组)`。
     """
-    goal_text, goal_truncated = truncate_bytes(str(goal.get("content") or ""), budget.max_message_bytes)
+    goal_text, goal_truncated = truncate_bytes(
+        str(goal.get("content") or ""), budget.max_message_bytes
+    )
     if goal_truncated:
         goal_text += "\n\n（用户问题过长，已按单消息预算截断）"
     pinned = {**goal, "content": goal_text}

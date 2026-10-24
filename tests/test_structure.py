@@ -88,9 +88,7 @@ def client(seeded: sqlite3.Connection) -> TestClient:
 
 
 def test_graph_focus_depth_one(client: TestClient) -> None:
-    body = client.get(
-        "/projects/1/graph", params={"qualname": "src.a.entry", "depth": 1}
-    ).json()
+    body = client.get("/projects/1/graph", params={"qualname": "src.a.entry", "depth": 1}).json()
     assert body["mode"] == "focus"
     assert body["center"] == {"qualname": "src.a.entry", "path": "src/a.py", "lineno": 1}
     # 中心恒在第一位：前端据此决定初始视口。
@@ -104,9 +102,7 @@ def test_graph_focus_depth_one(client: TestClient) -> None:
 
 
 def test_graph_depth_two_reaches_transitive_callee(client: TestClient) -> None:
-    body = client.get(
-        "/projects/1/graph", params={"qualname": "src.a.entry", "depth": 2}
-    ).json()
+    body = client.get("/projects/1/graph", params={"qualname": "src.a.entry", "depth": 2}).json()
     depths = {n["qualname"]: n["depth"] for n in body["nodes"]}
     assert depths["src.c.deep"] == 2  # entry → helper → deep
     assert "src.c.island" not in depths
@@ -202,21 +198,21 @@ def seeded_timeline(seeded: sqlite3.Connection) -> sqlite3.Connection:
         " finished_at, ok, files_total, files_changed, symbols_added, stats_json)"
         " VALUES (2, 1, 'c0', 'c1', 'incremental', '2026-10-21T09:00:00+00:00',"
         " '2026-10-21 09:00:20', 1, 10, 5, 3,"
-        " '{\"changed_symbols\": 7, \"stale_design_decisions\": 1}')"
+        ' \'{"changed_symbols": 7, "stale_design_decisions": 1}\')'
     )
     c.execute(
         "INSERT INTO change_record (id, project_id, commit_sha, source, summary, occurred_at,"
         " added_json, removed_json, modified_json) VALUES (1, 1, 'c1', 'git', '新增队列',"
         " '2026-10-21 09:00:05',"
-        " '{\"files\": [\"a.py\"], \"symbols\": [{\"qualname\": \"x\"}]}',"
-        " '{\"files\": [\"b.py\"], \"symbols\": []}',"
-        " '{\"files\": [\"c.py\"], \"symbols\": [{\"qualname\": \"y\"}, {\"qualname\": \"z\"}]}')"
+        ' \'{"files": ["a.py"], "symbols": [{"qualname": "x"}]}\','
+        ' \'{"files": ["b.py"], "symbols": []}\','
+        ' \'{"files": ["c.py"], "symbols": [{"qualname": "y"}, {"qualname": "z"}]}\')'
     )
     c.execute(
         "INSERT INTO staleness_report (project_id, commit_sha, total_chunks, stale_chunks,"
         " stale_rate, by_reason) VALUES (1, 'c1', 100, 0, 0.0,"
-        " '{\"design_decisions\": [{\"doc_id\": \"0001\", \"title\": \"旧设计\","
-        " \"reason\": \"证据消失\"}]}')"
+        ' \'{"design_decisions": [{"doc_id": "0001", "title": "旧设计",'
+        ' "reason": "证据消失"}]}\')'
     )
     c.execute(
         "INSERT INTO change_record (id, project_id, commit_sha, source, summary, occurred_at,"
@@ -246,9 +242,7 @@ def test_timeline_merges_runs_and_external_changes(
     assert incremental["summary"] == "新增队列"
     # change_record 的时间优先于 index_run（同一动作的起点）
     assert incremental["at"] == "2026-10-21T09:00:05Z"
-    assert incremental["stale_design_decisions"] == [
-        {"doc_id": "0001", "title": "旧设计"}
-    ]
+    assert incremental["stale_design_decisions"] == [{"doc_id": "0001", "title": "旧设计"}]
 
     full = body["items"][2]
     assert full["mode"] == "full"

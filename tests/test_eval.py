@@ -50,8 +50,15 @@ def conn() -> sqlite3.Connection:
         " header, docstring, source_sha256)"
         " VALUES (?, 1, ?, ?, ?, 'function', ?, ?, 'def f():', ?, 'h')",
         [
-            (index + 1, index % 4 + 1, qualname, name, index * 10 + 1, index * 10 + 5,
-             "处理一件事并返回结果，包含足够的描述长度")
+            (
+                index + 1,
+                index % 4 + 1,
+                qualname,
+                name,
+                index * 10 + 1,
+                index * 10 + 5,
+                "处理一件事并返回结果，包含足够的描述长度",
+            )
             for index, (qualname, name) in enumerate(NAMES)
         ],
     )
@@ -185,9 +192,7 @@ def test_none_arm_scores_zero_without_being_skipped(conn) -> None:
 
 def test_dense_arm_is_marked_unavailable_rather_than_degraded(conn) -> None:
     tasks = build_tasks(conn, project_id=1, n_per_kind=2, seed=7)
-    run = run_arm(
-        conn, project_id=1, tasks=tasks, arm=ARMS["hybrid"], k=5, dense_ok=False
-    )
+    run = run_arm(conn, project_id=1, tasks=tasks, arm=ARMS["hybrid"], k=5, dense_ok=False)
     assert run.available is False
     assert "稠密" in run.reason
 

@@ -48,7 +48,7 @@ def main() -> None:
         "agent_tool_result": asdict(prepared.as_tool_result()),
         "project_instances": service.find_instances(1, topic_id="sql-database"),
         "provider_calls": 0,
-        "limitations": "本文件是 B 服务数据演示；HTTP、SSE、面板导航须由 A/C 接入后验收。",
+        "limitations": "本文件只演示 B 服务数据，不代表模型质量或界面验收；HTTP/SSE 与导航另有集成及浏览器测试。",
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

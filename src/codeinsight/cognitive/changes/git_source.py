@@ -37,7 +37,9 @@ class GitDiffSource:
     def _git(self, *args: str) -> str:
         cmd = ["git", "-C", str(self.root), "-c", "core.quotepath=false", *args]
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, encoding="utf-8", check=False
+            )
         except OSError as exc:  # pragma: no cover —— git 不在 PATH 上
             raise GitError(f"无法执行 git：{exc}") from exc
         if proc.returncode != 0:

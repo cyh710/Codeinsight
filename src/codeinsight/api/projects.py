@@ -44,6 +44,7 @@ def connect_db(project_id: int) -> sqlite3.Connection:
     path = db_path(settings.data_dir)
     if not path.exists():
         raise not_found_project(project_id)
+    ensure_schema(path)
     conn = open_sqlite(path, row_factory=True)
     return conn
 

@@ -261,10 +261,7 @@ def _cmd_eval(args: argparse.Namespace) -> int:
             else:
                 summary = result.summarize(k=args.k, kinds=kinds, seed=args.seed)
                 mrr = summary["overall"]["mrr"]
-                print(
-                    f"  {arm.name:8} MRR {mrr.value:.3f}"
-                    f" [{mrr.low:.3f}, {mrr.high:.3f}]"
-                )
+                print(f"  {arm.name:8} MRR {mrr.value:.3f} [{mrr.low:.3f}, {mrr.high:.3f}]")
             runs.append(result)
 
         written = persist_results(conn, run_id=run_id, runs=runs)
@@ -345,8 +342,7 @@ def _cmd_ask(args: argparse.Namespace) -> int:
                     print(f"\n  ⚙ {event.data.get('summary', '')}", flush=True)
             elif event.type == "error":
                 print(
-                    f"\n  ✗ {event.data.get('title', '出错')}"
-                    f"（{event.data.get('hint', '')}）",
+                    f"\n  ✗ {event.data.get('title', '出错')}（{event.data.get('hint', '')}）",
                     flush=True,
                 )
 
@@ -448,7 +444,9 @@ def _cmd_changes(args: argparse.Namespace) -> int:
             count = f"（{item['changed_symbols']} 个符号）" if "changed_symbols" in item else ""
             print(f"  {label} {item['path']}{count}")
     for symbol in payload["changed_symbols"]:
-        print(f"  符号 {symbol['path']}:{symbol['lineno']}  {symbol['qualname']}  [{symbol['change']}]")
+        print(
+            f"  符号 {symbol['path']}:{symbol['lineno']}  {symbol['qualname']}  [{symbol['change']}]"
+        )
     if payload["impacted"]["symbols"]:
         print(f"  受影响符号 {len(payload['impacted']['symbols'])} 个：")
         for symbol in payload["impacted"]["symbols"][:10]:

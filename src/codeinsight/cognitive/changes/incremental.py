@@ -228,9 +228,7 @@ def run_incremental(
     all_files = list_repo_files(root, ref=ref)
     indexed_files = [f for f in all_files if f.role in _INDEXED_FILE_ROLES]
     all_blobs = read_blobs(root, ref=ref, paths=[f.path for f in indexed_files])
-    all_sources = {
-        path: blob.decode("utf-8", "replace") for path, blob in all_blobs.items()
-    }
+    all_sources = {path: blob.decode("utf-8", "replace") for path, blob in all_blobs.items()}
     # 全局派生表是「重算」而不是「叠加」：先清空，再写。
     # 全量路径靠 `_clear_project_data` 做这件事；增量必须自己补上，
     # 否则 entry_point / flow 会撞 UNIQUE，design_decision_evidence 会越写越多。
@@ -257,13 +255,9 @@ def run_incremental(
             {p: s for p, s in all_sources.items() if p.endswith(".md")},
         ),
     )
-    stale_decisions = decisions_losing_evidence(
-        conn, project_id=project_id, prior=prior_evidence
-    )
+    stale_decisions = decisions_losing_evidence(conn, project_id=project_id, prior=prior_evidence)
     total_chunks = int(
-        conn.execute(
-            "SELECT COUNT(*) FROM chunk WHERE project_id = ?", (project_id,)
-        ).fetchone()[0]
+        conn.execute("SELECT COUNT(*) FROM chunk WHERE project_id = ?", (project_id,)).fetchone()[0]
     )
     record_report(
         conn,
@@ -439,12 +433,17 @@ def _upsert_symbols(
         digest = sha256_text(text)
         row = before.get(symbol.qualname)
         if row is None:
-            symbol_id = _insert_symbol(
-                conn, project_id, file_id, module_id, symbol, digest
-            )
+            symbol_id = _insert_symbol(conn, project_id, file_id, module_id, symbol, digest)
             _write_symbol_chunks(
-                conn, project_id, file_id, file_digest, parsed, symbol, symbol_id,
-                source_lines, max_chunk_lines,
+                conn,
+                project_id,
+                file_id,
+                file_digest,
+                parsed,
+                symbol,
+                symbol_id,
+                source_lines,
+                max_chunk_lines,
             )
             changes.append(SymbolChange(symbol.qualname, path, symbol.lineno, "added", symbol_id))
             ids.append(symbol_id)
@@ -485,8 +484,15 @@ def _upsert_symbols(
         if content_changed:
             conn.execute("DELETE FROM chunk WHERE symbol_id = ?", (symbol_id,))
             _write_symbol_chunks(
-                conn, project_id, file_id, file_digest, parsed, symbol, symbol_id,
-                source_lines, max_chunk_lines,
+                conn,
+                project_id,
+                file_id,
+                file_digest,
+                parsed,
+                symbol,
+                symbol_id,
+                source_lines,
+                max_chunk_lines,
             )
         elif moved:
             delta = symbol.lineno - int(row["lineno"])
@@ -519,7 +525,12 @@ def _upsert_symbols(
 
 
 def _insert_symbol(
-    conn: sqlite3.Connection, project_id: int, file_id: int, module_id: int | None, symbol, digest: str
+    conn: sqlite3.Connection,
+    project_id: int,
+    file_id: int,
+    module_id: int | None,
+    symbol,
+    digest: str,
 ) -> int:
     cur = conn.execute(
         """
@@ -573,9 +584,7 @@ def _write_symbol_chunks(
     )
 
 
-def _backfill_parents(
-    conn: sqlite3.Connection, *, project_id: int, file_id: int, parsed
-) -> None:
+def _backfill_parents(conn: sqlite3.Connection, *, project_id: int, file_id: int, parsed) -> None:
     ids = {
         row[0]: int(row[1])
         for row in conn.execute(
@@ -588,9 +597,7 @@ def _backfill_parents(
         child_id = ids.get(symbol.qualname)
         if not parent or child_id is None or parent not in ids:
             continue
-        conn.execute(
-            "UPDATE symbol SET parent_symbol_id = ? WHERE id = ?", (ids[parent], child_id)
-        )
+        conn.execute("UPDATE symbol SET parent_symbol_id = ? WHERE id = ?", (ids[parent], child_id))
 
 
 # ── 边 ────────────────────────────────────────────────────────
@@ -601,9 +608,7 @@ def _rewrite_edges(conn: sqlite3.Connection, project_id: int, entries) -> None:
     if not entries:
         return
     index = _rebuild_symbol_index(conn, project_id)
-    bindings = {
-        module: build_bindings(parsed.imports) for _, module, parsed, _, _ in entries
-    }
+    bindings = {module: build_bindings(parsed.imports) for _, module, parsed, _, _ in entries}
     resolver = EdgeResolver(index, bindings)
     for path, module, parsed, _, _ in entries:
         rows = conn.execute(
@@ -617,9 +622,7 @@ def _rewrite_edges(conn: sqlite3.Connection, project_id: int, entries) -> None:
         if not rows:
             continue
         scope = FileSymbolScope()
-        scope.entries = [
-            (row[1], int(row[2]), int(row[3]), int(row[0])) for row in rows
-        ]
+        scope.entries = [(row[1], int(row[2]), int(row[3]), int(row[0])) for row in rows]
         ids = [int(row[0]) for row in rows]
         marks = ",".join("?" for _ in ids)
         conn.execute(
@@ -679,9 +682,7 @@ def record_change(
 
     added_symbols = [entry(c) for c in symbol_changes if c.change == "added"]
     removed_symbols = [entry(c) for c in symbol_changes if c.change == "removed"]
-    modified_symbols = [
-        entry(c) for c in symbol_changes if c.change not in {"added", "removed"}
-    ]
+    modified_symbols = [entry(c) for c in symbol_changes if c.change not in {"added", "removed"}]
     summary = (
         f"本次更新新增 {len(plan.added)} 个文件、修改 {len(plan.modified)} 个、"
         f"删除 {len(plan.deleted)} 个；{len(symbol_changes)} 个符号发生变化。"
@@ -751,7 +752,5 @@ def _stats(
         "changed_symbols": len(changes),
         "index_epoch": int(epoch[0]) if epoch else 0,
         "parser_version": PARSER_VERSION,
-        "stale_design_decisions": len(
-            latest_stale_decisions(conn, project_id=project_id)
-        ),
+        "stale_design_decisions": len(latest_stale_decisions(conn, project_id=project_id)),
     }

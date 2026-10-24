@@ -181,14 +181,44 @@ uv run ci changes --project demo
 
 | 文档 | 内容 |
 |---|---|
+| [`AGENTS.md`](AGENTS.md) | **作业规程**——三条线通用的硬规矩（任何 agent 开工先读这份） |
+| [`docs/lines/`](docs/lines/) | **三线开工包**——每条线打开自己那一份就能开工 |
 | [`docs/roadmap.md`](docs/roadmap.md) | 阶段划分 + 每阶段的真实数字 |
 | [`docs/api-contract.md`](docs/api-contract.md) | HTTP / SSE 契约（已冻结） |
 | [`docs/mcp.md`](docs/mcp.md) | MCP Server 接入与工具清单 |
-| [`docs/decisions/`](docs/decisions/) | ADR：每个技术决策的「为什么」与「什么条件下重评」 |
+| [`docs/interfaces.md`](docs/interfaces.md) | 10 个留接口的约定与依赖方向 |
 | [`docs/functional-spec.md`](docs/functional-spec.md) | 功能实现需求书（逐条对应源文档章节） |
+| [`docs/workspace.md`](docs/workspace.md) | 三个 worktree 在哪、谁能动什么、怎么合 |
+| [`docs/decisions/`](docs/decisions/) | ADR：每个技术决策的「为什么」与「什么条件下重评」 |
+| [`docs/requests/`](docs/requests/) | 契约变更请求——要改别人目录的东西，在这里提 |
 | [`docs/ported-from-tapestry.md`](docs/ported-from-tapestry.md) | 从作者另一个项目移植了什么、改了什么 |
 | [`NOTICE.md`](NOTICE.md) | 第三方归属（代码 / 教材来源 / 数据隐私） |
 
+> **功能范围**记在路线图，**技术决策**记在 ADR——范围会随进度调整，
+> 决策会留下"为什么当时这么选"。范围变了要改 ADR（决策的前提变了），而不是默默改代码。
+
+## 设计原则
+
+1. **项目事实落回 `file:line`，教材解释保留知识章节与版本** —— 两类引用独立保存在结构化字段，不随文本截断丢失。
+2. **事实与推断分开** —— `facts[]` 每条带引用，`inferences[]` 显式标注为推断。
+3. **不确定就标不确定** —— 静态分析定不了的动态调用保留 `confidence < 1`，不丢弃也不假装。
+4. **上下文两层设界** —— 持久化层与模型上下文层分别设上限，截断用同一份对象写两处。
+5. **检索无命中就说没命中** —— 不允许模型编造 `file:line`。
+
 ## License
 
-Apache-2.0，见 [`LICENSE`](LICENSE)；第三方归属与数据隐私说明见 [`NOTICE.md`](NOTICE.md)。
+应用代码 Apache-2.0，见 [`LICENSE`](LICENSE)；第三方归属与数据隐私说明见 [`NOTICE.md`](NOTICE.md)。
+内置教材、来源与改编内容保留各自许可，详见
+[`knowledge/learning/README.md`](knowledge/learning/README.md) 和逐篇来源清单，不统一改标 Apache-2.0。
+
+## 内置学习入口
+
+三栏工作台保持代码与对话为主。右栏“知识目录”可浏览、搜索 66 个主题；
+回答中的知识链接打开完整章节，章节内可读教学示例、相关知识和有证据的项目实例。
+阅读后继续问“这里是什么意思”，服务端会读取当前章节或代码位置。
+返回/前进及“回到代码”保留来路与阅读位置，切换项目隔离会话和代码上下文。
+阅读教材不调用模型；AI 问答仍使用配置的 Provider。
+
+前端默认连接真实后端；仅开发回放时设置 `VITE_CI_MOCK=1`。
+端点与元数据见 [`docs/api-contract.md` §11](docs/api-contract.md)，
+实现和验证报告见 [`knowledge/learning/VALIDATION.md`](knowledge/learning/VALIDATION.md)。

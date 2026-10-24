@@ -35,17 +35,14 @@ class ArmRun:
 
     def ranks(self, *, kind: str | None = None) -> list[int | None]:
         return [
-            outcome.rank
-            for outcome in self.outcomes
-            if kind is None or outcome.task.kind == kind
+            outcome.rank for outcome in self.outcomes if kind is None or outcome.task.kind == kind
         ]
 
     def summarize(self, *, k: int, kinds: tuple[str, ...], seed: int) -> dict:
         return {
             "overall": summarize_ranks(self.ranks(), k=k, seed=seed),
             "by_kind": {
-                kind: summarize_ranks(self.ranks(kind=kind), k=k, seed=seed)
-                for kind in kinds
+                kind: summarize_ranks(self.ranks(kind=kind), k=k, seed=seed) for kind in kinds
             },
         }
 
@@ -57,8 +54,7 @@ def new_run_id(seed: int) -> str:
 def dense_available(conn: sqlite3.Connection, *, project_id: int) -> tuple[bool, str]:
     """稠密通道能不能用：既要有向量，也要有可用的 embedder。"""
     count = conn.execute(
-        "SELECT COUNT(*) FROM embedding e JOIN chunk c ON c.id = e.chunk_id"
-        " WHERE c.project_id = ?",
+        "SELECT COUNT(*) FROM embedding e JOIN chunk c ON c.id = e.chunk_id WHERE c.project_id = ?",
         (project_id,),
     ).fetchone()[0]
     if count == 0:
@@ -128,9 +124,7 @@ def _rank_of(task: BenchTask, hits: list[tuple[str, int, str | None]]) -> int | 
     return None
 
 
-def persist_results(
-    conn: sqlite3.Connection, *, run_id: str, runs: list[ArmRun]
-) -> int:
+def persist_results(conn: sqlite3.Connection, *, run_id: str, runs: list[ArmRun]) -> int:
     """把每次命中写进 `eval_result`（`rank` 为空 = 未命中）。"""
     written = 0
     for run in runs:

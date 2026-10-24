@@ -5,7 +5,8 @@ from typing import Any
 from fastapi import APIRouter, Query
 
 from codeinsight.api.errors import ApiFailure
-from codeinsight.api.projects import connect_db, require_project
+from codeinsight.api.knowledge import _prepare_project
+from codeinsight.api.projects import connect_db
 from codeinsight.cognitive.concepts.assets import knowledge_directory
 from codeinsight.cognitive.concepts.integration import LearningBridge
 from codeinsight.cognitive.concepts.learning_models import KnowledgeError
@@ -57,11 +58,12 @@ def topic_instances(project_id: int, topic_id: str) -> dict[str, Any]:
         raise ApiFailure(status_code=404, code="not_found", title="知识主题不存在")
     conn = connect_db(project_id)
     try:
-        require_project(conn, project_id)
+        _prepare_project(conn, project_id)
         state = conn.execute(
             "SELECT head_commit, index_epoch FROM repo_state WHERE project_id = ?", (project_id,)
         ).fetchone()
         items = []
+        total = 0
         if topic.concept_ids:
             marks = ",".join("?" for _ in topic.concept_ids)
             rows = conn.execute(
@@ -71,11 +73,17 @@ def topic_instances(project_id: int, topic_id: str) -> dict[str, Any]:
                 (project_id, *topic.concept_ids),
             ).fetchall()
             items = [{**dict(row), "snippet": ""} for row in rows]
+            total = int(
+                conn.execute(
+                    f"SELECT COUNT(*) FROM concept_instance WHERE project_id = ? AND concept_id IN ({marks})",
+                    (project_id, *topic.concept_ids),
+                ).fetchone()[0]
+            )
         return {
             "items": items,
-            "total": len(items),
+            "total": total,
             "limit": 50,
-            "status": "ok" if state else "not_indexed",
+            "status": "ok" if state and state["index_epoch"] > 0 else "not_indexed",
             "head_commit": state["head_commit"] if state else None,
             "index_epoch": state["index_epoch"] if state else None,
         }

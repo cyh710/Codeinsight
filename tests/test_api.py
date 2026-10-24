@@ -322,8 +322,9 @@ def test_explain_project_derives_facts_from_index(client: TestClient) -> None:
     # 置信度 0.7 的实例**不升级为事实**，落在推断里并保留原置信度
     # （B 线 explain 的策略：低置信候选只提示核对）。
     assert len(body["inferences"]) == 1
-    assert body["inferences"][0]["confidence"] < 0.8
-    assert "src/b.py" in body["inferences"][0]["text"]
+    assert body["inferences"][0]["confidence"] == 0.7
+    assert "import redis" in body["inferences"][0]["text"]
+    assert not any("import redis" in f["text"] for f in body["facts"])
 
 
 def test_explain_deep_degrades_when_llm_unavailable(client: TestClient) -> None:
@@ -338,6 +339,18 @@ def test_explain_deep_degrades_when_llm_unavailable(client: TestClient) -> None:
     assert body["llm_used"] is False
     assert body["error"]
     assert body["facts"]  # 项目证据没有丢
+
+
+def test_explain_deep_without_provider_preserves_textbook(client: TestClient, monkeypatch) -> None:
+    """显式断掉 provider 时，同样降级而不是 502，且教材正文仍在。"""
+    from codeinsight.api import knowledge
+
+    monkeypatch.setattr(knowledge, "_PROVIDER_FACTORY", lambda: None)
+    res = client.post("/projects/1/concepts/demo-cache/explain", json={"depth": "deep"})
+    assert res.status_code == 200
+    assert res.json()["llm_used"] is False
+    assert res.json()["error"] and res.json()["summary"]
+    assert len(res.json()["facts"]) == 3
 
 
 def test_concept_not_found(client: TestClient) -> None:

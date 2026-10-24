@@ -17,6 +17,9 @@ def bridge(library):
 def test_textbook_explanation_does_not_require_project_file_line(bridge):
     prepared = bridge.prepare_turn("SQL 是什么")
     assert can_answer_from_knowledge("SQL 是什么", "SQL 是查询和管理数据的语言。", prepared)
+    assert can_answer_from_knowledge(
+        "SQL 是什么", "应用程序代码中的数据库驱动可以执行 SQL。", prepared
+    )
 
 
 @pytest.mark.parametrize(
@@ -34,7 +37,12 @@ def test_project_question_requires_project_evidence(bridge, question):
 
 @pytest.mark.parametrize(
     "text",
-    ["本项目使用 SQL。", "this project uses SQLite", "代码中使用事务。", "入口为 example.py:77。"],
+    [
+        "本项目使用 SQL。",
+        "this project uses SQLite",
+        "当前项目中使用事务。",
+        "入口为 example.py:77。",
+    ],
 )
 def test_generated_project_claim_does_not_gain_evidence_from_textbook(bridge, text):
     assert not can_answer_from_knowledge("SQL 是什么", text, bridge.prepare_turn("SQL"))
@@ -46,10 +54,7 @@ def test_offer_to_check_the_project_is_not_a_project_claim(bridge):
     教材回答几乎都以这句收尾；按整段文本扫「当前项目」会把每一条
     纯知识问答都误判成项目断言，最后用户看到的是一段教材 + 一个弃答横幅。
     """
-    text = (
-        "SQL 是查询数据的语言。\n"
-        "如果你想了解当前项目是否使用了 SQL，我可以去检索项目代码取证。"
-    )
+    text = "SQL 是查询数据的语言。\n如果你想了解当前项目是否使用了 SQL，我可以去检索项目代码取证。"
     assert can_answer_from_knowledge("SQL 是什么", text, bridge.prepare_turn("SQL"))
 
 

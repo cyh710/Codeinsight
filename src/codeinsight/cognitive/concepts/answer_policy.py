@@ -15,7 +15,7 @@ _PROJECT_QUESTION = re.compile(
     re.IGNORECASE,
 )
 _PROJECT_CLAIM = re.compile(
-    r"本项目|这个项目|当前项目|该项目|本仓库|当前仓库|仓库中|代码里|代码中|"
+    r"本项目|这个项目|当前项目|该项目|本仓库|当前仓库|仓库中|"
     r"\b(?:this\s+(?:project|repo(?:sitory)?|codebase)|our\s+(?:project|codebase))\b",
     re.IGNORECASE,
 )
@@ -45,6 +45,7 @@ def _claims_project_facts(text: str) -> bool:
             return True
     return False
 
+
 LEARNING_PROMPT = """\
 
 内置教材与项目代码是两类独立来源：
@@ -53,6 +54,7 @@ LEARNING_PROMPT = """\
 - 学习讲解采用教材级中文：定义与用途、原理、逐步教学示例、结果、误区和适用条件。
 - 教材代码必须标记为教学示例；不能称为当前项目的实现，不生成教材的 file:line。
 - 问“这个项目哪里使用某技术”仍须查项目工具；没有项目证据就明确未找到。
+- 实例中的低置信候选仅代表可能关联，不把导入或同名调用解释为项目已采用该机制。
 - 专业术语首次出现可链接到资料里实际存在的 /learn/ 目标，不编造目标或版本。
 - “这里是什么意思”依赖有效的阅读目标；目标缺失、过期或超预算时明确说明限制。
 """

@@ -5,7 +5,14 @@
 import { lazy, Suspense } from 'react'
 const MonacoViewer = lazy(() => import('./MonacoViewer'))
 
-export default function CodeViewer({ code, language, startLine = 1, highlightLines }: {
+export default function CodeViewer({
+  code,
+  language,
+  startLine = 1,
+  highlightLines,
+  viewKey,
+}: {
+  viewKey?: string
   code: string
   language: string
   startLine?: number
@@ -29,6 +36,7 @@ export default function CodeViewer({ code, language, startLine = 1, highlightLin
         }
       >
         <MonacoViewer
+          viewKey={viewKey}
           code={code}
           language={language}
           startLine={startLine}

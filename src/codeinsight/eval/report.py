@@ -106,9 +106,7 @@ def format_markdown(report: dict[str, Any]) -> str:
         f"- run_id `{meta['run_id']}` · seed `{meta['seed']}` · k=`{meta['k']}`"
         f" · 每题型 n=`{meta['n_per_kind']}`"
     )
-    lines.append(
-        f"- 嵌入模型 `{meta['embedding_model']}` · 生成于 {meta['generated_at']}"
-    )
+    lines.append(f"- 嵌入模型 `{meta['embedding_model']}` · 生成于 {meta['generated_at']}")
     lines.append("")
     lines.append("## 总览（全部题型合并）")
     lines.append("")
@@ -116,7 +114,9 @@ def format_markdown(report: dict[str, Any]) -> str:
     lines.append("|---|---|---|---|---|---|")
     for entry in report["arms"]:
         if not entry["available"]:
-            lines.append(f"| `{entry['arm']}` | {entry['description']} | — | — | — | 不可用：{entry['reason']} |")
+            lines.append(
+                f"| `{entry['arm']}` | {entry['description']} | — | — | — | 不可用：{entry['reason']} |"
+            )
             continue
         overall = entry["overall"]
         delta = entry.get("delta_mrr_vs_bm25")
@@ -159,9 +159,7 @@ def format_markdown(report: dict[str, Any]) -> str:
 
 def _fmt(estimate: dict[str, Any], *, percent: bool = False) -> str:
     if percent:
-        return (
-            f"{estimate['value']:.0%} [{estimate['low']:.0%}, {estimate['high']:.0%}]"
-        )
+        return f"{estimate['value']:.0%} [{estimate['low']:.0%}, {estimate['high']:.0%}]"
     return f"{estimate['value']:.3f} [{estimate['low']:.3f}, {estimate['high']:.3f}]"
 
 

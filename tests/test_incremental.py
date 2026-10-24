@@ -261,14 +261,15 @@ def test_incremental_result_matches_a_full_rebuild(tmp_path: Path, repo: Path) -
                     " ORDER BY qualname, lineno"
                 ).fetchall(),
                 "chunks": conn.execute(
-                    "SELECT qualname, ordinal, source_sha256 FROM chunk"
-                    " ORDER BY qualname, ordinal"
+                    "SELECT qualname, ordinal, source_sha256 FROM chunk ORDER BY qualname, ordinal"
                 ).fetchall(),
                 "edges": conn.execute(
                     "SELECT src_qualname, dst_qualname, dst_name, kind, lineno FROM edge"
                     " ORDER BY src_qualname, kind, lineno, dst_name"
                 ).fetchall(),
-                "modules": conn.execute("SELECT qualname, docstring FROM module ORDER BY qualname").fetchall(),
+                "modules": conn.execute(
+                    "SELECT qualname, docstring FROM module ORDER BY qualname"
+                ).fetchall(),
                 "design": conn.execute(
                     "SELECT doc_id, title, claims_json FROM design_decision ORDER BY doc_id"
                 ).fetchall(),

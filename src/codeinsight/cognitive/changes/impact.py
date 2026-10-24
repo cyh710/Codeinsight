@@ -100,9 +100,7 @@ def reverse_impact(
         """,
         (*all_ids, limit),
     ).fetchall()
-    symbols = [
-        {"qualname": row[0], "path": row[1], "lineno": int(row[2])} for row in rows
-    ]
+    symbols = [{"qualname": row[0], "path": row[1], "lineno": int(row[2])} for row in rows]
     modules = sorted(
         row[0]
         for row in conn.execute(

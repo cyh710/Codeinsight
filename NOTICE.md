@@ -39,6 +39,12 @@ CodeInsight 以 **Apache License 2.0** 发布，完整条款见 [`LICENSE`](./LI
 ## 2.1 内置教材
 
 `knowledge/learning/` 下的学习文章是**改写稿**，不是原文转载。
+教材正文按各篇元数据和文末声明的许可分发，**不统一改标 Apache-2.0**。
+作者、原文地址、固定版本及修改记录见
+[`sources.json`](./knowledge/learning/sources.json)，许可原文见
+[`licenses/`](./knowledge/learning/licenses/)。其中 CC-BY/CC-BY-SA 内容须保留署名、
+许可与修改说明；CC-BY-SA 改编内容继续遵循相同许可。
+
 `knowledge/learning/sources.json` 为每篇文章记录了来源与许可，
 其中 CC-BY-SA-4.0 / CC-BY-4.0 的条目要求署名，完整清单：
 
@@ -67,7 +73,8 @@ CodeInsight 以 **Apache License 2.0** 发布，完整条款见 [`LICENSE`](./LI
 
 - 本项目是**本地单机工具**。索引库（`.ci/`）、评测原始响应（`eval/runs/`）、
   研究记录（`eval/studies/`）均在 `.gitignore` 中，**不随仓库分发**。
-- 项目不收集、不上传任何用户数据。调用模型服务时，仅发送**当前问题与检索到的代码片段**。
+- 项目不自动收集或上传用户数据。用户启用模型服务后，会向所配置 Provider 发送
+  当前问题、必要会话上下文、检索到的代码证据及教材片段。
 - API 密钥只从环境变量读取，不落库、不入库、不写入日志。
 
 ---

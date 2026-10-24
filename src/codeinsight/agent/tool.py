@@ -99,6 +99,10 @@ class ToolRegistry:
     def schemas(self) -> list[dict[str, Any]]:
         """给模型的工具目录（作为独立参数，不进 messages）。"""
         return [
-            {"name": tool.name, "description": tool.description, "parameters": dict(tool.parameters)}
+            {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": dict(tool.parameters),
+            }
             for tool in self._tools.values()
         ]

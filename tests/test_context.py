@@ -38,7 +38,9 @@ def test_group_messages_keeps_tool_calls_with_results() -> None:
         {
             "role": "assistant",
             "content": "",
-            "tool_calls": [{"id": "c1", "type": "function", "function": {"name": "x", "arguments": "{}"}}],
+            "tool_calls": [
+                {"id": "c1", "type": "function", "function": {"name": "x", "arguments": "{}"}}
+            ],
         },
         {"role": "tool", "tool_call_id": "c1", "content": "结果"},
         {"role": "assistant", "content": "答"},
@@ -69,12 +71,16 @@ def test_assemble_keeps_current_turn_tool_groups() -> None:
         {
             "role": "assistant",
             "content": "",
-            "tool_calls": [{"id": "c1", "type": "function", "function": {"name": "x", "arguments": "{}"}}],
+            "tool_calls": [
+                {"id": "c1", "type": "function", "function": {"name": "x", "arguments": "{}"}}
+            ],
         },
         {"role": "tool", "tool_call_id": "c1", "content": "y" * 100},
     ]
     goal = {"role": "user", "content": "问题"}
-    budget = ContextBudget(max_turn_bytes=10_000, max_message_bytes=1_000, max_tool_result_bytes=100)
+    budget = ContextBudget(
+        max_turn_bytes=10_000, max_message_bytes=1_000, max_tool_result_bytes=100
+    )
     messages, dropped = assemble([], current, goal, budget)
     assert dropped == 0
     assert messages[0]["content"] == "问题"

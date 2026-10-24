@@ -43,3 +43,28 @@
   后端会话键本来就是 `project_id:conversation_id`。
 - `api/indexing.py` 两边各写了一份「默认本体目录」：C 版带降级、B 版直接抛。
   合并结果：用 B 的 `knowledge_directory()` 定位，用 C 的 `None` 降级。
+
+## 第二次合并（2026-10-24，三线收敛）
+
+B 线收敛后合回 main（落后 12 个 commit、67 个文件），又碰到同一类问题的变体：
+
+- **`switchProject` 签名又分叉了**：main 是无参「一刀切清空」，
+  B 线是 `switchProject(projectId)`「按项目分别保存会话、切回来恢复」。
+  取 B 线——它更符合后端会话键 `project_id:conversation_id` 的隔离语义。
+  `store/types.ts` 里的签名同步改成带参。
+- **两处 `switchProject` 调用重复**：main 和 B 线各自在 `selectProject` 里加了一遍，
+  合并后变成连着调两次。删掉 main 那遍，保留 B 线的带参版本。
+- **`mock.ts` 出现重复对象键**：`incomplete` 在同一对象字面量里出现两次
+  （C 线的 `incomplete: false` 与 A 线的透传撞在一起）。
+  `tsc --noEmit` **不报**这个错，`tsc -b`（build 用的）才报——
+  所以「类型检查过了」不等于「能构建」。
+- **`service.py` 出现两份 `ToolServices` 构造**：B 线那份不含 `learning=` 参数，
+  在 learning 块之前；main 那份在之后、带 `learning=`。
+  取 B 线的位置（`refresh_project_concepts` 要先跑），
+  但参数用 main 的 `learning=learning`。
+- **`ruff format` 一次性要重排 27 个文件**：B 线没跑过 formatter。
+  全量格式化是安全的，但注意 `knowledge/` 下的教材 markdown 是 B 线资产，
+  格式化范围要避开（`ruff format src tests`）。
+- **新增依赖需要 `npm install`**：`remark-gfm`（教材里的 GFM 表格）与
+  `@playwright/test`（浏览器验证）是 B 线声明的，main 的 node_modules 里没有。
+  Python 侧无外网（不能动 `pyproject.toml`），npm 侧有——两边的规矩不一样。

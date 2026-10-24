@@ -28,7 +28,7 @@ from pathlib import Path
 
 from codeinsight.cognitive.concepts.base import EdgeView, SymbolView
 from codeinsight.cognitive.concepts.detector import RuleBasedDetector
-from codeinsight.cognitive.concepts.ontology import Concept, load_ontology
+from codeinsight.cognitive.concepts.ontology import Concept, detection_version, load_ontology
 from codeinsight.models import EdgeKind, SymbolKind
 
 
@@ -38,6 +38,7 @@ class ConceptSyncResult:
 
     concepts: int = 0
     instances: int = 0
+    version: int = 0
     errors: list[str] | None = None
 
 
@@ -240,7 +241,28 @@ def sync_concepts(
     edges = build_edge_views(conn, project_id=project_id)
 
     detector = RuleBasedDetector(concepts)
-    instances = detector.detect(symbols, edges, sources=sources or {})
+    confidence_rows = conn.execute(
+        "SELECT f.path, e.lineno, e.kind, e.dst_name, MIN(e.confidence) "
+        "FROM edge e JOIN symbol s ON s.id = e.src_symbol_id JOIN file f ON f.id = s.file_id "
+        "WHERE e.project_id = ? GROUP BY f.path, e.lineno, e.kind, e.dst_name",
+        (project_id,),
+    ).fetchall()
+    instances = detector.detect(
+        symbols,
+        edges,
+        sources=sources or {},
+        edge_confidences={(r[0], int(r[1]), r[2], r[3]): r[4] for r in confidence_rows},
+    )
+    fingerprint = detection_version(concepts)
+    conn.execute(
+        "INSERT OR IGNORE INTO concept_rule_version (fingerprint) VALUES (?)", (fingerprint,)
+    )
+    version = int(
+        conn.execute(
+            "SELECT id FROM concept_rule_version WHERE fingerprint = ?", (fingerprint,)
+        ).fetchone()[0]
+    )
+    conn.execute("DELETE FROM concept_instance WHERE project_id = ?", (project_id,))
 
     file_id_of: dict[str, int] = {}
     rows = conn.execute(
@@ -262,5 +284,54 @@ def sync_concepts(
     return ConceptSyncResult(
         concepts=len(concepts),
         instances=written,
+        version=version,
         errors=list(detector.errors),
     )
+
+
+def refresh_project_concepts(
+    conn: sqlite3.Connection, *, project_id: int, knowledge_dir: str | Path
+) -> ConceptSyncResult:
+    """启动查询时同步文案；仅规则变化才重新检测固定 Git 快照，结束后释放写事务。"""
+    import hashlib
+
+    from codeinsight.cognitive.indexing.scanner import read_blobs
+
+    concepts = load_project_concepts(knowledge_dir)
+    state = conn.execute(
+        "SELECT p.root_path, rs.head_commit, rs.concept_version FROM project p "
+        "JOIN repo_state rs ON rs.project_id = p.id WHERE p.id = ?",
+        (project_id,),
+    ).fetchone()
+    if not concepts or state is None or not state[1] or not (Path(state[0]) / ".git").exists():
+        return ConceptSyncResult()
+    fingerprint = detection_version(concepts)
+    version = conn.execute(
+        "SELECT id FROM concept_rule_version WHERE fingerprint = ?", (fingerprint,)
+    ).fetchone()
+    if version is not None and int(version[0]) == int(state[2]):
+        write_concepts(conn, concepts=concepts)
+        conn.commit()
+        return ConceptSyncResult(concepts=len(concepts), version=int(version[0]))
+    rows = conn.execute(
+        "SELECT path, content_sha256 FROM file WHERE project_id = ? AND (path LIKE '%.py' OR path LIKE '%.pyi')",
+        (project_id,),
+    ).fetchall()
+    try:
+        blobs = read_blobs(Path(state[0]), state[1], [r[0] for r in rows])
+    except (OSError, ValueError) as exc:
+        return ConceptSyncResult(errors=[f"无法读取冻结源码：{type(exc).__name__}"])
+    if any(hashlib.sha256(blobs.get(r[0], b"")).hexdigest() != r[1] for r in rows):
+        return ConceptSyncResult(errors=["源码快照与索引哈希不一致，未刷新概念实例"])
+    result = sync_concepts(
+        conn,
+        project_id=project_id,
+        knowledge_dir=knowledge_dir,
+        sources={p: b.decode("utf-8", "replace") for p, b in blobs.items()},
+    )
+    conn.execute(
+        "UPDATE repo_state SET concept_version = ? WHERE project_id = ?",
+        (result.version, project_id),
+    )
+    conn.commit()
+    return result

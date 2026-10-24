@@ -28,11 +28,10 @@ class Estimate:
 
     def format(self, *, digits: int = 3, as_percent: bool = False) -> str:
         if as_percent:
-            return (
-                f"{self.value:.0%} [{self.low:.0%}, {self.high:.0%}]"
-                f"（n={self.n}）"
-            )
-        return f"{self.value:.{digits}f} [{self.low:.{digits}f}, {self.high:.{digits}f}]（n={self.n}）"
+            return f"{self.value:.0%} [{self.low:.0%}, {self.high:.0%}]（n={self.n}）"
+        return (
+            f"{self.value:.{digits}f} [{self.low:.{digits}f}, {self.high:.{digits}f}]（n={self.n}）"
+        )
 
 
 def mean(values: Sequence[float]) -> float:
@@ -95,8 +94,6 @@ def summarize_ranks(ranks: Sequence[int | None], *, k: int, seed: int = 7) -> di
         "hit_rate": bootstrap_ci(
             [1.0 if rank is not None and rank <= k else 0.0 for rank in ranks], seed=seed
         ),
-        "mrr": bootstrap_ci(
-            [1.0 / rank if rank else 0.0 for rank in ranks], seed=seed
-        ),
+        "mrr": bootstrap_ci([1.0 / rank if rank else 0.0 for rank in ranks], seed=seed),
         "top1_rate": bootstrap_ci([1.0 if rank == 1 else 0.0 for rank in ranks], seed=seed),
     }

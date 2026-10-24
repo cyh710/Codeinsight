@@ -18,7 +18,7 @@ BUSY_TIMEOUT_MS = 5_000
 
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 """schema 版本号，写进 `PRAGMA user_version`。
 
 改 `schema.sql` 的表结构时**必须**把这里 +1 并补一条迁移，
@@ -30,6 +30,10 @@ SCHEMA_VERSION = 1
 # 键是**旧版本号**，值是升级到该键+1 的步骤序列。
 # 迁移是**原地**的，不删库、不重建——用户的索引数据不能因为 schema 演进而丢。
 MIGRATIONS: dict[int, tuple[str, ...]] = {
+    1: (
+        "CREATE TABLE IF NOT EXISTS concept_rule_version ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, fingerprint TEXT NOT NULL UNIQUE)",
+    ),
     0: (
         # file.role 单列取代三个布尔列（ADR 0014）。
         # 先加列并回填，再删旧列——SQLite 的 DROP COLUMN 需要 3.35+。

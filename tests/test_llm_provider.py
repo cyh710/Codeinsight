@@ -30,7 +30,7 @@ def test_extract_json_from_fence() -> None:
 
 
 def test_extract_json_with_thinking_tag() -> None:
-    raw = "<think>先想想…</think>{\"a\": 2}"
+    raw = '<think>先想想…</think>{"a": 2}'
     assert extract_json(raw) == {"a": 2}
 
 
@@ -70,8 +70,12 @@ def test_streamed_tool_call_arguments_are_concatenated() -> None:
 
 def test_two_parallel_tool_calls_keep_their_order() -> None:
     pending: dict[int, dict] = {}
-    _accumulate_tool_call(pending, {"index": 1, "id": "b", "function": {"name": "second", "arguments": "{}"}})
-    _accumulate_tool_call(pending, {"index": 0, "id": "a", "function": {"name": "first", "arguments": "{}"}})
+    _accumulate_tool_call(
+        pending, {"index": 1, "id": "b", "function": {"name": "second", "arguments": "{}"}}
+    )
+    _accumulate_tool_call(
+        pending, {"index": 0, "id": "a", "function": {"name": "first", "arguments": "{}"}}
+    )
     assert [call.name for call in _finalize_tool_calls(pending)] == ["first", "second"]
 
 
@@ -90,7 +94,9 @@ def test_provider_requires_key_before_network() -> None:
 
 
 def test_model_id_is_recorded_for_reports() -> None:
-    provider = OpenAICompatProvider(base_url="https://example.com/v1", api_key="k", model="deepseek-chat")
+    provider = OpenAICompatProvider(
+        base_url="https://example.com/v1", api_key="k", model="deepseek-chat"
+    )
     assert provider.model_id == "deepseek-chat"
 
 

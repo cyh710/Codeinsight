@@ -66,9 +66,7 @@ def decisions_losing_evidence(
         if current:
             continue
         claims = _claims(row[2])
-        listed = "、".join(
-            f"{claim.get('kind')}={claim.get('value')}" for claim in claims[:3]
-        )
+        listed = "、".join(f"{claim.get('kind')}={claim.get('value')}" for claim in claims[:3])
         stale.append(
             {
                 "doc_id": row[0],
@@ -112,8 +110,7 @@ def record_report(
 def latest_stale_decisions(conn: sqlite3.Connection, *, project_id: int) -> list[dict]:
     """最近一次索引报告的过期设计说明。没有报告就是空——不猜。"""
     row = conn.execute(
-        "SELECT by_reason FROM staleness_report WHERE project_id = ?"
-        " ORDER BY id DESC LIMIT 1",
+        "SELECT by_reason FROM staleness_report WHERE project_id = ? ORDER BY id DESC LIMIT 1",
         (project_id,),
     ).fetchone()
     if row is None or not row[0]:

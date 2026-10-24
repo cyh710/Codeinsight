@@ -71,9 +71,7 @@ class FakeSearchTool:
                         "concepts": [],
                     }
                 ],
-                "citations": [
-                    {"path": "a.py", "lineno": 3, "end_lineno": 9, "qualname": "a.f"}
-                ],
+                "citations": [{"path": "a.py", "lineno": 3, "end_lineno": 9, "qualname": "a.f"}],
             },
         )
 
@@ -91,9 +89,7 @@ async def _run(runtime: AgentRuntime, question: str = "入口在哪") -> tuple[A
     async def emit(event) -> None:
         events.append(event)
 
-    answer = await runtime.run(
-        project_id=1, question=question, conversation_id="conv-1", emit=emit
-    )
+    answer = await runtime.run(project_id=1, question=question, conversation_id="conv-1", emit=emit)
     return answer, events
 
 
@@ -125,7 +121,9 @@ async def test_tool_round_trip_and_fact_extraction() -> None:
     # 工具结果真的回传给了模型：第二轮的 messages 里有 tool 消息。
     second_turn = provider.calls[1]
     assert any(message["role"] == "tool" for message in second_turn)
-    assert any(message["role"] == "assistant" and message.get("tool_calls") for message in second_turn)
+    assert any(
+        message["role"] == "assistant" and message.get("tool_calls") for message in second_turn
+    )
 
 
 @pytest.mark.asyncio
@@ -198,9 +196,7 @@ async def test_unknown_tool_does_not_crash_the_turn() -> None:
     answer, events = await _run(runtime)
 
     assert answer.error is None
-    assert any(
-        event.type == "tool" and event.data["status"] == "error" for event in events
-    )
+    assert any(event.type == "tool" and event.data["status"] == "error" for event in events)
     tool_messages = [m for m in provider.calls[1] if m["role"] == "tool"]
     assert tool_messages and "没有名为" in tool_messages[0]["content"]
 

@@ -12,6 +12,7 @@ from typing import Any
 
 from codeinsight.agent.tool import ToolContext, ToolResult
 from codeinsight.agent.tools import BaseTool
+from codeinsight.cognitive.concepts.builtin import concept_context
 from codeinsight.cognitive.concepts.explain import explain
 from codeinsight.cognitive.concepts.learning_models import Relation
 from codeinsight.cognitive.indexing.concepts_sync import load_project_concepts
@@ -88,7 +89,9 @@ class ListConceptsTool(BaseTool):
                 data={"items": [], "citations": []},
             )
 
-        lines = [f"识别到 {len(rows)} 个概念："]
+        lines = [
+            f"本体中有 {len(rows)} 个概念；实例数为 0 不代表项目采用它，候选置信度须继续核对："
+        ]
         for row in rows:
             lines.append(
                 f"- {row['id']}  {row['name']}（{row['category']}，{row['instances']} 处实例）"
@@ -160,12 +163,15 @@ class ExplainConceptTool(BaseTool):
         instances = [_to_instance(row) for row in rows]
         relations = self._relations({item.qualname for item in instances if item.qualname})
 
+        textbook = concept_context(concept_id) if depth == ConceptDepth.DEEP else None
         explanation = await explain(
             concept,
             instances=instances,
             relations=relations,
             depth=depth,
             provider=self.services.provider,
+            knowledge_content=textbook.content if textbook else "",
+            knowledge_sources=[hit.target.href for hit in textbook.references] if textbook else (),
         )
 
         lines = [f"## {concept.name}（{concept.category}）", explanation.summary]
@@ -251,9 +257,7 @@ class FindConceptInstancesTool(BaseTool):
         if not concept_id:
             return self.result("缺少 concept_id 参数。", error="bad_request")
         limit = max(1, min(int(arguments.get("limit") or MAX_INSTANCES), 100))
-        rows = _instance_rows(
-            self.services.conn, self.services.project_id, concept_id, limit=limit
-        )
+        rows = _instance_rows(self.services.conn, self.services.project_id, concept_id, limit=limit)
         if not rows:
             return self.result(
                 f"概念「{concept_id}」在本项目里没有检测到实例。"
@@ -264,7 +268,11 @@ class FindConceptInstancesTool(BaseTool):
         lines = [f"概念「{concept_id}」在项目中有 {len(rows)} 处实例："]
         instances = [_to_instance(row) for row in rows]
         for item in instances:
-            lines.append(f"- {item.path}:{item.lineno}  {item.qualname or ''}  ← {item.evidence}")
+            status = "候选，待核对" if item.confidence < 0.8 else "检测证据"
+            lines.append(
+                f"- {item.path}:{item.lineno}  {item.qualname or ''}  ← {item.evidence}"
+                f"（{status}，confidence={item.confidence:g}）"
+            )
         return self.result(
             "\n".join(lines),
             data={

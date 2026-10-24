@@ -18,9 +18,7 @@ def _grounding() -> Grounding:
 
 
 def test_cited_sentence_becomes_fact() -> None:
-    result = split_answer(
-        "删除任务的入口是 delete_job [backend/api/pet.py:1209]。", _grounding()
-    )
+    result = split_answer("删除任务的入口是 delete_job [backend/api/pet.py:1209]。", _grounding())
     assert len(result.facts) == 1
     assert result.facts[0]["citation"]["path"] == "backend/api/pet.py"
     assert result.facts[0]["citation"]["lineno"] == 1209

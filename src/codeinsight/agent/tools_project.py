@@ -147,7 +147,9 @@ class GetChangesTool(BaseTool):
         for key, label in (("added", "新增"), ("modified", "修改"), ("deleted", "删除")):
             entries = files[key]
             if entries:
-                lines.append(f"{label}文件（{len(entries)}）：" + "、".join(f["path"] for f in entries[:10]))
+                lines.append(
+                    f"{label}文件（{len(entries)}）：" + "、".join(f["path"] for f in entries[:10])
+                )
         if payload["changed_symbols"]:
             lines.append("变更符号：")
             for symbol in payload["changed_symbols"][:15]:
@@ -168,13 +170,17 @@ class GetChangesTool(BaseTool):
                 lines.append(f"- {item['doc_id']} {item['title']}：{item['reason']}")
 
         citations = [
-            Citation(symbol["path"], int(symbol["lineno"]), int(symbol["lineno"]), symbol["qualname"], "")
+            Citation(
+                symbol["path"], int(symbol["lineno"]), int(symbol["lineno"]), symbol["qualname"], ""
+            )
             for symbol in payload["changed_symbols"]
             if symbol.get("path") and symbol.get("lineno")
         ]
         return self._with_citations("\n".join(lines), payload, citations)
 
-    def _with_citations(self, text: str, data: dict[str, Any], citations: list[Citation]) -> ToolResult:
+    def _with_citations(
+        self, text: str, data: dict[str, Any], citations: list[Citation]
+    ) -> ToolResult:
         base = self.result(text, data=data)
         return ToolResult(
             base.content,

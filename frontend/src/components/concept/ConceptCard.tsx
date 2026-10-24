@@ -8,9 +8,15 @@
 import { useEffect, useState } from 'react'
 import { Ban, BookOpen } from 'lucide-react'
 import { api } from '../../api/dataSource'
-import type { ConceptDepth, ConceptDetail, ConceptExplanation, ConceptInstance } from '../../api/types'
+import type {
+  ConceptDepth,
+  ConceptDetail,
+  ConceptExplanation,
+  ConceptInstance,
+} from '../../api/types'
 import { projectStore } from '../../store/projectStore'
 import { workbenchStore } from '../../store/workbenchStore'
+import LearningMarkdown from '../learning/LearningMarkdown'
 
 const DEPTHS: Array<{ id: ConceptDepth; label: string; hint: string }> = [
   { id: 'quick', label: '快速理解', hint: '读本体的 summary，瞬时' },
@@ -23,9 +29,19 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
   const [depth, setDepth] = useState<ConceptDepth>('quick')
   // 状态带键（属于哪个 concept/depth）：换目标或换深度时旧值自然失效，
   // 避免 effect 里同步清空的级联渲染。
-  const [state, setState] = useState<{ for: string; detail: ConceptDetail } | null>(null)
-  const [explanation, setExplanation] = useState<{ for: string; data: ConceptExplanation } | null>(null)
-  const [failed, setFailed] = useState<{ for: string; title: string; hint: string } | null>(null)
+  const [state, setState] = useState<{
+    for: string
+    detail: ConceptDetail
+  } | null>(null)
+  const [explanation, setExplanation] = useState<{
+    for: string
+    data: ConceptExplanation
+  } | null>(null)
+  const [failed, setFailed] = useState<{
+    for: string
+    title: string
+    hint: string
+  } | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -33,13 +49,14 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
     api
       .getConcept(projectId, conceptId)
       .then((d) => alive && setState({ for: conceptId, detail: d }))
-      .catch((e) =>
-        alive &&
-        setFailed({
-          for: conceptId,
-          title: e instanceof Error ? e.message : '概念加载失败',
-          hint: '当前数据源里没有这个概念（mock 快照暂无概念数据）。',
-        }),
+      .catch(
+        (e) =>
+          alive &&
+          setFailed({
+            for: conceptId,
+            title: e instanceof Error ? e.message : '概念加载失败',
+            hint: '当前数据源里没有这个概念（mock 快照暂无概念数据）。',
+          }),
       )
     return () => {
       alive = false
@@ -52,13 +69,14 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
     api
       .explainConcept(projectId, conceptId, depth)
       .then((d) => alive && setExplanation({ for: `${conceptId}:${depth}`, data: d }))
-      .catch((e) =>
-        alive &&
-        setFailed({
-          for: `${conceptId}:${depth}`,
-          title: e instanceof Error ? e.message : '解释生成失败',
-          hint: '稍后重试。',
-        }),
+      .catch(
+        (e) =>
+          alive &&
+          setFailed({
+            for: `${conceptId}:${depth}`,
+            title: e instanceof Error ? e.message : '解释生成失败',
+            hint: '稍后重试。',
+          }),
       )
     return () => {
       alive = false
@@ -67,7 +85,10 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
 
   // 实例列表（双向导航的"概念 → 代码"侧）：点击跳回符号/文件。
   // 概念本体可能存在但本项目还没有实例——空列表也是合法状态，不算错误。
-  const [instances, setInstances] = useState<{ for: string; items: ConceptInstance[] } | null>(null)
+  const [instances, setInstances] = useState<{
+    for: string
+    items: ConceptInstance[]
+  } | null>(null)
   useEffect(() => {
     let alive = true
     if (projectId === null) return
@@ -83,8 +104,19 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
   }, [projectId, conceptId])
 
   const detail = state?.for === conceptId ? state.detail : null
-  const error =
-    failed?.for === conceptId || failed?.for === `${conceptId}:${depth}` ? failed : null
+  useEffect(() => {
+    const target =
+      detail?.learning_targets?.find((t) => t.topic_id === conceptId) ??
+      detail?.learning_targets?.[0]
+    if (target)
+      workbenchStore.getState().setReading({
+        kind: 'knowledge',
+        topic_id: target.topic_id,
+        section_id: 'overview',
+        version: target.version,
+      })
+  }, [detail, conceptId])
+  const error = failed?.for === conceptId || failed?.for === `${conceptId}:${depth}` ? failed : null
 
   if (error) {
     return (
@@ -101,10 +133,9 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
     return <p className="px-1 py-6 text-center text-xs text-slate-400">读取概念…</p>
   }
 
-  const loadedExplanation =
-    explanation?.for === `${conceptId}:${depth}` ? explanation.data : null
+  const loadedExplanation = explanation?.for === `${conceptId}:${depth}` ? explanation.data : null
   const summaryText =
-    depth === 'quick' ? detail.summary : loadedExplanation?.summary ?? detail.summary
+    depth === 'quick' ? detail.summary : (loadedExplanation?.summary ?? detail.summary)
 
   return (
     <article className="space-y-2.5">
@@ -117,9 +148,7 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
             {detail.category}
           </span>
         </h3>
-        <p className="mt-0.5 text-[10.5px] text-slate-400">
-          本项目实例 {detail.instance_count} 个
-        </p>
+        <p className="mt-0.5 text-[10.5px] text-slate-400">本项目实例 {detail.instance_count} 个</p>
       </header>
 
       <div className="flex gap-1" role="tablist" aria-label="解释深度">
@@ -142,9 +171,27 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
         ))}
       </div>
 
-      <p className="rounded-lg bg-slate-50 px-2.5 py-2 text-xs leading-relaxed text-slate-700">
-        {summaryText || '（本体未写 summary）'}
-      </p>
+      <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-xs leading-relaxed text-slate-700">
+        <LearningMarkdown
+          text={summaryText || '（本体未写 summary）'}
+          targets={loadedExplanation?.learning_targets ?? detail.learning_targets}
+        />
+      </div>
+      {detail.learning_targets && detail.learning_targets.length > 0 && (
+        <section className="space-y-2 border-l-2 border-accent/25 pl-3">
+          <h4 className="text-[11px] font-semibold text-slate-500">阅读原理与教学示例</h4>
+          {detail.learning_targets.map((t) => (
+            <button
+              type="button"
+              key={t.href}
+              className="block text-left text-xs leading-6 text-accent hover:underline"
+              onClick={() => workbenchStore.getState().openKnowledge(t)}
+            >
+              {t.title}
+            </button>
+          ))}
+        </section>
+      )}
 
       {depth !== 'quick' && !loadedExplanation && !error && (
         <p className="px-1 text-[11px] text-slate-400">生成解释中…</p>
@@ -152,6 +199,11 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
 
       {loadedExplanation && (
         <>
+          {loadedExplanation.error && (
+            <p role="status" className="text-[11px] leading-6 text-warning">
+              {loadedExplanation.error}
+            </p>
+          )}
           {loadedExplanation.facts.length > 0 && (
             <section className="rounded-xl border border-success/25 bg-success/[0.04] px-3 py-2">
               <h4 className="text-[10px] font-semibold uppercase tracking-wider text-success">
@@ -159,7 +211,10 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
               </h4>
               <ul className="mt-1 space-y-1.5">
                 {loadedExplanation.facts.map((f, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-700">
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-700"
+                  >
                     <span className="shrink-0 rounded bg-accent-soft/70 px-1.5 py-px font-mono text-[10px] text-accent">
                       {f.citation.path}:{f.citation.lineno}
                     </span>
@@ -176,7 +231,10 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
               </h4>
               <ul className="mt-1 space-y-1.5">
                 {loadedExplanation.inferences.map((inf, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-600">
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-600"
+                  >
                     <span className="shrink-0 rounded bg-warning/10 px-1 py-px font-mono text-[10px] text-warning">
                       {Math.round(inf.confidence * 100)}%
                     </span>
@@ -204,8 +262,10 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
                   type="button"
                   onClick={() =>
                     inst.qualname
-                      ? workbenchStore.getState().selectSymbol(inst.qualname, inst.path)
-                      : workbenchStore.getState().selectFile(inst.path)
+                      ? workbenchStore
+                          .getState()
+                          .selectSymbol(inst.qualname, inst.path, inst.lineno)
+                      : workbenchStore.getState().selectFile(inst.path, inst.lineno)
                   }
                   className="flex w-full items-start gap-1.5 rounded px-1.5 py-1 text-left text-[11px] transition-colors hover:bg-accent-soft/50"
                   title={`跳到 ${inst.path}:${inst.lineno}`}
@@ -247,7 +307,9 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
 
       {detail.references.length > 0 && (
         <div>
-          <h4 className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">参考</h4>
+          <h4 className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            参考
+          </h4>
           <ul className="mt-0.5 space-y-0.5">
             {detail.references.map((url) => (
               <li key={url}>
