@@ -339,6 +339,8 @@ def _cmd_ask(args: argparse.Namespace) -> int:
             return 1
         if streamed:
             print()
+        if answer.dropped_citations:
+            print(f"\n[校验拦下] 模型写过但索引里没有的位置：{', '.join(answer.dropped_citations)}")
         if answer.abstained:
             print(f"\n[弃答] {answer.abstention_reason}")
         if answer.facts:

@@ -127,6 +127,29 @@ class LearningBridge:
             error = "当前阅读章节超出上下文预算；请缩小范围后再问。"
         return PreparedKnowledge(context, entries, status, error)
 
+    def prepare_goal(
+        self,
+        question: str,
+        *,
+        max_message_bytes: int,
+        max_knowledge_bytes: int = 12_000,
+        reading_context: Mapping[str, Any] | None = None,
+    ) -> tuple[dict[str, str], PreparedKnowledge]:
+        """在目标消息剩余预算内整节注入；不先注入再截掉章节却保留其引用。
+
+        A 的 assemble 会继续处理整个回合的历史与工具结果。本方法只占用目标消息的
+        明确剩余空间，不把教材夹进代码检索结果，也不改变原始问题的持久化内容。
+        """
+        opening = "\n\n以下为服务端读取的教材资料；教学示例不是当前项目的代码证据。\n<教材资料>\n"
+        closing = "\n</教材资料>"
+        overhead = len((question + opening + closing).encode("utf-8"))
+        remaining = max(0, min(max_knowledge_bytes, max_message_bytes - overhead))
+        prepared = self.prepare_turn(question, reading_context=reading_context, max_bytes=remaining)
+        content = question
+        if prepared.context.content:
+            content += opening + prepared.context.content + closing
+        return {"role": "user", "content": content}, prepared
+
     def _reading_target(
         self, raw: Mapping[str, Any]
     ) -> tuple[LearningTarget | None, str, str | None]:

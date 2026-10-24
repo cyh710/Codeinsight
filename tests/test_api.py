@@ -245,15 +245,29 @@ def test_explain_quick_reads_ontology_without_llm(client: TestClient) -> None:
 def test_explain_project_derives_facts_from_index(client: TestClient) -> None:
     body = client.post("/projects/1/concepts/demo-cache/explain", json={"depth": "project"}).json()
     assert body["llm_used"] is False
-    assert len(body["facts"]) == 2
+    # 两条实例事实 + 一条索引关系事实（B 线解释服务会把相关调用边一并列出）。
+    assert len(body["facts"]) == 3
     assert body["facts"][0]["citation"]["path"] == "src/a.py"
-    assert body["inferences"] == []
+    assert all(fact["citation"]["path"] for fact in body["facts"])
+    # 置信度 0.7 的实例**不升级为事实**，落在推断里并保留原置信度
+    # （B 线 explain 的策略：低置信候选只提示核对）。
+    assert len(body["inferences"]) == 1
+    assert body["inferences"][0]["confidence"] < 0.8
+    assert "src/b.py" in body["inferences"][0]["text"]
 
 
-def test_explain_deep_until_llm_wired(client: TestClient) -> None:
+def test_explain_deep_degrades_when_llm_unavailable(client: TestClient) -> None:
+    """deep 走 B 线解释服务：上游不可用时**降级**为教材 + 已有项目证据，不再 502。
+
+    502 只留给「请求本身没法完成」；deep 讲解是可降级的增强，
+    拿不到模型时给教材与已验证事实，比整页报错有用。
+    """
     res = client.post("/projects/1/concepts/demo-cache/explain", json={"depth": "deep"})
-    assert res.status_code == 502
-    assert err(res.json())["code"] == "upstream_error"
+    assert res.status_code == 200
+    body = res.json()
+    assert body["llm_used"] is False
+    assert body["error"]
+    assert body["facts"]  # 项目证据没有丢
 
 
 def test_concept_not_found(client: TestClient) -> None:

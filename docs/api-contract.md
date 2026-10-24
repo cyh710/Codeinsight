@@ -131,6 +131,9 @@
 | `GET` | `/projects/{id}/changes` | 变更说明 | ⬜ M6 |
 | `POST` | `/query` | 非流式问答 | ✅ M3 |
 | `POST` | `/query/stream` | **SSE** 流式问答 | ✅ M3 |
+| `GET` | `/knowledge/tree` | 内置教材目录（不依赖项目库） | ✅ M3 |
+| `GET` | `/knowledge/topics/{topic_id}` | 教材主题正文与章节 | ✅ M3 |
+| `GET` | `/knowledge/search` | 教材检索（`q` / `limit`） | ✅ M3 |
 
 ---
 
@@ -811,6 +814,41 @@ done                                ← 恰好一次，最后
 
 ---
 
+## 8.4 知识扩展（请求 0001 / 0005）
+
+**教材与项目代码是两类独立来源**：教材命中可以支撑「SQL 是什么」这类纯知识问题，
+但**不能**当作「这个项目用了 SQL」的证据。响应里两者分开放。
+
+请求可以多带一个阅读目标（用户正在看某一节教材或某一段代码）：
+
+```json
+{
+  "project_id": 1,
+  "question": "这里是什么意思？",
+  "conversation_id": "conv-1",
+  "reading_context": { "kind": "knowledge", "topic_id": "async", "section_id": "mechanism", "version": "…" }
+}
+```
+
+| `reading_context.kind` | 字段 | 行为 |
+|---|---|---|
+| `knowledge` | `topic_id` / `section_id?` / `version` | 服务端按版本重读该章节；版本过期 → `reading_status="stale"` |
+| `code` | `project_id` / `path` / `lineno` / `end_lineno?` | 服务端校验后自行发起一次 `read_file`，把这一屏代码变成可引用证据 |
+
+`/query` 响应与 `/query/stream` 的 `answer` 事件额外带这些字段（都可缺省）：
+
+| 字段 | 含义 |
+|---|---|
+| `knowledge_sources` | 本回合用到的教材章节（含 `target` 与来源清单），**不是** `citations` |
+| `learning_entries` / `learning_targets` | 可继续学习的入口（最多 3 个） |
+| `reading_status` | `none` / `ok` / `missing` / `invalid` / `stale` / `not_found` / `outside_budget` |
+| `knowledge_error` | 阅读目标不可用时的可读原因（其余情况为 `null`） |
+| `text`（仅 SSE `answer`） | 最终正文（教材链接已注入）。增量仍走 `delta`；这里给一次完整串，方便收尾对齐 |
+
+> `answer` 事件里出现 `text` 不改变事件顺序与次数：仍然恰好一次。
+
+---
+
 ## 9. C 线对接清单
 
 写代码时对着这张表：
@@ -838,4 +876,5 @@ done                                ← 恰好一次，最后
 | 日期 | 变更 |
 |---|---|
 | 2026-10-24 | 初版，M1 冻结 |
-| 2026-10-24 | M3：`/query` 与 `/query/stream` 实装；`incomplete` 字段加入 §8.1 响应与 §8.3 `answer` 事件（区分「没做完」与 `abstained`「没找到」）。**唯一一处字段新增**，前端 `types.ts` 已同步 |
+| 2026-10-24 | M3：`/query` 与 `/query/stream` 实装；`incomplete` 字段加入 §8.1 响应与 §8.3 `answer` 事件（区分「没做完」与 `abstained`「没找到」）。前端 `types.ts` 已同步 |
+| 2026-10-24 | 请求 0001/0005 落地：§8.4 知识扩展——`reading_context` 入参、`knowledge_sources` / `learning_*` / `reading_status` / `knowledge_error` 出参、`answer` 事件带最终 `text`；新增 `/knowledge/*` 三个端点。教材来源与项目 `citations` **永不混用** |

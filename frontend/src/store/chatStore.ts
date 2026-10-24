@@ -150,6 +150,13 @@ export function createChatActions(set: Set, get: Get) {
       get()._abortController?.abort()
     },
 
+    // 切项目 = 新会话：后端会话键是 `project_id:conversation_id`，
+    // 前端不重置会把上一个项目的对话留在界面上，看起来像「跨项目串台」。
+    switchProject: () => {
+      get()._abortController?.abort()
+      set({ messages: [], streaming: false, conversationId: '', _abortController: null })
+    },
+
     reset: () => set({ messages: [], streaming: false, conversationId: '', _abortController: null }),
   }
 }

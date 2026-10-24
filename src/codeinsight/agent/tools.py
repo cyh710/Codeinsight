@@ -38,6 +38,9 @@ class ToolServices:
     provider: Any = None
     """`explain_concept(deep)` 才用到；没有就退回 textbook 讲解。"""
 
+    learning: Any = None
+    """B 线的教材桥（`LearningBridge`）。有它就多注册两个知识工具。"""
+
     @property
     def root(self) -> Path:
         return Path(self.repo_root)
@@ -115,4 +118,14 @@ def build_tools(services: ToolServices) -> ToolRegistry:
         GetDesignDecisionsTool(services),
         GetModuleOverviewTool(services),
     ]
+    if services.learning is not None:
+        # 教材工具与项目工具分开：它们返回的是教学资料，`data` 里**没有**
+        # citations——教材命中不能变成项目事实（见 answer_policy）。
+        from codeinsight.cognitive.concepts.tools import build_learning_tools
+
+        tools.extend(
+            build_learning_tools(
+                services.learning, max_bytes=services.budget.max_tool_result_bytes
+            )
+        )
     return ToolRegistry(tools)

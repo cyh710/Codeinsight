@@ -17,6 +17,7 @@ import subprocess
 from pathlib import Path
 
 from codeinsight.api.errors import bad_request
+from codeinsight.cognitive.concepts.assets import knowledge_directory
 from codeinsight.cognitive.indexing import index_project
 from codeinsight.config import settings
 from codeinsight.storage.sqlite import db_path, open_sqlite
@@ -44,20 +45,19 @@ def _git_head(root_path: str, ref: str | None) -> str | None:
 
 
 def _default_concepts_dir() -> Path | None:
-    """B 线概念本体的默认位置：本仓根的 `knowledge/concepts`。
+    """B 线概念本体的默认位置。
+
+    定位逻辑只有一份：`concepts/assets.py::knowledge_directory`（B 线，
+    同时覆盖源码树与安装包两种布局）。这里只负责**降级**：目录不在
+    就返回 None，如实变成"不跑概念检测"，而不是让整个导入失败。
 
     `config.py` 是冻结契约，没有 concepts 目录的配置项（CLI 用 `--concepts`
-    显式传）；API 导入走包内相对定位——装在仓库里跑（uv run）时成立，
-    打包安装时目录不在，返回 None 如实降级为"不跑概念检测"。
+    显式传）。
     """
-    candidates = [
-        Path(__file__).resolve().parents[3] / "knowledge" / "concepts",
-        Path.cwd() / "knowledge" / "concepts",
-    ]
-    for c in candidates:
-        if c.is_dir():
-            return c
-    return None
+    try:
+        return knowledge_directory("concepts")
+    except Exception:  # noqa: BLE001 —— 资产缺失不该阻断导入
+        return None
 
 
 def start_indexing(project_id: int, name: str, root_path: str, ref: str | None) -> None:

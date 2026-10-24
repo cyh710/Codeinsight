@@ -342,6 +342,7 @@ export interface ConceptListItem {
 }
 
 export interface ConceptDetail {
+  learning_targets?: LearningTarget[]
   concept_id: string
   name: string
   category: ConceptCategory
@@ -449,10 +450,11 @@ export interface QueryRequest {
   question: string
   /** 带同一个值 = 连续追问。 */
   conversation_id?: string
+  reading_context?: ReadingContext
 }
 
 /** `POST /query` 响应（契约 §8.1）。 */
-export interface QueryResponse {
+export interface QueryResponse extends KnowledgeAnswerMetadata {
   text: string
   facts: Fact[]
   inferences: Inference[]
@@ -496,7 +498,8 @@ export interface SseEvidenceEvent {
   concepts: string[]
 }
 
-export interface SseAnswerEvent {
+export interface SseAnswerEvent extends KnowledgeAnswerMetadata {
+  text?: string
   facts: Fact[]
   inferences: Inference[]
   citations: Citation[]
@@ -541,3 +544,75 @@ export interface SseEventMap {
 export type SseEvent = {
   [K in SseEventName]: { event: K; data: SseEventMap[K] }
 }[SseEventName]
+
+/** 请求 0001 的知识扩展；知识来源不能当作项目 Citation。 */
+export interface KnowledgeReadingContext {
+  kind: 'knowledge'
+  topic_id: string
+  section_id?: string | null
+  version: string
+}
+export interface CodeReadingContext {
+  kind: 'code'
+  project_id: number
+  path: string
+  lineno: number
+  end_lineno?: number
+}
+export type ReadingContext = KnowledgeReadingContext | CodeReadingContext
+export interface KnowledgeTopic {
+  id: string
+  title: string
+  summary: string
+  group: string
+  version: string
+  body: string
+  sections: Array<{ id: string; title: string; content: string }>
+  concept_ids: string[]
+  sources: KnowledgeSource[]
+  prerequisite_targets: LearningTarget[]
+  related_targets: LearningTarget[]
+  learning_targets: LearningTarget[]
+  dialect: string | null
+}
+export interface KnowledgeTree {
+  version: string
+  groups: Array<{ title: string; topics: Array<{ id: string; title: string; summary: string; version: string; href: string }> }>
+}
+export interface KnowledgeSearch {
+  items: KnowledgeHit[]
+  total: number
+  version: string
+}
+export interface LearningTarget {
+  topic_id: string
+  section_id: string | null
+  title: string
+  version: string
+  href: string
+}
+export interface KnowledgeSource {
+  id: string
+  title: string
+  author: string
+  url: string
+  version: string
+  license: string
+  license_url: string
+  retrieved_at: string
+  sha256: string
+  modifications: string
+}
+export interface KnowledgeHit {
+  target: LearningTarget
+  snippet: string
+  score: number
+  sources: KnowledgeSource[]
+}
+export interface KnowledgeAnswerMetadata {
+  knowledge_sources?: KnowledgeHit[]
+  learning_entries?: LearningTarget[]
+  learning_targets?: LearningTarget[]
+  reading_status?: string
+  knowledge_error?: string | null
+}

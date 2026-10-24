@@ -181,6 +181,16 @@ class Answer:
     evidence: list[dict[str, Any]] = field(default_factory=list)
     """本回合检索到的证据（`chunk_id` / 路径 / 分数 / 命中通道），前端右栏用。"""
 
+    knowledge_sources: list[dict[str, Any]] = field(default_factory=list)
+    learning_entries: list[dict[str, Any]] = field(default_factory=list)
+    learning_targets: list[dict[str, Any]] = field(default_factory=list)
+    reading_status: str = "none"
+    knowledge_error: str | None = None
+
+    dropped_citations: list[str] = field(default_factory=list)
+    """模型写过、但 grounded 校验没通过的位置。**给审计看，不给用户看**——
+    这些正是「它编过、我们拦下了」的记录。"""
+
     task_id: str = ""
     model_id: str = ""
     error: dict[str, Any] | None = None

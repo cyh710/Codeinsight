@@ -6,7 +6,9 @@ import { createStore } from 'zustand'
 import { api } from '../api/dataSource'
 import { waitForIndexing } from '../api/importFlow'
 import type { FileEntry, ProjectSummary, SymbolListItem } from '../api/types'
+import { chatStore } from './chatStore'
 import type { ProjectStore } from './types'
+import { workbenchStore } from './workbenchStore'
 
 const STORAGE_KEY = 'ci.projectId'
 
@@ -82,6 +84,9 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
     if (get().currentProjectId === id) return
     set({ currentProjectId: id })
     storeProjectId(id)
+    // 切项目即新会话：消息与工作台都清空，避免串台。
+    chatStore.getState().switchProject()
+    workbenchStore.getState().resetProject()
     await loadProjectData(set, id)
   },
 

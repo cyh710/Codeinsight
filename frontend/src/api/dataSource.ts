@@ -12,7 +12,7 @@ import { jsonRequest } from './client'
 import { streamQuery } from './stream'
 import type { QueryRequest, QueryResponse } from './types'
 
-const USE_MOCK = import.meta.env.VITE_CI_MOCK !== '0'
+const USE_MOCK = import.meta.env.VITE_CI_MOCK === '1'
 
 function realQuery(request: QueryRequest): Promise<QueryResponse> {
   return jsonRequest<QueryResponse>('/query', { method: 'POST', body: JSON.stringify(request) })
