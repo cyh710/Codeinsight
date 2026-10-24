@@ -56,6 +56,13 @@ export default function LearningMarkdown({
               <table className="w-full border-collapse text-left text-xs">{children}</table>
             </div>
           ),
+          // 引用块在教材里当「答案块」用：自测章节的答案写在这里，
+          // 给它边框和底色，读者一眼能看出哪段是答案。
+          blockquote: ({ children }) => (
+            <blockquote className="my-3 rounded-lg border-l-2 border-accent/40 bg-accent-soft/30 px-3 py-2 text-slate-700">
+              {children}
+            </blockquote>
+          ),
         }}
       >
         {text}

@@ -56,6 +56,17 @@ def test_all_topics_have_substantive_content_and_sources(library):
         # 现在这句免责由界面以角标呈现，正文只留教学内容，
         # 所以检查的是实质：例子必须真的有代码。
         assert "```" in sections["example"]
+
+
+def test_summary_comes_from_the_article_body(library):
+    """摘要必须出自正文——否则文章改了、摘要还停在旧版。
+
+    界面上的卡片摘要与目录列表都读 index.json 的 summary，
+    它要是和正文脱节，读者点进去会发现说的不是一回事。
+    """
+    for topic in library.topics.values():
+        body = "\n".join(s.content for s in topic.sections)
+        assert topic.summary in body, f"{topic.id} 的摘要不在正文里"
         for sid in topic.source_ids:
             source = library.sources[sid]
             assert len(source.sha256) == 64

@@ -27,6 +27,14 @@ from codeinsight.cognitive.retrieval.tokenizer import split_identifiers
 
 _HEADING = re.compile(r"^## (.+?) \{#([a-z][a-z0-9-]*)\}\s*$", re.MULTILINE)
 
+_NON_SEARCHABLE_SECTIONS = frozenset({"sources", "related", "self-check"})
+"""不进检索索引的章节。
+
+- `sources` / `related`：来源清单与延伸阅读，不是教学内容。
+- `self-check`：自测练习。读者搜「函数参数是什么」时，先跳到练习题上
+  只会打断阅读——练习要给已经在读的人看，不该参与检索。
+"""
+
 
 def _digest(value: object) -> str:
     return hashlib.sha256(
@@ -101,7 +109,9 @@ class LearningLibrary:
             )
             for topic in self.topics.values()
             for section in topic.sections
-            if section.id not in {"sources", "related"}
+            # 自测章节不进检索索引：读者搜「函数参数是什么」不该先跳到练习题上。
+            # 章节本身照常显示，只是不参与搜索与模型上下文。
+            if section.id not in _NON_SEARCHABLE_SECTIONS
         )
 
     def _load_sources(self) -> dict[str, KnowledgeSource]:
