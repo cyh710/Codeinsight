@@ -1,6 +1,6 @@
 # 函数、参数与返回值
 
-## 先建立直觉 {#overview}
+## 函数是什么 {#overview}
 
 学完这一篇，你能写出一个能反复调用的函数，知道它收什么、交回什么，并且能看出调用方拿到的是不是它以为的那个东西。
 
@@ -15,7 +15,7 @@
 
 说清楚这三样（做什么、收什么、交回什么），别人就能用你的函数，你也能读别人的函数。
 
-## 跟着例子理解 {#example}
+## 写第一个函数 {#example}
 
 新建一个文件 `total.py`，写进去：
 
@@ -50,7 +50,7 @@ python total.py
 
 把 `print(amount)` 那行删掉，再运行——**什么都不会输出**。因为函数算完了、结果交回来了，但没人把它显示出来。这就是"计算"和"显示"的区别。
 
-## 一步一步读懂 {#walkthrough}
+## 参数怎么对应上 {#walkthrough}
 
 **第一步，参数怎么对应上。** 我们的定义有两个参数：`price` 和 `quantity`。调用时写了 `calculate_total(12, quantity=3)`：
 
@@ -92,7 +92,7 @@ print(total)   # NameError: name 'total' is not defined
 
 这正是我们想要的效果：函数不该把内部细节漏到外面。
 
-**现在动手改一改。** 把函数改成能算折扣：
+给它加一个折扣参数：
 
 ```python
 def calculate_total(price, quantity=1, discount=0):
@@ -104,7 +104,7 @@ print(calculate_total(12, 3, discount=0.2))   # 28.8
 
 多了一个参数，**原来的调用方式全都还能用**（`discount` 有默认值 0）。这是加参数时该守的规矩：新的参数放后面并给默认值，别让老代码全部改一遍。
 
-## 原理与执行过程 {#mechanism}
+## 调用时发生了什么 {#mechanism}
 
 **函数体什么时候执行？** 只有被调用时。`def` 那行只是把代码记下来，绑定一个名字。调用时才发生三件事：实参与形参绑定 → 执行函数体 → `return` 的值交回调用处。
 
@@ -132,7 +132,7 @@ print(b)        # [1, 2]     ← 调用方的列表没变
 
 **返回值和副作用是两个维度。** 一个函数可以只返回数据（纯函数），也可以只改外部状态（写文件、发请求），也可以两样都干。名字会骗人——叫 `save` 的函数不一定真的保存成功，叫 `get` 的函数也可能顺手更新了缓存。**要判断一个函数做了什么，得读它的实现，不是看它的名字。**
 
-## 常见误解 {#pitfalls}
+## 五个常见的坑 {#pitfalls}
 
 **"`print` 和 `return` 差不多。"** 差很远。上面刚试过：`print` 只显示，`return` 才把值交回代码。一个只 `print` 不 `return` 的函数，调用方拿到的永远是 `None`。
 
@@ -161,7 +161,7 @@ def add_task(task, todo=None):
 
 **"`*args` / `**kwargs` 看不懂，跳过。"** 它们只是"把剩下的打包"：`*args` 把多余的位置参数收成一个元组，`**kwargs` 把多余的关键字参数收成一个字典。看到长签名不用慌——先找有没有 `*args` 那一行，就知道前面那些是必填的。
 
-## 工程中的取舍 {#tradeoffs}
+## 函数该写多长 {#tradeoffs}
 
 **写多长？** 一个函数只做一件事、名字说清做什么，是好函数。但**过度拆分**更烦——读一个流程要跳七八个文件，比一个长函数更难懂。判断标准：如果你要跳着看才能说清它在干什么，就该拆。
 
@@ -169,9 +169,9 @@ def add_task(task, todo=None):
 
 **函数签名就是它的接口。** 参数类型、可能返回什么、什么时候抛异常、会不会修改传进来的东西——这些要在定义处就说清楚。读一个陌生项目里的函数时，**从调用点开始读**比从定义开始读更快：先看它被怎么调用，就知道该关心哪些参数。
 
-## 自测 {#self-check}
+## 练习 {#self-check}
 
-先自己想一想，再往下看答案。
+先盖住答案自己写一遍，再对照。
 
 **第 1 题**：下面这个函数，`result` 是什么？
 
@@ -215,14 +215,14 @@ print(result)
 >     return todo
 > ```
 
-## 接着探索 {#related}
+## 继续阅读 {#related}
 
 - [变量、值与类型](/learn/python-values)
 - [模块、包与导入](/learn/python-modules)
 - [类型注解：把接口约定写出来](/learn/python-annotations)
 - [JavaScript 函数、作用域与闭包](/learn/js-functions)
 
-## 来源与版本 {#sources}
+## 参考资料 {#sources}
 
 - [A Byte of Python](https://python.swaroopch.com/)；作者：Swaroop C H；CC-BY-SA-4.0。版本：Python 3；网页快照; sha256:b851ae8ae56d0afbccb107f51511f2eb42d094a11191db8aec1909f36c658c11。
 - [Python 3.13 教程与标准库](https://docs.python.org/3.13/tutorial/)；作者：Python Software Foundation；PSF-2.0。版本：Python 3.13; sha256:b1aac4fbe473c2f52e1740cf0695feb217d0c43986e2a8b635de1f08bad5e555。
