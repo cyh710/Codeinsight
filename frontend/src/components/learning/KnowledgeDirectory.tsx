@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, Search } from 'lucide-react'
 import { getKnowledgeTree, searchKnowledge } from '../../api/learning'
 import type { KnowledgeSearch, KnowledgeTree, LearningTarget } from '../../api/types'
@@ -48,6 +48,34 @@ export default function KnowledgeDirectory() {
         0
   }, [tree, result])
   const open = (target: LearningTarget) => workbenchStore.getState().openKnowledge(target)
+
+  // 搜索是**章节级**的：一篇文章命中 6 个章节就会返回 6 条，
+  // 标题全一样，用户看到的是一堆重复卡片。按文章合并，
+  // 章节名收成一行，摘要取第一条。
+  const grouped = useMemo(() => {
+    if (!result) return []
+    const byTopic = new Map<
+      string,
+      { topicId: string; target: LearningTarget; sections: string[]; snippet: string }
+    >()
+    for (const hit of result.items) {
+      const topicId = hit.target.topic_id
+      const existing = byTopic.get(topicId)
+      if (existing) {
+        if (hit.target.section_title) existing.sections.push(hit.target.section_title)
+        continue
+      }
+      byTopic.set(topicId, {
+        topicId,
+        // 打开文章本身（不带章节锚点）——读者要看的是整篇，
+        // 不是恰好命中分数最高的那个小节。
+        target: { ...hit.target, section_id: null, section_title: null, href: `/learn/${topicId}` },
+        sections: hit.target.section_title ? [hit.target.section_title] : [],
+        snippet: hit.summary || hit.snippet,
+      })
+    }
+    return [...byTopic.values()]
+  }, [result])
   const search = async () => {
     const request = ++sequence.current
     workbenchStore.getState().setDirectoryQuery(query)
@@ -109,7 +137,7 @@ export default function KnowledgeDirectory() {
       {result ? (
         <div className="space-y-2">
           <div className="flex justify-between text-xs text-slate-500">
-            <span>找到 {result.total} 个章节</span>
+            <span>找到 {grouped.length} 篇文章</span>
             <button
               className="text-accent"
               onClick={() => {
@@ -122,15 +150,20 @@ export default function KnowledgeDirectory() {
               返回目录
             </button>
           </div>
-          {result.items.map((hit) => (
+          {grouped.map((item) => (
             <button
-              key={hit.target.href}
-              onClick={() => open(hit.target)}
+              key={item.topicId}
+              onClick={() => open(item.target)}
               className="w-full rounded-lg border border-slate-200/70 p-3 text-left hover:bg-accent-soft/40"
             >
-              <p className="text-xs font-semibold text-slate-700">{hit.target.title}</p>
+              <p className="text-xs font-semibold text-slate-700">{item.target.title}</p>
+              {item.sections.length > 0 && (
+                <p className="mt-0.5 text-[10px] text-slate-400">
+                  命中章节：{item.sections.join('、')}
+                </p>
+              )}
               <p className="mt-1 line-clamp-3 whitespace-pre-line text-[11px] leading-6 text-slate-500">
-                {hit.snippet}
+                {item.snippet}
               </p>
             </button>
           ))}

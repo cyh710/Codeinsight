@@ -45,7 +45,12 @@ def knowledge_topic(topic_id: str) -> dict[str, Any]:
 
 
 @router.get("/knowledge/search")
-def knowledge_search(q: str = "", limit: int = Query(default=5, ge=1, le=50)) -> dict[str, Any]:
+def knowledge_search(q: str = "", limit: int = Query(default=8, ge=1, le=50)) -> dict[str, Any]:
+    """教材检索。
+
+    `limit` 是**章节**数（契约 §11）——同一篇文章的多个章节都会命中，
+    界面按文章合并展示。取章节而不是文章，是因为章节才是检索的粒度。
+    """
     return _bridge().search(q, limit).data
 
 

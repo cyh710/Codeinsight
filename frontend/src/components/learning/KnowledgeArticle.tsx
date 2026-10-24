@@ -160,7 +160,7 @@ export default function KnowledgeArticle({ target }: { target: LearningTarget })
           </section>
         ))}
       <section className="rounded-xl border border-slate-200 p-3" aria-label="项目实例">
-        <h3 className="text-xs font-semibold text-slate-600">在当前项目中寻找对应实现</h3>
+        <h3 className="text-xs font-semibold text-slate-600">这个概念在当前项目里</h3>
         {instancesError && (
           <p role="alert" className="mt-2 text-xs text-danger">
             {instancesError}
@@ -195,7 +195,7 @@ export default function KnowledgeArticle({ target }: { target: LearningTarget })
                   ? '正在核对项目索引中的关联实例…'
                   : instanceResult.status === 'not_indexed'
                     ? '该项目尚未完成索引，暂时无法查询项目实例。'
-                    : '当前索引未检出关联实例。这不等于项目没有采用相关技术；上方例子仅用于教学。'}
+                    : '没有在索引里找到直接用到它的地方。'}
           </p>
         )}
         {instances.length >= 50 && (

@@ -71,8 +71,14 @@ class LearningTarget:
 class KnowledgeHit:
     target: LearningTarget
     snippet: str
+    """章节原文——注入模型的上下文用它，Markdown 结构要保留。"""
     score: float
     sources: tuple[KnowledgeSource, ...]
+    summary: str = ""
+    """给界面看的纯文本摘要（无 Markdown 标记）。
+
+    与 `snippet` 分开：搜索结果卡片直接显示它，而模型上下文要的是原文。
+    """
 
 
 @dataclass(frozen=True)

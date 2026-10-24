@@ -1007,7 +1007,7 @@ done                                ← 恰好一次，最后
 |---|---|---|
 | GET | `/knowledge/tree` | `{groups:[{title,topics:[{id,title,summary,version,href}]}],version}` |
 | GET | `/knowledge/topics/{topic_id}` | 文章及稳定章节、版本、来源、前置/关联目标与已解析正文目标 |
-| GET | `/knowledge/search?q=&limit=` | `{items:KnowledgeHit[],total,version,knowledge_sources}`；limit 1–50，默认 5 |
+| GET | `/knowledge/search?q=&limit=` | `{items:KnowledgeHit[],total,version,knowledge_sources}`；limit 1–50，默认 8。**limit 是章节数**——同一篇文章的多个章节都会命中，界面按文章合并展示 |
 | GET | `/projects/{id}/knowledge/topics/{topic_id}/instances` | 当前项目关联概念实例、head_commit、index_epoch、status；最多 50 项，非完整召回证明 |
 | GET | `/projects/{id}/code?path=&start_line=&end_line=` | 索引对应源码窗口 `{path,start_line,end_line,content,head_commit}`，最多 200 行 |
 
@@ -1015,7 +1015,9 @@ done                                ← 恰好一次，最后
 `section_title` 是章节的可读标题（如「跟着例子理解」）——`section_id` 是内部锚点，
 直接显示给用户读不懂。`section_id` 为空时 `section_title` 也为空。
 站内地址固定 `/learn/{topic_id}#{section_id}`（章节可省略）；不可解析时保持普通文字。
-`KnowledgeHit` 为 `{target,snippet,score,sources}`，source 包含作者、原始 URL、来源版本、
+`KnowledgeHit` 为 `{target,snippet,summary,score,sources}`。`snippet` 是**章节原文**
+（注入模型的上下文用它，Markdown 结构保留）；`summary` 是给界面卡片显示的
+**纯文本摘要**（无 Markdown 标记，长度截断）。source 包含作者、原始 URL、来源版本、
 许可/许可 URL、获取时间、快照 SHA256 和修改说明。知识引用不能转换成项目 Citation。
 
 文章包含 `id/title/group/summary/body/sections[{id,title,content}]/version/dialect/concept_ids`，

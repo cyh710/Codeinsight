@@ -45,6 +45,31 @@ def _read_json(path: Path) -> object:
         raise KnowledgeError(f"{path}: 无法读取 JSON：{exc}") from exc
 
 
+def _plain_snippet(content: str, limit: int = 160) -> str:
+    """把章节原文压成一段纯文本摘要。
+
+    搜索结果的摘要要在卡片里直接显示，所以不能带 Markdown 标记——
+    `**第一步**` 和 `` `CREATE TABLE` `` 原样显示出来是噪音。
+    """
+    text = content
+    # 围栏代码块整段去掉：它是代码，不是摘要。
+    text = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
+    # 行内代码保留内容，去掉反引号。
+    text = re.sub(r"`([^`]*)`", r"\1", text)
+    # 标题、列表、强调标记都去掉。
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*[-*+]\s+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*\d+[.)]\s+", "", text, flags=re.MULTILINE)
+    text = text.replace("**", "").replace("__", "")
+    # 站内链接保留文字。
+    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{2,}", "\n", text).strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "…"
+
+
 class LearningLibrary:
     """只读文章集合；构造时验证全部内部链接，检索连接不跨线程共享。"""
 
@@ -251,7 +276,12 @@ class LearningLibrary:
         return tuple(t for t in self.topics.values() if concept_id in t.concept_ids)
 
     def search(self, query: str, limit: int = 5) -> list[KnowledgeHit]:
-        """章节级 FTS5 检索；查询按字面 token 转义，空查询和无命中返回空列表。"""
+        """章节级 FTS5 检索；查询按字面 token 转义，空查询和无命中返回空列表。
+
+        `limit` 是**章节**数。调用方（教材目录的搜索框）按文章展示，
+        需要更多章节才能凑够几篇文章——所以这里按 limit 乘以倍数取，
+        让上层有得挑。
+        """
         if limit <= 0 or not query.strip():
             return []
         tokens = tuple(dict.fromkeys(self.tokenizer(query)))[:64]
@@ -287,6 +317,7 @@ class LearningLibrary:
                     section.content,
                     -score,
                     tuple(self.sources[s] for s in topic.source_ids),
+                    _plain_snippet(section.content),
                 )
             )
         return result

@@ -694,7 +694,10 @@ export interface KnowledgeSource {
 }
 export interface KnowledgeHit {
   target: LearningTarget
+  /** 章节原文（注入模型上下文用，保留 Markdown）。 */
   snippet: string
+  /** 给界面看的纯文本摘要（无 Markdown 标记）。 */
+  summary?: string
   score: number
   sources: KnowledgeSource[]
 }
