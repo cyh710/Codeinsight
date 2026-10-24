@@ -39,6 +39,8 @@ export interface ChatMessage {
   citations?: Citation[]
   abstained?: boolean
   abstentionReason?: string
+  /** 走满轮次上限未完成（契约 §8.3 新增）——与 abstained「没找到」是两回事。 */
+  incomplete?: boolean
   /** 本轮的工具时间线（边流边长）。 */
   tools?: ToolTimelineItem[]
   /** 本轮积累的证据（边流边长，右栏实时渲染）。 */

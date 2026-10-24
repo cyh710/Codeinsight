@@ -301,7 +301,7 @@ def _mini_git_repo(tmp_path: Path) -> Path:
     repo = tmp_path / "minirepo"
     repo.mkdir()
     (repo / "app.py").write_text(
-        '"""小应用。"""\n\n\ndef greet(name: str) -> str:\n    """问候。"""\n    return f"hi {name}"\n\n\ndef main() -> None:\n    print(greet("world"))\n',
+        '"""小应用。"""\n\nimport asyncio\n\n\ndef greet(name: str) -> str:\n    """问候。"""\n    return f"hi {name}"\n\n\nasync def main() -> None:\n    await asyncio.sleep(0)\n    print(greet("world"))\n\n\nif __name__ == "__main__":\n    asyncio.run(main())\n',
         encoding="utf-8",
     )
     (repo / "README.md").write_text("# mini\n", encoding="utf-8")
@@ -332,6 +332,14 @@ def test_create_project_real_index_end_to_end(
     assert detail["symbols"] >= 2  # module + greet + main
     assert detail["chunks"] >= 1
     assert detail["head_commit"]
+
+    # B 线概念检测随索引跑：import asyncio 命中 async 概念
+    assert detail["concepts"] >= 1
+    concepts = client.get(f"/projects/{body['id']}/concepts").json()
+    assert concepts["total"] >= 1
+    async_concept = next((c for c in concepts["items"] if c["concept_id"] == "async"), None)
+    assert async_concept is not None, concepts["items"]
+    assert async_concept["instance_count"] >= 1
 
     symbols = client.get(f"/projects/{body['id']}/symbols", params={"q": "greet"}).json()
     assert symbols["total"] == 1

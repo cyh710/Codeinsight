@@ -606,6 +606,8 @@ export const mockApi = {
           tools_used: ['search_code', 'get_callers'],
           abstained: event.data.abstained,
           abstention_reason: event.data.reason,
+          // 从事件透传：mock 回放当前恒为 false，但不能在这里写死——
+          // 将来回放一个「未完成」样例时，非流式路径要和流式一致。
           incomplete: event.data.incomplete,
           evidence: [],
         }

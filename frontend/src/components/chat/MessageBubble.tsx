@@ -5,7 +5,7 @@
  */
 import { memo } from 'react'
 import Markdown from 'react-markdown'
-import { AlertTriangle, Ban, CheckCircle2, Loader2, Wrench } from 'lucide-react'
+import { AlertTriangle, Ban, CheckCircle2, Hourglass, Loader2, Wrench } from 'lucide-react'
 import type { ChatMessage } from '../../store/types'
 import type { Citation, Inference } from '../../api/types'
 
@@ -152,6 +152,14 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation }: M
         )}
         {message.inferences && message.inferences.length > 0 && (
           <InferenceList inferences={message.inferences} />
+        )}
+        {settled && message.incomplete && (
+          // 未完成≠没找到（契约 §8.3 新增字段）：内容照常显示，追加提示条，
+          // 不能和上面的 abstained 弃答卡合并成同一种提示。
+          <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warning/10 px-2.5 py-1.5 text-[11px] leading-relaxed text-warning" role="status">
+            <Hourglass size={12} strokeWidth={1.8} className="mt-0.5 shrink-0" />
+            回答未完成——模型轮次达到上限。已有的内容仍然可用；继续追问或换个问法可以推进。
+          </p>
         )}
       </div>
     </div>
