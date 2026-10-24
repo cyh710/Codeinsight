@@ -128,7 +128,7 @@
 | `GET` | `/projects/{id}/concepts/{concept_id}` | 概念详情 | ⬜ M1.5 |
 | `GET` | `/projects/{id}/concepts/{concept_id}/instances` | 概念实例 | ⬜ M1.5 |
 | `POST` | `/projects/{id}/concepts/{concept_id}/explain` | 三级深度解释 | ⬜ M1.5 |
-| `GET` | `/projects/{id}/changes` | 变更说明 | ⬜ M6 |
+| `GET` | `/projects/{id}/changes` | 变更说明 | ✅ M6 |
 | `POST` | `/query` | 非流式问答 | ✅ M3 |
 | `POST` | `/query/stream` | **SSE** 流式问答 | ✅ M3 |
 | `GET` | `/knowledge/tree` | 内置教材目录（不依赖项目库） | ✅ M3 |
@@ -629,8 +629,10 @@
 | `impacted.symbols` | **反向可达**集合——改这些函数会影响谁（源文档 §2.2-5） |
 | `stale_design_decisions` | **设计说明过期**（源文档 §2.4 第 5 问）——"哪些历史设计说明已不再适用" |
 
-> 这一端点是 M6 的。**M1–M5 期间返回 `{"files": {"added": [], "modified": [], "deleted": []}, ...}` 空壳**，字段不删不改。
-> 前端现在就按完整形状写，之后不用改。
+> ✅ M6 已实装。数据来自增量索引写下的 `change_record` 与 `staleness_report`；
+> 没有任何变更记录时返回**同形状的空壳**，前端不需要为此写分支。
+> `since` 取这次索引的基准 commit（`index_run.base_commit`）。
+> `stale_design_decisions` 只在**增量**索引时产生——全量重建没有「上一次」可比。
 
 ---
 

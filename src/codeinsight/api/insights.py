@@ -65,19 +65,15 @@ def list_flows(project_id: int) -> dict[str, Any]:
 
 @router.get("/projects/{project_id}/changes")
 def get_changes(project_id: int, since: str | None = None) -> dict[str, Any]:
+    """最近一次变更说明（契约 §7.1）。
+
+    没有变更记录时返回**同形状的空壳**——前端不需要为此写分支。
+    """
+    from codeinsight.cognitive.changes.service import build_changes
+
     conn = connect_db(project_id)
     try:
         require_project(conn, project_id)
-        # M6 前的空壳（契约 §7.1）：形状冻结，值为空。
-        return {
-            "since": since or "",
-            "head": "",
-            "summary": "",
-            "files": {"added": [], "modified": [], "deleted": []},
-            "changed_symbols": [],
-            "impacted": {"modules": [], "symbols": [], "concept_ids": []},
-            "tests": [],
-            "stale_design_decisions": [],
-        }
+        return build_changes(conn, project_id, since=since)
     finally:
         conn.close()

@@ -115,27 +115,72 @@ class GetFlowTool(BaseTool):
 
 class GetChangesTool(BaseTool):
     name = "get_changes"
-    description = "查看自某个提交以来的代码变更与影响范围。变更分析在 M6 才可用。"
+    description = (
+        "查看最近一次索引更新带来的代码变更：哪些文件/符号变了、谁受影响、"
+        "哪些设计说明已经过期。回答「这次改了什么」「会不会影响 X」时用。"
+    )
     parameters = {
         "type": "object",
         "properties": {
-            "since": {"type": "string", "description": "起始 commit / 分支名；缺省为上次索引的 commit"}
+            "since": {"type": "string", "description": "指定某个 commit 的变更记录；缺省取最近一次"}
         },
         "required": [],
     }
 
     async def run(self, arguments: dict[str, Any], ctx: ToolContext) -> ToolResult:
-        # M6 之前不假装能分析。给它一个**空但形状完整**的结果，
-        # 模型就知道这条路走不通，不会再试。
-        return self.result(
-            "变更分析还没有实现（属于 M6）。当前无法回答「这次改了什么」，"
-            "请改用 search_code / find_symbol 查看现状。",
-            data={
-                "implemented": False,
-                "files": {"added": [], "modified": [], "deleted": []},
-                "changed_symbols": [],
-                "impacted": {"modules": [], "symbols": [], "concept_ids": []},
-            },
+        from codeinsight.cognitive.changes.service import build_changes
+
+        payload = build_changes(
+            self.services.conn,
+            self.services.project_id,
+            since=str(arguments.get("since") or "") or None,
+        )
+        files = payload["files"]
+        if not payload["changed_symbols"] and not any(files.values()):
+            return self.result(
+                "还没有可比对的变更记录。变更说明来自两次索引之间的差异——"
+                "先用 git 提交改动、再跑一次增量索引，这里才会有内容。",
+                data=payload,
+            )
+
+        lines = [payload["summary"] or "本次变更："]
+        for key, label in (("added", "新增"), ("modified", "修改"), ("deleted", "删除")):
+            entries = files[key]
+            if entries:
+                lines.append(f"{label}文件（{len(entries)}）：" + "、".join(f["path"] for f in entries[:10]))
+        if payload["changed_symbols"]:
+            lines.append("变更符号：")
+            for symbol in payload["changed_symbols"][:15]:
+                lines.append(
+                    f"- {symbol['path']}:{symbol['lineno']}  {symbol['qualname']}"
+                    f"（{symbol['change']}）"
+                )
+        impacted = payload["impacted"]
+        if impacted["symbols"]:
+            lines.append(f"受影响符号（{len(impacted['symbols'])}）：")
+            for symbol in impacted["symbols"][:10]:
+                lines.append(f"- {symbol['path']}:{symbol['lineno']}  {symbol['qualname']}")
+        if impacted["modules"]:
+            lines.append("受影响模块：" + "、".join(impacted["modules"][:10]))
+        if payload["stale_design_decisions"]:
+            lines.append("可能已过期的设计说明：")
+            for item in payload["stale_design_decisions"]:
+                lines.append(f"- {item['doc_id']} {item['title']}：{item['reason']}")
+
+        citations = [
+            Citation(symbol["path"], int(symbol["lineno"]), int(symbol["lineno"]), symbol["qualname"], "")
+            for symbol in payload["changed_symbols"]
+            if symbol.get("path") and symbol.get("lineno")
+        ]
+        return self._with_citations("\n".join(lines), payload, citations)
+
+    def _with_citations(self, text: str, data: dict[str, Any], citations: list[Citation]) -> ToolResult:
+        base = self.result(text, data=data)
+        return ToolResult(
+            base.content,
+            {**base.data, "citations": self.citations(citations)},
+            base.truncated,
+            base.error,
         )
 
 

@@ -114,5 +114,6 @@ cd <仓库根>-wt-frontend  && git merge main
       （引擎与 `ci ask` 已通过；HTTP/SSE 端点由 C 线按 `requests/0004` 接线）
 - [x] M5：`ci eval` 一条命令产出对照报告，含 95% CI 与样本量 n
       （6 臂 × 3 题型，报告在 `eval/reports/`）
-- [ ] M6：改一个函数后只有相关 chunk 的 `source_sha256` 变化（SQL 断言）
+- [x] M6：改一个函数后只有相关 chunk 的 `source_sha256` 变化（SQL 断言）
+      + 增量结果与全量重建逐项一致（符号 / 块 / 边 / 模块 / 设计说明）
 - [ ] M7：外部 agent（Claude Code）能真的调通 `search_code` / `explain_concept`

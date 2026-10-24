@@ -150,6 +150,7 @@ def run_index(
     max_chunk_lines: int = DEFAULT_MAX_CHUNK_LINES,
     embed: bool = False,
     concepts_dir: str | Path | None = None,
+    incremental: bool = False,
 ) -> dict:
     """扫描 → 解析 → 落库 → `repo_state` 收尾（**不含** `index_run` 记账）。
 
@@ -170,9 +171,29 @@ def run_index(
     语义是**全量重建**：先清掉这个项目的数据再重建。
     先让「索引是对某个 commit 的完整快照」这件事成立，
     增量（M6）才有明确的对比基准。
+
+    `incremental=True` 时先试增量：只重算变了的文件与符号，其余行一行不动。
+    不能增量（没有上一位点 / 历史被改写 / 解析器版本变了）时自动退回全量——
+    **退路由引擎自己判断**，调用方不需要知道哪条路走成了。
     """
     started = time.monotonic()
     root = Path(root_path)
+
+    if incremental:
+        from codeinsight.cognitive.changes.incremental import run_incremental
+
+        stats = run_incremental(
+            conn,
+            project_id,
+            root,
+            ref,
+            max_chunk_lines=max_chunk_lines,
+            embed=embed,
+            concepts_dir=concepts_dir,
+        )
+        if stats is not None:
+            stats.setdefault("elapsed_s", time.monotonic() - started)
+            return stats
 
     head_commit, head_branch = _resolve_commit(root, ref)
     parser = PythonParser()
@@ -410,6 +431,7 @@ def index_project(
     max_chunk_lines: int = DEFAULT_MAX_CHUNK_LINES,
     embed: bool = False,
     concepts_dir: str | Path | None = None,
+    incremental: bool = False,
 ) -> IndexResult:
     """对一个仓库建索引并记账（CLI 与测试用）。
 
@@ -429,21 +451,30 @@ def index_project(
             max_chunk_lines=max_chunk_lines,
             embed=embed,
             concepts_dir=concepts_dir,
+            incremental=incremental,
         )
+        # `base_commit` 记的是上一次索引停在哪——它是这次增量的参照点，
+        # 也是「这份认知有多新」的唯一依据。
+        base_row = conn.execute(
+            "SELECT base_commit FROM index_run WHERE project_id = ? ORDER BY id DESC LIMIT 1",
+            (project_id,),
+        ).fetchone()
+        mode = "incremental" if stats.get("changed_symbols") is not None else "full"
         conn.execute(
             """
             INSERT INTO index_run (project_id, base_commit, head_commit, mode,
                                    started_at, finished_at, ok,
                                    files_total, symbols_added, stats_json)
-            VALUES (?, ?, ?, 'full', ?, datetime('now'), 1, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, datetime('now'), 1, ?, ?, ?)
             """,
             (
                 project_id,
+                base_row[0] if base_row else stats["head_commit"],
                 stats["head_commit"],
-                stats["head_commit"],
+                mode,
                 started,
                 stats["files"],
-                stats["symbols"],
+                stats.get("changed_symbols", stats["symbols"]),
                 None,
             ),
         )
@@ -468,7 +499,16 @@ def index_project(
         concepts=stats["concepts"],
         concept_instances=stats["concept_instances"],
         elapsed_s=time.monotonic() - started,
-        stats={"index_epoch": stats["index_epoch"], "parser_version": stats["parser_version"]},
+        stats={
+            "index_epoch": stats["index_epoch"],
+            "parser_version": stats["parser_version"],
+            # 增量模式的附加信息（全量时不存在）。
+            **{
+                key: stats[key]
+                for key in ("changed_symbols", "stale_design_decisions")
+                if key in stats
+            },
+        },
     )
 
 

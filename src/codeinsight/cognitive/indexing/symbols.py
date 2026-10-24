@@ -175,8 +175,14 @@ def write_module(
     qualname: str,
     docstring: str | None,
 ) -> int:
-    """写一行 `module` 表，返回 module_id。"""
-    cur = conn.execute(
+    """写一行 `module` 表，返回 module_id。
+
+    **不能信 `lastrowid`**：走 ON CONFLICT DO UPDATE 时它可能还是上一条
+    INSERT 留下的值——增量索引里模块行经常已存在，拿错 id 会写出一堆
+    指向不存在模块的符号（外键当场报错，或者更糟：悄悄指向别的模块）。
+    统一回查一次，代价是一次主键查询。
+    """
+    conn.execute(
         """
         INSERT INTO module (project_id, file_id, qualname, docstring)
         VALUES (?, ?, ?, ?)
@@ -186,8 +192,6 @@ def write_module(
         """,
         (project_id, file_id, qualname, docstring),
     )
-    if cur.lastrowid:
-        return int(cur.lastrowid)
     row = conn.execute(
         "SELECT id FROM module WHERE project_id = ? AND qualname = ?",
         (project_id, qualname),

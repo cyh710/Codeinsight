@@ -7,6 +7,7 @@
     ci search "<query>"        检索并返回 file:line   (M2)
     ci ask "<question>"        对项目提问            (M3)
     ci eval                    对照评测（多臂 + 95% CI）(M5)
+    ci changes --project X     最近一次变更说明          (M6)
     ci concepts                列出识别到的技术概念   (M1.5)
     ci explain <concept>       三级深度解释一个概念   (M3)
     ci changes                 变更说明              (M6)
@@ -377,6 +378,7 @@ def _cmd_index(args: argparse.Namespace) -> int:
         max_chunk_lines=settings.max_chunk_lines,
         embed=args.embed,
         concepts_dir=Path(args.concepts) if args.concepts else None,
+        incremental=args.incremental,
     )
     print(f"→ {path}")
     print(f"   project={result.project_name} @ {result.head_commit[:8]}")
@@ -392,7 +394,49 @@ def _cmd_index(args: argparse.Namespace) -> int:
         print(f"   向量 {result.embedded} 条")
     if args.concepts:
         print(f"   概念 {result.concepts} 个，实例 {result.concept_instances} 处")
+    if "changed_symbols" in result.stats:
+        print(
+            f"   增量：{result.stats['changed_symbols']} 个符号变化"
+            f"（过期设计说明 {result.stats.get('stale_design_decisions', 0)} 条）"
+        )
     print(f"   用时 {result.elapsed_s:.2f}s")
+    return 0
+
+
+def _cmd_changes(args: argparse.Namespace) -> int:
+    """最近一次索引更新的变更说明（M6）。"""
+    from codeinsight.cognitive.changes.service import build_changes
+    from codeinsight.storage.sqlite import db_path, open_sqlite
+
+    path = db_path(settings.data_dir)
+    conn = open_sqlite(path, row_factory=True)
+    try:
+        row = conn.execute("SELECT id FROM project WHERE name = ?", (args.project,)).fetchone()
+        if row is None:
+            print(f"没有名为 {args.project} 的项目")
+            return 1
+        payload = build_changes(conn, int(row["id"]), since=args.since)
+    finally:
+        conn.close()
+
+    print(payload["summary"] or "没有变更记录。")
+    if payload["since"] or payload["head"]:
+        print(f"  {payload['since'][:8] or '?'} → {payload['head'][:8] or '?'}")
+    files = payload["files"]
+    for key, label in (("added", "新增"), ("modified", "修改"), ("deleted", "删除")):
+        for item in files[key]:
+            count = f"（{item['changed_symbols']} 个符号）" if "changed_symbols" in item else ""
+            print(f"  {label} {item['path']}{count}")
+    for symbol in payload["changed_symbols"]:
+        print(f"  符号 {symbol['path']}:{symbol['lineno']}  {symbol['qualname']}  [{symbol['change']}]")
+    if payload["impacted"]["symbols"]:
+        print(f"  受影响符号 {len(payload['impacted']['symbols'])} 个：")
+        for symbol in payload["impacted"]["symbols"][:10]:
+            print(f"    {symbol['path']}:{symbol['lineno']}  {symbol['qualname']}")
+    if payload["stale_design_decisions"]:
+        print("  可能过期的设计说明：")
+        for item in payload["stale_design_decisions"]:
+            print(f"    {item['doc_id']} {item['title']} — {item['reason']}")
     return 0
 
 
@@ -434,6 +478,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="概念本体目录（如 knowledge/concepts）；给了就同步概念与实例",
     )
+    p.add_argument(
+        "--incremental",
+        action="store_true",
+        help="只重算变了的文件（需要上一次索引的 commit；不能增量时自动退回全量）",
+    )
     p.set_defaults(func=_cmd_index)
 
     p = sub.add_parser("eval-locate", help="M2 验收：「在哪里实现」的定位评测")
@@ -451,6 +500,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="开哪些通道，逗号分隔：bm25,dense,symbol,concept",
     )
     p.set_defaults(func=_cmd_eval_locate)
+
+    p = sub.add_parser("changes", help="最近一次索引更新的变更说明（M6）")
+    p.add_argument("--project", required=True, help="项目名")
+    p.add_argument("--since", default=None, help="指定某个 commit 的变更记录；缺省取最近一次")
+    p.set_defaults(func=_cmd_changes)
 
     p = sub.add_parser("eval", help="M5 对照评测：多臂 + 95% CI + 报告")
     p.add_argument("--project", required=True, help="项目名")
