@@ -84,6 +84,9 @@ class IndexResult:
     dependencies: int = 0
     skipped: int = 0
     chunks: int = 0
+    embedded: int = 0
+    concepts: int = 0
+    concept_instances: int = 0
     elapsed_s: float = 0.0
     stats: dict = field(default_factory=dict)
 
@@ -145,6 +148,8 @@ def run_index(
     ref: str | None = None,
     *,
     max_chunk_lines: int = DEFAULT_MAX_CHUNK_LINES,
+    embed: bool = False,
+    concepts_dir: str | Path | None = None,
 ) -> dict:
     """扫描 → 解析 → 落库 → `repo_state` 收尾（**不含** `index_run` 记账）。
 
@@ -154,6 +159,13 @@ def run_index(
     - `conn` 由调用方传入——事务与 `index_run` 记账归 API 层，引擎只管数据；
     - 只返回原始计数，概览由调用方自己 `COUNT(*)` 生成，避免两处口径漂移；
     - 失败抛异常，调用方的 try/except 会把它记进 `index_run.stats_json`。
+
+    `embed=True` 时额外算向量——**默认关**：嵌入是唯一重的一步（要调外部 API），
+    而且没有 key 时本来就跑不了。
+
+    `concepts_dir` 指向概念本体目录（B 线的 `knowledge/concepts`）。
+    给了就跑一次概念检测，把本体与实例写进 `concept` / `concept_instance`
+    两张表——概念检索通道就靠这两张表供数。
 
     语义是**全量重建**：先清掉这个项目的数据再重建。
     先让「索引是对某个 commit 的完整快照」这件事成立，
@@ -324,6 +336,26 @@ def run_index(
             local_packages={qual.split(".")[0] for qual in module_ids},
         )
 
+        # ── 概念同步（可选）─────────────────────────────────────
+        concept_count = 0
+        concept_instances = 0
+        if concepts_dir:
+            from codeinsight.cognitive.indexing.concepts_sync import sync_concepts
+
+            sync = sync_concepts(
+                conn,
+                project_id=project_id,
+                knowledge_dir=concepts_dir,
+                sources={e.path: "\n".join(e.source_lines) for e in parsed_entries},
+            )
+            concept_count = sync.concepts
+            concept_instances = sync.instances
+
+        # ── 向量（可选）───────────────────────────────────────
+        embedded = 0
+        if embed:
+            embedded = _embed_chunks(conn, project_id=project_id)
+
         # ── 状态 ───────────────────────────────────────────────
         epoch = conn.execute(
             "SELECT index_epoch FROM repo_state WHERE project_id = ?", (project_id,)
@@ -360,6 +392,9 @@ def run_index(
         "dependencies": dependencies,
         "skipped": skipped,
         "chunks": chunk_count,
+        "embedded": embedded,
+        "concepts": concept_count,
+        "concept_instances": concept_instances,
         "elapsed_s": time.monotonic() - started,
         "index_epoch": next_epoch,
         "parser_version": PARSER_VERSION,
@@ -373,6 +408,8 @@ def index_project(
     name: str,
     ref: str | None = None,
     max_chunk_lines: int = DEFAULT_MAX_CHUNK_LINES,
+    embed: bool = False,
+    concepts_dir: str | Path | None = None,
 ) -> IndexResult:
     """对一个仓库建索引并记账（CLI 与测试用）。
 
@@ -390,6 +427,8 @@ def index_project(
             root,
             ref,
             max_chunk_lines=max_chunk_lines,
+            embed=embed,
+            concepts_dir=concepts_dir,
         )
         conn.execute(
             """
@@ -425,6 +464,9 @@ def index_project(
         dependencies=stats["dependencies"],
         skipped=stats["skipped"],
         chunks=stats["chunks"],
+        embedded=stats["embedded"],
+        concepts=stats["concepts"],
+        concept_instances=stats["concept_instances"],
         elapsed_s=time.monotonic() - started,
         stats={"index_epoch": stats["index_epoch"], "parser_version": stats["parser_version"]},
     )
@@ -563,6 +605,64 @@ def _write_chunks(
                 ),
             )
             written += 1
+    return written
+
+
+def _embed_chunks(conn: sqlite3.Connection, *, project_id: int) -> int:
+    """给所有块算向量（可选步骤）。
+
+    内容没变的块**复用旧向量**——`embedding.text_sha256` 存的就是
+    `chunk.source_sha256`（块正文的哈希），对上了就不用重算。
+
+    没有 embedder / 没有 key 时返回 0：稠密通道自动少一路，
+    其余两路照常工作（评测时这正是「hybrid 臂退化成 bm25 臂」的情况，
+    得如实记下来而不是假装跑过了）。
+    """
+    from codeinsight.cognitive.embedding.siliconflow import SiliconFlowEmbedder
+    from codeinsight.cognitive.retrieval.dense import (
+        SqliteVectorStore,
+        register_model,
+        reusable_vector_ids,
+    )
+
+    embedder = SiliconFlowEmbedder()
+    if not embedder.enabled:
+        return 0
+
+    rows = conn.execute(
+        "SELECT id, body, source_sha256 FROM chunk WHERE project_id = ? ORDER BY id",
+        (project_id,),
+    ).fetchall()
+    if not rows:
+        return 0
+
+    digest_of = {int(r[0]): r[2] for r in rows}
+    reusable = reusable_vector_ids(conn, model_id=embedder.model_id, text_sha256s=digest_of)
+    todo = [r for r in rows if int(r[0]) not in reusable]
+    if not todo:
+        return 0
+
+    register_model(
+        conn,
+        model_id=embedder.model_id,
+        dim=embedder.dim,
+        provider=embedder._base_url,  # noqa: SLF001 —— 只为排查用
+    )
+
+    store = SqliteVectorStore(conn, model_id=embedder.model_id)
+    written = 0
+    batch_size = 32
+    for start in range(0, len(todo), batch_size):
+        batch = todo[start : start + batch_size]
+        vectors = embedder.encode([r[1] for r in batch])
+        if len(vectors) != len(batch):
+            continue
+        store.upsert(
+            [int(r[0]) for r in batch],
+            vectors,
+            text_sha256s=[r[2] for r in batch],
+        )
+        written += len(batch)
     return written
 
 

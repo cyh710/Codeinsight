@@ -31,10 +31,19 @@ def test_plain_word_is_lowercased_once() -> None:
     assert split_identifier("helper") == ["helper"]
 
 
-def test_tokens_are_deduplicated() -> None:
-    """同一个词在一个标识符里出现两次不该被算两遍。"""
+def test_repeated_identifier_keeps_its_frequency() -> None:
+    """同一个标识符出现多次，token 也要出现多次。
+
+    BM25 的 tf 分量靠的就是词频——跨出现去重等于把 tf 恒定成 1，
+    BM25 会退化成纯 IDF 排序。
+    """
     tokens = split_identifiers("foo foo")
-    assert tokens == ["foo"]
+    assert tokens == ["foo", "foo"]
+
+
+def test_one_identifier_does_not_repeat_its_own_forms() -> None:
+    """一次出现里，全名与小写形式相同就不该出两遍。"""
+    assert split_identifiers("helper") == ["helper"]
 
 
 def test_chinese_is_not_one_giant_token() -> None:

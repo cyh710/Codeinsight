@@ -108,26 +108,64 @@ def split_identifiers(text: str) -> list[str]:
         return []
 
     out: list[str] = []
-    seen: set[str] = set()
-
-    def _emit(token: str) -> None:
-        if token and token not in seen:
-            seen.add(token)
-            out.append(token)
 
     for match in _TOKEN_RE.finditer(text):
         piece = match.group(0)
         if _CJK_RE.fullmatch(piece):
-            for word in _split_cjk(piece):
-                _emit(word)
+            # 中文：每次出现都算一次词频。
+            out.extend(word for word in _split_cjk(piece) if word)
         elif piece[0].isdigit():
             # 纯数字当噪声丢掉：BM25 命中数字几乎不带来语义。
             continue
         else:
-            for token in split_identifier(piece):
-                _emit(token)
+            # 标识符：每次出现都产出它的一组 token。
+            #
+            # **不能跨出现去重**——BM25 的 tf 分量靠的就是词频：
+            # 一个块里出现 10 次 `helper` 应当比出现 1 次的块得分高。
+            # 早先的实现用全局 `seen` 去重，等于把 tf 恒定成了 1，
+            # BM25 退化成纯 IDF 排序（词频这一半彻底失效）。
+            out.extend(split_identifier(piece))
 
     return out
+
+
+def raw_identifiers(text: str) -> list[str]:
+    """抽出原文里的标识符（**不拆词**）。
+
+    符号通道要用它做精确匹配：查询里打的是 `prepare_chat_stream`，
+    就该拿这个**原样**去匹配符号，而不是拿拆开的 `prepare` / `stream`
+    去匹配一串叫 prepare 的东西。
+
+    与 `split_identifiers` 的区别：那个是给 BM25 用的（要拆词 + 保留词频），
+    这个是给符号匹配用的（要原样 + 顺序）。
+    """
+    out: list[str] = []
+    for match in _TOKEN_RE.finditer(text):
+        piece = match.group(0)
+        if piece[0].isdigit() or _CJK_RE.fullmatch(piece):
+            continue
+        if piece not in out:
+            out.append(piece)
+    return out
+
+
+def identifier_phrases(text: str) -> list[str]:
+    """抽出标识符的「词序形式」，用来做短语查询。
+
+    `prepare_chat_stream` → `prepare chat stream`。
+    短语查询在代码检索里特别有用：用户打全名，`token_text` 里这几个词是
+    **连续**的，短语匹配能精确命中，而拆开匹配的 `prepare` + `stream`
+    会误伤别的符号。
+    """
+    phrases: list[str] = []
+    for match in _TOKEN_RE.finditer(text):
+        piece = match.group(0)
+        if piece[0].isdigit() or _CJK_RE.fullmatch(piece):
+            continue
+        parts = _PART_RE.findall(piece.replace("_", " "))
+        if len(parts) >= 2:
+            phrases.append(" ".join(part.lower() for part in parts))
+    return phrases
 
 
 def token_text(text: str) -> str:

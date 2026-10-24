@@ -109,7 +109,7 @@ cd <仓库根>-wt-frontend  && git merge main
 见 [`../roadmap.md`](../roadmap.md) 的「每阶段的验收」表。A 线自己的关键几条：
 
 - [x] M1：真实仓库建索引成功；符号数与 AST 抽查一致；超大符号正确二次切分
-- [ ] M2：10 个"在哪里实现"的问题全部给出正确 `file:line`
+- [x] M2：10 个"在哪里实现"的问题全部给出正确 `file:line`（name 与 docstring 两种题型各 10/10）
 - [ ] M3：截断不破坏 `file:line`；事实与推断分栏；无命中时明确弃答
 - [ ] M5：`ci eval` 一条命令产出对照报告，含 95% CI 与样本量 n
 - [ ] M6：改一个函数后只有相关 chunk 的 `source_sha256` 变化（SQL 断言）

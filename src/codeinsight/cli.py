@@ -63,6 +63,120 @@ def _cmd_dump_fixture(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_search(args: argparse.Namespace) -> int:
+    """检索（M2）：问一句「X 在哪」，返回带 file:line 的证据。"""
+    from codeinsight.cognitive.embedding.siliconflow import SiliconFlowEmbedder
+    from codeinsight.cognitive.retrieval.retriever import (
+        ALL_LANES,
+        LANE_BM25,
+        LANE_DENSE,
+        RetrievalConfig,
+        Retriever,
+    )
+    from codeinsight.storage.sqlite import open_sqlite
+
+    path = db_path(settings.data_dir)
+    if not path.exists():
+        print(f"索引库不存在：{path}（先跑 ci index）")
+        return 1
+
+    lanes = {name.strip() for name in args.lanes.split(",") if name.strip()} or {LANE_BM25}
+    unknown = lanes - ALL_LANES
+    if unknown:
+        print(f"未知通道：{', '.join(sorted(unknown))}（可用：{', '.join(sorted(ALL_LANES))}）")
+        return 2
+
+    embedder = SiliconFlowEmbedder()
+    if LANE_DENSE in lanes and not embedder.enabled:
+        print("（没有 CI_EMBEDDING_API_KEY，稠密通道跳过）")
+        lanes.discard(LANE_DENSE)
+
+    conn = open_sqlite(path, row_factory=True)
+    try:
+        row = conn.execute("SELECT id FROM project WHERE name = ?", (args.project,)).fetchone()
+        if row is None:
+            print(f"没有名为 {args.project} 的项目")
+            return 1
+        project_id = int(row[0])
+
+        retriever = Retriever(
+            conn,
+            embedder=embedder,
+            db_path=path,
+            config=RetrievalConfig(
+                lanes=frozenset(lanes),
+                top_k=args.k,
+                rrf_k=settings.retrieval_rrf_k,
+                neighbor_depth=settings.retrieval_neighbor_depth,
+            ),
+        )
+        results = retriever.retrieve(args.query, k=args.k, project_id=project_id)
+    finally:
+        conn.close()
+
+    if not results:
+        print("没有命中。")
+        return 0
+
+    print(f"「{args.query}」→ {len(results)} 条证据")
+    for item in results:
+        lanes_str = ",".join(item.lanes)
+        print(f"  {item.path}:{item.lineno}  {item.qualname or ''}  [{lanes_str}]")
+        snippet = " ".join(item.snippet.splitlines())[:120]
+        print(f"      {snippet}")
+    return 0
+
+
+def _cmd_eval_locate(args: argparse.Namespace) -> int:
+    """M2 验收：「在哪里实现」的定位评测，题目从索引自动生成。"""
+    from codeinsight.cognitive.embedding.siliconflow import SiliconFlowEmbedder
+    from codeinsight.cognitive.retrieval.retriever import (
+        ALL_LANES,
+        RetrievalConfig,
+        Retriever,
+    )
+    from codeinsight.eval.locator import format_report, generate_tasks, run_tasks
+    from codeinsight.storage.sqlite import open_sqlite
+
+    path = db_path(settings.data_dir)
+    conn = open_sqlite(path, row_factory=True)
+    try:
+        row = conn.execute("SELECT id FROM project WHERE name = ?", (args.project,)).fetchone()
+        if row is None:
+            print(f"没有名为 {args.project} 的项目")
+            return 1
+        project_id = int(row[0])
+
+        embedder = SiliconFlowEmbedder()
+        lanes = frozenset(args.lanes.split(",")) & ALL_LANES
+        retriever = Retriever(
+            conn,
+            embedder=embedder,
+            db_path=path,
+            config=RetrievalConfig(
+                lanes=lanes,
+                top_k=args.k,
+                rrf_k=settings.retrieval_rrf_k,
+                neighbor_depth=settings.retrieval_neighbor_depth,
+            ),
+        )
+
+        for kind in args.kinds.split(","):
+            tasks = generate_tasks(conn, project_id=project_id, n=args.n, kind=kind.strip())
+            if not tasks:
+                print(f"[{kind}] 没有可用的题目")
+                continue
+            results = run_tasks(
+                conn, project_id=project_id, tasks=tasks, retriever=retriever, k=args.k
+            )
+            print()
+            print(f"=== {kind} 题型（{len(tasks)} 题）===")
+            print(format_report(results))
+    finally:
+        conn.close()
+    return 0
+
+
 def _cmd_index(args: argparse.Namespace) -> int:
     """对一个仓库建索引（M1）。"""
     from codeinsight.cognitive.indexing.indexer import index_project
@@ -74,6 +188,8 @@ def _cmd_index(args: argparse.Namespace) -> int:
         name=args.name or Path(args.repo).name,
         ref=args.ref,
         max_chunk_lines=settings.max_chunk_lines,
+        embed=args.embed,
+        concepts_dir=Path(args.concepts) if args.concepts else None,
     )
     print(f"→ {path}")
     print(f"   project={result.project_name} @ {result.head_commit[:8]}")
@@ -85,6 +201,10 @@ def _cmd_index(args: argparse.Namespace) -> int:
         f"   chunks={result.chunks} entry_points={result.entry_points} "
         f"flows={result.flows} dependencies={result.dependencies} skipped={result.skipped}"
     )
+    if args.embed:
+        print(f"   向量 {result.embedded} 条")
+    if args.concepts:
+        print(f"   概念 {result.concepts} 个，实例 {result.concept_instances} 处")
     print(f"   用时 {result.elapsed_s:.2f}s")
     return 0
 
@@ -117,12 +237,57 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--repo", required=True, help="仓库根目录")
     p.add_argument("--ref", default=None, help="git ref（缺省 HEAD）")
     p.add_argument("--name", default=None, help="项目显示名（缺省用目录名）")
+    p.add_argument(
+        "--embed",
+        action="store_true",
+        help="顺便算向量（要 CI_EMBEDDING_API_KEY；默认不跑，嵌入是唯一重的一步）",
+    )
+    p.add_argument(
+        "--concepts",
+        default=None,
+        help="概念本体目录（如 knowledge/concepts）；给了就同步概念与实例",
+    )
     p.set_defaults(func=_cmd_index)
+
+    p = sub.add_parser("eval-locate", help="M2 验收：「在哪里实现」的定位评测")
+    p.add_argument("--project", required=True, help="项目名")
+    p.add_argument("-n", type=int, default=10, help="出多少题")
+    p.add_argument("-k", type=int, default=settings.retrieval_top_k, help="看前多少条")
+    p.add_argument(
+        "--kinds",
+        default="name,docstring",
+        help="题型：name（知道名字）/ docstring（只知道描述）",
+    )
+    p.add_argument(
+        "--lanes",
+        default="bm25,symbol",
+        help="开哪些通道，逗号分隔：bm25,dense,symbol,concept",
+    )
+    p.set_defaults(func=_cmd_eval_locate)
+
+    p = sub.add_parser("search", help="检索：问一句「X 在哪」")
+    p.add_argument("query", help="查询")
+    p.add_argument("--project", required=True, help="项目名")
+    p.add_argument(
+        "--lanes",
+        default="bm25,symbol",
+        help="开哪些通道，逗号分隔：bm25,dense,symbol,concept",
+    )
+    p.add_argument("-k", type=int, default=settings.retrieval_top_k, help="返回多少条")
+    p.set_defaults(func=_cmd_search)
 
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Windows 控制台默认 GBK——中文和 ✓ 都会直接抛 UnicodeEncodeError。
+    # 统一在入口把输出流改成 UTF-8：编码问题不该由每个子命令各自处理。
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):  # pragma: no cover —— 非 TextIOWrapper
+            pass
+
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
