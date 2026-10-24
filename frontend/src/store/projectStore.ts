@@ -38,15 +38,23 @@ async function loadProjectData(
 ): Promise<void> {
   set({ loading: true, error: '' })
   try {
-    // 文件树一次拉全（契约：裸数组）；符号全量拉来做左栏离线过滤，
-    // 不值得为"点文件展开符号"再发请求。详情（含状态与计数）同批取。
-    const [detail, files, symbolsRes] = await Promise.all([
+    // 文件树一次拉全（契约：裸数组）。每个文件自带 symbol_count，
+    // 页脚总数与每文件的符号数都从这里来——不需要额外请求。
+    //
+    // 符号**不**在这里一次性拉：契约 §0.4 把 limit 上限压在 500，
+    // 织忆这种 6543 符号的项目一次拉不全（只覆盖前 31 个文件），
+    // 剩下的文件展开后是空的。改成展开文件时按 path 拉（loadSymbolsForPath）。
+    const [detail, files] = await Promise.all([
       api.getProject(projectId),
       api.getProjectFiles(projectId),
-      api.listProjectSymbols(projectId, { limit: 500 }),
     ])
-    const symbols: SymbolListItem[] = [...symbolsRes.items]
-    set({ currentDetail: detail, files, symbols, loading: false })
+    set({
+      currentDetail: detail,
+      files,
+      symbolsByPath: new Map(),
+      loadingPaths: new Set(),
+      loading: false,
+    })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     set({ loading: false, error: msg })
@@ -58,7 +66,8 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
   currentProjectId: null,
   currentDetail: null,
   files: [] as FileEntry[],
-  symbols: [] as SymbolListItem[],
+  symbolsByPath: new Map<string, SymbolListItem[]>(),
+  loadingPaths: new Set<string>(),
   loading: false,
   error: '',
   importing: false,
@@ -90,6 +99,35 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
     workbenchStore.getState().resetProject()
     viewStore.getState().reset()
     await loadProjectData(set, id)
+  },
+
+  loadSymbolsForPath: async (path: string) => {
+    const projectId = get().currentProjectId
+    if (projectId === null) return
+    if (get().symbolsByPath.has(path)) return
+    if (get().loadingPaths.has(path)) return
+    set((s) => ({ loadingPaths: new Set(s.loadingPaths).add(path) }))
+    try {
+      const res = await api.listProjectSymbols(projectId, { path, limit: 500 })
+      set((s) => {
+        const next = new Map(s.symbolsByPath)
+        next.set(path, res.items)
+        return { symbolsByPath: next }
+      })
+    } catch {
+      // 拉不到就记成空列表：不重试，也不让左栏整块崩掉。
+      set((s) => {
+        const next = new Map(s.symbolsByPath)
+        next.set(path, [])
+        return { symbolsByPath: next }
+      })
+    } finally {
+      set((s) => {
+        const next = new Set(s.loadingPaths)
+        next.delete(path)
+        return { loadingPaths: next }
+      })
+    }
   },
 
   importProject: async (rootPath: string, name?: string, ref?: string) => {

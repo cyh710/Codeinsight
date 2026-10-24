@@ -26,6 +26,19 @@ from codeinsight.storage.sqlite import db_path, ensure_schema, open_sqlite
 router = APIRouter(tags=["projects"])
 
 
+def _like_escape(text: str) -> str:
+    """转义 LIKE 模式里的通配符。
+
+    `_` 与 `%` 在 LIKE 里是通配符，在路径与搜索词里是普通字符。
+    """
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _like_prefix(path: str) -> str:
+    """把路径转成 LIKE 的目录前缀模式（通配符已转义）。"""
+    return _like_escape(path) + "%"
+
+
 def connect_db(project_id: int) -> sqlite3.Connection:
     """打开索引库；库不存在视作项目不存在（没有项目就没有库）。"""
     path = db_path(settings.data_dir)
@@ -235,11 +248,21 @@ def list_symbols(
             where.append("s.kind = ?")
             params.append(kind)
         if path:
-            where.append("f.path LIKE ?")
-            params.append(path + "%")  # 目录前缀（契约 §4.1：目录前缀匹配）
+            # 契约 §4.1：精确路径**或**目录前缀。LIKE 里的 `_` 与 `%` 是通配符，
+            # 路径中它们是普通字符——不转义的话 "chat_orchestrator.py"
+            # 会连 "chatXorchestrator.py" 一起匹配出来。
+            where.append("(f.path = ? OR f.path LIKE ? ESCAPE '\\')")
+            params.append(path)
+            params.append(_like_prefix(path))
         if q:
-            where.append("(s.qualname LIKE ? OR s.name LIKE ? OR COALESCE(s.docstring, '') LIKE ?)")
-            params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+            # 模糊搜索同样要转义 `_`：不转义的话搜 "a_b" 会命中 "axb"。
+            # （`%` 保留通配语义——它本来就在两端做"包含"匹配。）
+            where.append(
+                "(s.qualname LIKE ? ESCAPE '\\' OR s.name LIKE ? ESCAPE '\\'"
+                " OR COALESCE(s.docstring, '') LIKE ? ESCAPE '\\')"
+            )
+            needle = f"%{_like_escape(q)}%"
+            params.extend([needle, needle, needle])
         clause = " AND ".join(where)
 
         total = int(

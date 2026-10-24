@@ -4,7 +4,7 @@
  * 两级联动（C-Q1 已对齐）：文件是心智入口；点开文件展开它的符号；
  * 顶部搜索同时过滤文件路径与符号名。
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useStore } from 'zustand'
 import {
   ChevronDown,
@@ -18,6 +18,7 @@ import {
   Package,
   Search,
 } from 'lucide-react'
+import { api } from '../../api/dataSource'
 import { projectStore } from '../../store/projectStore'
 import { workbenchStore } from '../../store/workbenchStore'
 import Select from '../common/Select'
@@ -27,7 +28,6 @@ import type { SymbolListItem } from '../../api/types'
 import {
   buildFileTree,
   filterTree,
-  groupSymbolsByPath,
   isDeemphasizedRole,
   symbolKindLabel,
   type TreeNode,
@@ -93,14 +93,36 @@ function StatusLine() {
   )
 }
 
-function NodeRow({ node, depth, symbolsByPath }: {
+function NodeRow({ node, depth, symbolsByPath, searching }: {
   node: TreeNode
   depth: number
   symbolsByPath: Map<string, SymbolListItem[]>
+  /** 搜索态：数字显示命中符号数，不是文件总符号数。 */
+  searching: boolean
 }) {
   const workbench = useStore(workbenchStore)
   const filtering = workbench.treeFilter.trim().length > 0
   const pad = { paddingLeft: `${8 + depth * 14}px` }
+
+  // hook 必须无条件调用：文件 / 目录 / folded 三种分支共用同一组。
+  const isFile = node.kind === 'file'
+  const file = isFile ? node.file! : null
+  // 搜索态自动展开：命中的符号藏在折叠的目录里等于没搜到。
+  const isOpen = isFile
+    ? workbench.expandedFiles[node.path] || searching
+    : false
+  // 有符号才给展开箭头——用文件自带的 symbol_count 判断，
+  // 不用"已加载的符号数"（没展开时那个永远是 0）。
+  const hasSymbols = file ? file.symbol_count > 0 : false
+  const loadingSymbols = useStore(projectStore, (s) => s.loadingPaths.has(node.path))
+
+  // 展开时按需拉这个文件的符号（契约 §0.4 的 limit 上限 500，
+  // 一次性拉全量拿不到 6543 个符号）。
+  // 搜索态不拉：命中符号已经在搜索结果里了。
+  useEffect(() => {
+    if (!isOpen || !hasSymbols || searching) return
+    void projectStore.getState().loadSymbolsForPath(node.path)
+  }, [isOpen, hasSymbols, searching, node.path])
 
   if (node.kind === 'folded') {
     return (
@@ -116,11 +138,14 @@ function NodeRow({ node, depth, symbolsByPath }: {
     )
   }
 
-  if (node.kind === 'file') {
-    const file = node.file!
-    const deem = isDeemphasizedRole(file.role)
-    const isOpen = workbench.expandedFiles[node.path] || false
+  if (isFile) {
+    const f = file!
+    const deem = isDeemphasizedRole(f.role)
     const symbols = symbolsByPath.get(node.path) ?? []
+    // 搜索态：显示的是**命中几个符号**，不是文件一共几个——
+    // 路径命中的文件（比如 "prepare_chat_stream" 也出现在 pet.py 的
+    // 路径里）会显示 100，但实际只命中 1 个符号。
+    const count = searching ? symbols.length : f.symbol_count
     return (
       <div>
         <div className="flex items-center" style={pad}>
@@ -131,7 +156,7 @@ function NodeRow({ node, depth, symbolsByPath }: {
             title={node.path}
             data-testid="tree-file"
           >
-            {symbols.length > 0 ? (
+            {hasSymbols ? (
               <span
                 role="button"
                 tabIndex={-1}
@@ -150,7 +175,7 @@ function NodeRow({ node, depth, symbolsByPath }: {
             ) : (
               <span className="w-3 shrink-0" />
             )}
-            {file.language === 'python' ? (
+            {f.language === 'python' ? (
               <FileCode2
                 size={13}
                 strokeWidth={1.6}
@@ -174,9 +199,17 @@ function NodeRow({ node, depth, symbolsByPath }: {
             >
               {node.name}
             </span>
-            <RoleBadge role={file.role} />
-            {symbols.length > 0 && (
-              <span className="ml-auto shrink-0 text-[10px] text-slate-300">{symbols.length}</span>
+            <RoleBadge role={f.role} />
+            {loadingSymbols ? (
+              <Loader2 size={11} strokeWidth={2} className="ml-auto shrink-0 animate-spin text-slate-300" />
+            ) : searching ? (
+              count > 0 && (
+                <span className="ml-auto shrink-0 text-[10px] text-slate-300">{count}</span>
+              )
+            ) : (
+              hasSymbols && (
+                <span className="ml-auto shrink-0 text-[10px] text-slate-300">{f.symbol_count}</span>
+              )
             )}
           </button>
         </div>
@@ -220,7 +253,13 @@ function NodeRow({ node, depth, symbolsByPath }: {
       </button>
       {open &&
         (node.children ?? []).map((child) => (
-          <NodeRow key={child.path} node={child} depth={depth + 1} symbolsByPath={symbolsByPath} />
+          <NodeRow
+            key={child.path}
+            node={child}
+            depth={depth + 1}
+            symbolsByPath={symbolsByPath}
+            searching={searching}
+          />
         ))}
     </div>
   )
@@ -231,15 +270,74 @@ export default function LeftPanel() {
   const treeFilter = useStore(workbenchStore, (s) => s.treeFilter)
   const [importOpen, setImportOpen] = useState(false)
 
-  // 688 文件 × 790 符号的分组与建树都以引用为键用 useMemo 缓存，
-  // projectStore 只在换项目时换引用，平时 render 零重算。
-  const symbolsByPath = useMemo(() => groupSymbolsByPath(projectsState.symbols), [projectsState.symbols])
+  // 已按文件加载的符号（展开时按需拉）。分组不用再算——store 已是 path → 符号。
+  const symbolsByPath = projectsState.symbolsByPath
   // buildFileTree 同理：688 个文件每次 render 重算太浪费，以引用为键缓存。
   const files = projectsState.files
-  const tree = useMemo(
-    () => filterTree(buildFileTree(files), treeFilter),
-    [files, treeFilter],
+
+  // 符号名搜索走后端：契约 §0.4 的 limit 上限 500，前端手上永远只有
+  // 已展开的那几个文件的符号，拿它过滤等于搜不到别的文件里的符号。
+  // 结果按 path 归组，让命中符号所在的文件在树里露出来。
+  const [symbolHits, setSymbolHits] = useState<{ query: string; byPath: Map<string, SymbolListItem[]> }>({
+    query: '',
+    byPath: new Map(),
+  })
+  const q = treeFilter.trim()
+  useEffect(() => {
+    const projectId = projectsState.currentProjectId
+    if (q.length < 2 || projectId === null) return
+    let alive = true
+    const timer = window.setTimeout(() => {
+      api
+        .listProjectSymbols(projectId, { q, limit: 200 })
+        .then((res) => {
+          if (!alive) return
+          const byPath = new Map<string, SymbolListItem[]>()
+          for (const s of res.items) {
+            const list = byPath.get(s.path) ?? []
+            list.push(s)
+            byPath.set(s.path, list)
+          }
+          setSymbolHits({ query: q, byPath })
+        })
+        .catch(() => alive && setSymbolHits({ query: q, byPath: new Map() }))
+    }, 220)
+    return () => {
+      alive = false
+      window.clearTimeout(timer)
+    }
+  }, [q, projectsState.currentProjectId])
+
+  // 路径过滤立刻生效（1 个字符就能筛路径）；符号搜索要 ≥2 字符才发请求，
+  // 所以"符号结果是否已到"要单独判断，不能拿 query 字符串当同一个东西用。
+  const symbolQuery = symbolHits.query === q ? q : ''
+  const hitPaths = useMemo(
+    () => new Set(symbolHits.byPath.keys()),
+    [symbolHits.byPath],
   )
+  const treeWithSymbols = useMemo(
+    () => filterTree(buildFileTree(files), treeFilter, hitPaths),
+    [files, treeFilter, hitPaths],
+  )
+
+  // 搜索态下，命中的符号直接列在文件下面；不在搜索态就用已加载的。
+  const displaySymbols = useMemo(() => {
+    if (!symbolQuery) return symbolsByPath
+    const merged = new Map(symbolsByPath)
+    for (const [path, list] of symbolHits.byPath) merged.set(path, list)
+    return merged
+  }, [symbolQuery, symbolsByPath, symbolHits.byPath])
+
+  // 搜索态：搜索框里有字就是搜索态（哪怕只 1 个字符、符号结果还没到）。
+  const searching = treeFilter.trim().length > 0
+
+  // 页脚总数：项目详情里的 symbols 是权威值；详情还没到就用文件树
+  // 自带的 symbol_count 之和。**不能用已加载符号的长度**——那是
+  // "展开了多少"不是"一共有多少"（契约 §0.4 的 limit 上限 500，
+  // 一次性拉不全 6543 个）。
+  const totalSymbols =
+    projectsState.currentDetail?.symbols ??
+    files.reduce((sum, f) => sum + f.symbol_count, 0)
 
   return (
     <aside className="flex h-full min-h-0 w-72 shrink-0 flex-col border-r border-slate-200/80 bg-bg-elevated">
@@ -302,16 +400,22 @@ export default function LeftPanel() {
             {projectsState.error}
           </p>
         )}
-        {!projectsState.loading && !projectsState.error && tree.length === 0 && (
+        {!projectsState.loading && !projectsState.error && treeWithSymbols.length === 0 && (
           <p className="px-2 py-4 text-xs text-slate-400">没有匹配的文件。</p>
         )}
-        {tree.map((node) => (
-          <NodeRow key={node.path} node={node} depth={0} symbolsByPath={symbolsByPath} />
+        {treeWithSymbols.map((node) => (
+          <NodeRow
+            key={node.path}
+            node={node}
+            depth={0}
+            symbolsByPath={displaySymbols}
+            searching={searching}
+          />
         ))}
       </div>
 
       <div className="border-t border-slate-200/70 px-3 py-1.5 text-[10px] text-slate-400">
-        {projectsState.files.length} 文件 · {projectsState.symbols.length} 符号
+        {projectsState.files.length} 文件 · {totalSymbols} 符号
       </div>
     </aside>
   )

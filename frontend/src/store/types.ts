@@ -73,7 +73,15 @@ export interface ProjectStore {
   /** 当前项目的详情（含 status 与计数；导入轮询期间实时更新）。 */
   currentDetail: import('../api/types').ProjectDetail | null
   files: import('../api/types').FileEntry[]
-  symbols: import('../api/types').SymbolListItem[]
+  /**
+   * 已按文件加载的符号：path → 符号列表。
+   *
+   * 契约 §0.4 把 `limit` 上限压在 500——一次性拉全量符号拿不到
+   * （织忆 688 文件 / 6543 符号），所以改成**展开哪个文件拉哪个**。
+   */
+  symbolsByPath: Map<string, import('../api/types').SymbolListItem[]>
+  /** 正在拉符号的文件（展开时转圈用）。 */
+  loadingPaths: Set<string>
   loading: boolean
   error: string
   /** 导入项目进行中（对话框按钮的禁用态与状态行共用）。 */
@@ -83,6 +91,8 @@ export interface ProjectStore {
   init: () => Promise<void>
   selectProject: (id: number) => Promise<void>
   importProject: (rootPath: string, name?: string, ref?: string) => Promise<void>
+  /** 展开文件时按需拉它的符号（已拉过则直接返回）。 */
+  loadSymbolsForPath: (path: string) => Promise<void>
 }
 
 // ─── 工作台（当前选中什么、右栏显示什么） ─────────────────────

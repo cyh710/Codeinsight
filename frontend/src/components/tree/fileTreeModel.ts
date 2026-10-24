@@ -96,14 +96,26 @@ function collectFiles(nodes: TreeNode[]): FileEntry[] {
   return out
 }
 
-/** 按前缀过滤；命中路径上的目录自动展开（filter 模式下不看 expandedDirs）。 */
-export function filterTree(nodes: TreeNode[], query: string): TreeNode[] {
+/**
+ * 按前缀过滤；命中路径上的目录自动展开（filter 模式下不看 expandedDirs）。
+ *
+ * `symbolHitPaths` 是**符号名搜索**命中的文件路径集合：搜索框写着
+ * "搜索文件或符号…"，所以符号命中也要让所在文件留在树里——
+ * 光按路径过滤的话，符号名命中会被整棵丢掉。
+ */
+export function filterTree(
+  nodes: TreeNode[],
+  query: string,
+  symbolHitPaths: ReadonlySet<string> = new Set(),
+): TreeNode[] {
   const q = query.trim().toLowerCase()
   if (!q) return nodes
 
   const keep = (node: TreeNode): TreeNode | null => {
     if (node.kind === 'file' || node.kind === 'folded') {
-      return node.path.toLowerCase().includes(q) ? node : null
+      return node.path.toLowerCase().includes(q) || symbolHitPaths.has(node.path)
+        ? node
+        : null
     }
     const children = (node.children ?? [])
       .map(keep)

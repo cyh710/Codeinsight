@@ -166,6 +166,76 @@ def test_symbols_filter_kind_and_pagination_shape(client: TestClient) -> None:
     assert page["total"] == 5
 
 
+def test_symbols_path_filter_is_exact_or_directory_prefix(client: TestClient) -> None:
+    # 精确路径：只命中那一个文件（契约 §4.1）
+    exact = client.get("/projects/1/symbols", params={"path": "src/a.py"}).json()
+    assert {s["qualname"] for s in exact["items"]} == {"src.a.entry", "src.a.helper"}
+
+    # 目录前缀：src/ 下的都算
+    prefix = client.get("/projects/1/symbols", params={"path": "src"}).json()
+    assert prefix["total"] == 4
+
+
+def test_symbols_path_filter_underscore_is_not_a_wildcard(
+    client: TestClient, conn: sqlite3.Connection
+) -> None:
+    """`_` 在 SQL LIKE 里是单字符通配符，在仓库路径里是普通字符。
+
+    种子数据放这里而不是共享 fixture：共享种子的文件数/符号数被多个
+    测试断言，加文件会连累无关用例。
+    """
+    conn.executemany(
+        "INSERT INTO file (id, project_id, path, language, content_sha256, size_bytes,"
+        " line_count, role) VALUES (?, 1, ?, 'python', ?, ?, ?, 'source')",
+        [
+            (10, "src/chat_orchestrator.py", "sha-u", 300, 30),
+            (11, "src/chatXorchestrator.py", "sha-ux", 300, 30),
+        ],
+    )
+    conn.executemany(
+        "INSERT INTO symbol (id, project_id, file_id, qualname, name, kind, lineno, end_lineno,"
+        " header, docstring, is_async, is_private, is_dunder, n_lines, source_sha256)"
+        " VALUES (?, 1, ?, ?, 'orchestrate', 'function', 1, 2, 'def f():', NULL, 0, 0, 0, 2, 'sha')",
+        [
+            (10, 10, "src.chat_orchestrator.orchestrate"),
+            (11, 11, "src.chatXorchestrator.orchestrate"),
+        ],
+    )
+    conn.commit()
+
+    # 精确路径不能顺带匹配下划线当通配符的那一个
+    exact = client.get("/projects/1/symbols", params={"path": "src/chat_orchestrator.py"}).json()
+    assert {s["qualname"] for s in exact["items"]} == {"src.chat_orchestrator.orchestrate"}
+    assert exact["total"] == 1
+
+    # 目录前缀同理：src/chat 前缀下两个文件都算（_ 是普通字符，
+    # 匹配 src/chat_orchestrator.py 与 src/chatXorchestrator.py 是不同文件）
+    prefix = client.get("/projects/1/symbols", params={"path": "src/chat"}).json()
+    assert {s["qualname"] for s in prefix["items"]} == {
+        "src.chat_orchestrator.orchestrate",
+        "src.chatXorchestrator.orchestrate",
+    }
+
+
+def test_symbols_q_filter_underscore_is_not_a_wildcard(
+    client: TestClient, conn: sqlite3.Connection
+) -> None:
+    """模糊搜索同样不能把 `_` 当通配符：搜 "a_b" 不该命中 "axb"。"""
+    conn.executemany(
+        "INSERT INTO symbol (id, project_id, file_id, qualname, name, kind, lineno, end_lineno,"
+        " header, docstring, is_async, is_private, is_dunder, n_lines, source_sha256)"
+        " VALUES (?, 1, 1, ?, ?, 'function', 1, 2, 'def f():', NULL, 0, 0, 0, 2, 'sha')",
+        [
+            (20, "mod.a_b", "a_b"),
+            (21, "mod.axb", "axb"),
+        ],
+    )
+    conn.commit()
+
+    hit = client.get("/projects/1/symbols", params={"q": "a_b"}).json()
+    assert {s["qualname"] for s in hit["items"]} == {"mod.a_b"}
+
+
 def test_symbol_detail_relations_and_source(client: TestClient) -> None:
     body = client.get("/projects/1/symbols/src.a.helper").json()
     assert body["in_degree"] == 2

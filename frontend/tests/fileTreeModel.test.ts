@@ -61,4 +61,19 @@ describe('filterTree', () => {
     const filtered = filterTree(tree, 'docs')
     expect(JSON.stringify(filtered)).toContain('readme.md')
   })
+
+  it('符号命中的文件即使路径不含查询词也保留', () => {
+    // 搜索框写着"搜索文件或符号…"：符号名命中时，
+    // 所在文件路径不含查询词也得留在树里。
+    const filtered = filterTree(tree, 'orchestrate', new Set(['backend/api/pet.py']))
+    const paths = JSON.stringify(filtered)
+    expect(paths).toContain('pet.py')
+    expect(paths).not.toContain('chat.py')
+  })
+
+  it('符号命中集合为空时行为与原来一致', () => {
+    const filtered = filterTree(tree, 'chat', new Set())
+    expect(JSON.stringify(filtered)).toContain('chat.py')
+    expect(JSON.stringify(filtered)).not.toContain('pet.py')
+  })
 })
