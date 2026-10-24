@@ -533,7 +533,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--since", default=None, help="指定某个 commit 的变更记录；缺省取最近一次")
     p.set_defaults(func=_cmd_changes)
 
-    p = sub.add_parser("eval", help="M5 对照评测：多臂 + 95% CI + 报告")
+    # argparse 会把 help 里的 `%` 当格式符——"95% CI" 里的 "% C" 会让它
+    # 在 --help 时抛 ValueError。写成 "%%" 才是字面的百分号。
+    p = sub.add_parser("eval", help="M5 对照评测：多臂 + 95%% CI + 报告")
     p.add_argument("--project", required=True, help="项目名")
     p.add_argument("-n", type=int, default=25, help="每种题型出多少道题")
     p.add_argument("-k", type=int, default=settings.retrieval_top_k, help="看前多少条")
