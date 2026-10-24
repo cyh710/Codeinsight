@@ -40,7 +40,7 @@ class ConceptLane:
         concepts = self.match_concepts(query)
         if not concepts:
             return []
-        return self.instances_of([cid for cid, _ in concepts], k=k)
+        return self.instances_of(dict(concepts), k=k)
 
     def match_concepts(self, query: str) -> list[tuple[str, float]]:
         """查询文本 → 相关概念，按重叠度排序。
@@ -70,14 +70,20 @@ class ConceptLane:
         scored.sort(key=lambda item: -item[1])
         return scored[:MAX_CONCEPT_CANDIDATES]
 
-    def instances_of(self, concept_ids: list[str], *, k: int) -> list[tuple[int, float]]:
+    def instances_of(self, concept_scores: dict[str, float], *, k: int) -> list[tuple[int, float]]:
         """概念 → 实例 → 块。
 
-        实例带 `confidence`（检测规则的可信度），乘进分数——
-        「靠 `import jwt` 认出来的」比「靠模糊匹配认出来的」该更靠前。
+        两个因子相乘，缺一不可：
+
+        - **概念匹配强度**：查询更像哪个概念。算完就丢是这里早先的 bug——
+          结果是「匹配到 0.65 的概念」和「匹配到 0.1 的概念」在实例排序里
+          完全同权，强匹配概念的实例被一堆弱匹配概念的实例挤掉。
+        - `confidence`：检测规则的可信度。「靠 `import jwt` 认出来的」
+          比「靠模糊匹配认出来的」该更靠前。
         """
-        if not concept_ids:
+        if not concept_scores:
             return []
+        concept_ids = list(concept_scores)
         placeholders = ",".join("?" for _ in concept_ids)
         rows = self._conn.execute(
             f"""
@@ -104,11 +110,11 @@ class ConceptLane:
         chunk_of = {int(r[0]): int(r[1]) for r in chunk_rows}
 
         best: dict[int, float] = {}
-        for symbol_id, _concept_id, confidence in rows:
+        for symbol_id, concept_id, confidence in rows:
             chunk_id = chunk_of.get(int(symbol_id))
             if chunk_id is None:
                 continue
-            score = float(confidence)
+            score = float(confidence) * float(concept_scores.get(concept_id, 0.0))
             if score > best.get(chunk_id, 0.0):
                 best[chunk_id] = score
 

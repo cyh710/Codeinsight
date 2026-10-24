@@ -6,6 +6,7 @@
     ci import --repo <path>    导入仓库并建索引      (M1)
     ci search "<query>"        检索并返回 file:line   (M2)
     ci ask "<question>"        对项目提问            (M3)
+    ci eval                    对照评测（多臂 + 95% CI）(M5)
     ci concepts                列出识别到的技术概念   (M1.5)
     ci explain <concept>       三级深度解释一个概念   (M3)
     ci changes                 变更说明              (M6)
@@ -178,6 +179,115 @@ def _cmd_eval_locate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_eval(args: argparse.Namespace) -> int:
+    """M5 对照评测：同一批题、多个通道开关，产出带 95% CI 的报告。"""
+    from codeinsight.cognitive.embedding.siliconflow import SiliconFlowEmbedder
+    from codeinsight.eval.arms import resolve_arms
+    from codeinsight.eval.bench import build_tasks, persist_tasks
+    from codeinsight.eval.report import ReportMeta, build_report, format_markdown, write_report
+    from codeinsight.eval.runner import (
+        dense_available,
+        new_run_id,
+        persist_results,
+        run_arm,
+    )
+    from codeinsight.storage.sqlite import open_sqlite
+
+    path = db_path(settings.data_dir)
+    if not path.exists():
+        print(f"索引库不存在：{path}（先跑 ci index）")
+        return 1
+
+    try:
+        arms = resolve_arms(args.arms)
+    except KeyError as exc:
+        print(exc.args[0])
+        return 2
+
+    kinds = tuple(kind.strip() for kind in args.kinds.split(",") if kind.strip())
+    conn = open_sqlite(path, row_factory=True)
+    try:
+        row = conn.execute(
+            "SELECT id, name FROM project WHERE name = ?", (args.project,)
+        ).fetchone()
+        if row is None:
+            print(f"没有名为 {args.project} 的项目")
+            return 1
+        project_id = int(row["id"])
+        state = conn.execute(
+            "SELECT head_commit FROM repo_state WHERE project_id = ?", (project_id,)
+        ).fetchone()
+        head_commit = state["head_commit"] if state else None
+
+        tasks = build_tasks(
+            conn,
+            project_id=project_id,
+            n_per_kind=args.n,
+            seed=args.seed,
+            kinds=kinds,
+        )
+        if not tasks:
+            print("题库为空：这个项目的索引里没有可出题的符号。")
+            return 1
+        persist_tasks(conn, project_id=project_id, tasks=tasks)
+
+        embedder = SiliconFlowEmbedder()
+        dense_ok, dense_reason = dense_available(conn, project_id=project_id)
+        if not embedder.enabled:
+            dense_ok, dense_reason = False, "没有 CI_EMBEDDING_API_KEY"
+        if not dense_ok and any(arm.needs_dense for arm in arms):
+            print(f"（稠密通道不可用：{dense_reason}；用到它的臂会标注为不可用，不报假数）")
+        run_id = new_run_id(args.seed)
+
+        print(f"题目 {len(tasks)} 道（{', '.join(kinds)}），臂：{', '.join(a.name for a in arms)}")
+        runs = []
+        for arm in arms:
+            result = run_arm(
+                conn,
+                project_id=project_id,
+                tasks=tasks,
+                arm=arm,
+                k=args.k,
+                embedder=embedder,
+                db_path=path,
+                neighbor_depth=settings.retrieval_neighbor_depth,
+                rrf_k=settings.retrieval_rrf_k,
+                dense_ok=dense_ok,
+            )
+            if not result.available:
+                print(f"  {arm.name:8} 不可用：{result.reason}")
+            else:
+                summary = result.summarize(k=args.k, kinds=kinds, seed=args.seed)
+                mrr = summary["overall"]["mrr"]
+                print(
+                    f"  {arm.name:8} MRR {mrr.value:.3f}"
+                    f" [{mrr.low:.3f}, {mrr.high:.3f}]"
+                )
+            runs.append(result)
+
+        written = persist_results(conn, run_id=run_id, runs=runs)
+        meta = ReportMeta(
+            run_id=run_id,
+            project=str(row["name"]),
+            head_commit=head_commit,
+            seed=args.seed,
+            k=args.k,
+            kinds=kinds,
+            n_per_kind=args.n,
+            embedding_model=embedder.model_id if embedder.enabled else "（未启用）",
+            llm_model=settings.llm_model,
+        )
+        report = build_report(meta, runs)
+    finally:
+        conn.close()
+
+    directory = write_report(report, out_root=args.out)
+    print()
+    print(format_markdown(report))
+    print(f"报告目录：{directory}（{written} 条结果落 eval_result）")
+    return 0
+
+
 def _cmd_ask(args: argparse.Namespace) -> int:
     """对项目提问（M3）：Agent 自己决定检索几次、要不要看调用关系。"""
     import asyncio
@@ -339,6 +449,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="开哪些通道，逗号分隔：bm25,dense,symbol,concept",
     )
     p.set_defaults(func=_cmd_eval_locate)
+
+    p = sub.add_parser("eval", help="M5 对照评测：多臂 + 95% CI + 报告")
+    p.add_argument("--project", required=True, help="项目名")
+    p.add_argument("-n", type=int, default=25, help="每种题型出多少道题")
+    p.add_argument("-k", type=int, default=settings.retrieval_top_k, help="看前多少条")
+    p.add_argument(
+        "--kinds",
+        default="name,docstring,concept",
+        help="题型：name（知道名字）/docstring（知道描述）/concept（用了哪个概念）",
+    )
+    p.add_argument(
+        "--arms",
+        default=None,
+        help="对照臂，逗号分隔：none,bm25,hybrid,symbol,concept,full（缺省全跑）",
+    )
+    p.add_argument("--seed", type=int, default=settings.eval_seed, help="随机种子")
+    p.add_argument("--out", default="eval/reports", help="报告根目录")
+    p.set_defaults(func=_cmd_eval)
 
     p = sub.add_parser("ask", help="对项目提问（Agent 自己决定检索与追踪方式）")
     p.add_argument("question", help="问题")

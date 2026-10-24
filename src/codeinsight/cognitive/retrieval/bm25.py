@@ -84,12 +84,12 @@ STOPWORDS: frozenset[str] = frozenset(
         "who",
         "there",
         "here",
-        # 中文提问词（bigram 形式）
+        # 中文提问词（jieba 装好之后按**词**给，bigram 残留一并留着）
         "在哪",
         "哪实",
+        "哪里",
         "怎么",
         "如何",
-        "哪里",
         "什么",
         "哪些",
         "是否",
@@ -99,6 +99,18 @@ STOPWORDS: frozenset[str] = frozenset(
         "这个",
         "那个",
         "一个",
+        # 中文泛用词：它们不携带「这个东西是什么」的信息。
+        # 留着会让「X 在哪实现」里的「实现」去匹配每一个讲实现的摘要——
+        # 概念通道尤其吃亏（实测会把毫不相关的概念拉进来）。
+        "实现",
+        "使用",
+        "用的",
+        "方式",
+        "方法",
+        "作用",
+        "项目",
+        "代码",
+        "时候",
     }
 )
 """停用词。
@@ -194,11 +206,17 @@ class Fts5KeywordIndex:
         if plan.is_empty:
             return []
 
+        # **CROSS JOIN 是性能关键，不是风格选择。**
+        # 写成普通 JOIN 时 SQLite 会把 `c` 放在外层（project_id 有索引），
+        # 然后对 6400 行 chunk 逐行去探 FTS——查询计划里 `SCAN chunk_fts … =M1`
+        # 就是那个逐行探针，实测 2–5 秒/次（评测跑 300 次直接卡住）。
+        # CROSS JOIN 禁止规划器重排，强制 FTS 先出候选集，再按主键回表：
+        # 计划变成 `SCAN chunk_fts … M1` + `SEARCH c USING INTEGER PRIMARY KEY`，约 5 毫秒。
         rows = self._conn.execute(
             """
             SELECT chunk_fts.rowid AS chunk_id, bm25(chunk_fts) AS score
             FROM chunk_fts
-            JOIN chunk c ON c.id = chunk_fts.rowid
+            CROSS JOIN chunk c ON c.id = chunk_fts.rowid
             WHERE chunk_fts MATCH ? AND c.project_id = ?
             ORDER BY score
             LIMIT ?

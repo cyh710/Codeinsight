@@ -1,0 +1,572 @@
+{
+  "meta": {
+    "run_id": "run-f97b4c0d1f33-s7",
+    "project": "tapestry",
+    "head_commit": "e5532a8466381d22156c3eb9accb1bf5a0669f28",
+    "seed": 7,
+    "k": 8,
+    "kinds": [
+      "name",
+      "docstring",
+      "concept"
+    ],
+    "n_per_kind": 25,
+    "embedding_model": "BAAI/bge-m3@1024",
+    "llm_model": "deepseek-chat",
+    "generated_at": "2026-10-24T05:12:29+00:00"
+  },
+  "arms": [
+    {
+      "arm": "none",
+      "description": "不检索（下限）：普通 LLM 问答没有索引可查",
+      "control": true,
+      "available": true,
+      "reason": "",
+      "n": 62,
+      "overall": {
+        "hit_rate": {
+          "value": 0.0,
+          "low": 0.0,
+          "high": 0.0,
+          "n": 62
+        },
+        "mrr": {
+          "value": 0.0,
+          "low": 0.0,
+          "high": 0.0,
+          "n": 62
+        },
+        "top1_rate": {
+          "value": 0.0,
+          "low": 0.0,
+          "high": 0.0,
+          "n": 62
+        }
+      },
+      "by_kind": {
+        "name": {
+          "hit_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          }
+        },
+        "docstring": {
+          "hit_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          }
+        },
+        "concept": {
+          "hit_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 12
+          },
+          "mrr": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 12
+          },
+          "top1_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 12
+          }
+        }
+      },
+      "delta_mrr_vs_bm25": -0.6910138248847926
+    },
+    {
+      "arm": "bm25",
+      "description": "词面检索基线",
+      "control": true,
+      "available": true,
+      "reason": "",
+      "n": 62,
+      "overall": {
+        "hit_rate": {
+          "value": 0.8064516129032258,
+          "low": 0.6935483870967742,
+          "high": 0.9032258064516129,
+          "n": 62
+        },
+        "mrr": {
+          "value": 0.6910138248847926,
+          "low": 0.5811827956989247,
+          "high": 0.7931643625192012,
+          "n": 62
+        },
+        "top1_rate": {
+          "value": 0.6290322580645161,
+          "low": 0.5,
+          "high": 0.7419354838709677,
+          "n": 62
+        }
+      },
+      "by_kind": {
+        "name": {
+          "hit_rate": {
+            "value": 0.96,
+            "low": 0.88,
+            "high": 1.0,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.7137142857142856,
+            "low": 0.575047619047619,
+            "high": 0.8533333333333333,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.6,
+            "low": 0.4,
+            "high": 0.8,
+            "n": 25
+          }
+        },
+        "docstring": {
+          "hit_rate": {
+            "value": 1.0,
+            "low": 1.0,
+            "high": 1.0,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.98,
+            "low": 0.94,
+            "high": 1.0,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.96,
+            "low": 0.88,
+            "high": 1.0,
+            "n": 25
+          }
+        },
+        "concept": {
+          "hit_rate": {
+            "value": 0.08333333333333333,
+            "low": 0.0,
+            "high": 0.25,
+            "n": 12
+          },
+          "mrr": {
+            "value": 0.041666666666666664,
+            "low": 0.0,
+            "high": 0.125,
+            "n": 12
+          },
+          "top1_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 12
+          }
+        }
+      }
+    },
+    {
+      "arm": "hybrid",
+      "description": "词面 + 语义（BM25 + bge-m3）",
+      "control": true,
+      "available": true,
+      "reason": "",
+      "n": 62,
+      "overall": {
+        "hit_rate": {
+          "value": 0.8870967741935484,
+          "low": 0.8064516129032258,
+          "high": 0.9516129032258065,
+          "n": 62
+        },
+        "mrr": {
+          "value": 0.7290706605222733,
+          "low": 0.6319124423963134,
+          "high": 0.8191244239631337,
+          "n": 62
+        },
+        "top1_rate": {
+          "value": 0.6290322580645161,
+          "low": 0.5,
+          "high": 0.7419354838709677,
+          "n": 62
+        }
+      },
+      "by_kind": {
+        "name": {
+          "hit_rate": {
+            "value": 1.0,
+            "low": 1.0,
+            "high": 1.0,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.79,
+            "low": 0.68,
+            "high": 0.9,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.64,
+            "low": 0.44,
+            "high": 0.84,
+            "n": 25
+          }
+        },
+        "docstring": {
+          "hit_rate": {
+            "value": 1.0,
+            "low": 1.0,
+            "high": 1.0,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.94,
+            "low": 0.88,
+            "high": 1.0,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.88,
+            "low": 0.76,
+            "high": 1.0,
+            "n": 25
+          }
+        },
+        "concept": {
+          "hit_rate": {
+            "value": 0.4166666666666667,
+            "low": 0.16666666666666666,
+            "high": 0.6666666666666666,
+            "n": 12
+          },
+          "mrr": {
+            "value": 0.1626984126984127,
+            "low": 0.027777777777777776,
+            "high": 0.3412698412698412,
+            "n": 12
+          },
+          "top1_rate": {
+            "value": 0.08333333333333333,
+            "low": 0.0,
+            "high": 0.25,
+            "n": 12
+          }
+        }
+      },
+      "delta_mrr_vs_bm25": 0.038056835637480746
+    },
+    {
+      "arm": "symbol",
+      "description": "符号关系通道（AST 索引）",
+      "control": true,
+      "available": true,
+      "reason": "",
+      "n": 62,
+      "overall": {
+        "hit_rate": {
+          "value": 0.41935483870967744,
+          "low": 0.2903225806451613,
+          "high": 0.5483870967741935,
+          "n": 62
+        },
+        "mrr": {
+          "value": 0.28830645161290325,
+          "low": 0.19287634408602153,
+          "high": 0.3924731182795699,
+          "n": 62
+        },
+        "top1_rate": {
+          "value": 0.1935483870967742,
+          "low": 0.0967741935483871,
+          "high": 0.3064516129032258,
+          "n": 62
+        }
+      },
+      "by_kind": {
+        "name": {
+          "hit_rate": {
+            "value": 1.0,
+            "low": 1.0,
+            "high": 1.0,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.7016666666666667,
+            "low": 0.59,
+            "high": 0.82,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.48,
+            "low": 0.28,
+            "high": 0.68,
+            "n": 25
+          }
+        },
+        "docstring": {
+          "hit_rate": {
+            "value": 0.04,
+            "low": 0.0,
+            "high": 0.12,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.013333333333333332,
+            "low": 0.0,
+            "high": 0.04,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          }
+        },
+        "concept": {
+          "hit_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 12
+          },
+          "mrr": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 12
+          },
+          "top1_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 12
+          }
+        }
+      },
+      "delta_mrr_vs_bm25": -0.4027073732718893
+    },
+    {
+      "arm": "concept",
+      "description": "概念实例通道（知识层）",
+      "control": true,
+      "available": true,
+      "reason": "",
+      "n": 62,
+      "overall": {
+        "hit_rate": {
+          "value": 0.1774193548387097,
+          "low": 0.08064516129032258,
+          "high": 0.27419354838709675,
+          "n": 62
+        },
+        "mrr": {
+          "value": 0.1774193548387097,
+          "low": 0.08064516129032258,
+          "high": 0.27419354838709675,
+          "n": 62
+        },
+        "top1_rate": {
+          "value": 0.1774193548387097,
+          "low": 0.08064516129032258,
+          "high": 0.27419354838709675,
+          "n": 62
+        }
+      },
+      "by_kind": {
+        "name": {
+          "hit_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          }
+        },
+        "docstring": {
+          "hit_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.0,
+            "low": 0.0,
+            "high": 0.0,
+            "n": 25
+          }
+        },
+        "concept": {
+          "hit_rate": {
+            "value": 0.9166666666666666,
+            "low": 0.75,
+            "high": 1.0,
+            "n": 12
+          },
+          "mrr": {
+            "value": 0.9166666666666666,
+            "low": 0.75,
+            "high": 1.0,
+            "n": 12
+          },
+          "top1_rate": {
+            "value": 0.9166666666666666,
+            "low": 0.75,
+            "high": 1.0,
+            "n": 12
+          }
+        }
+      },
+      "delta_mrr_vs_bm25": -0.5135944700460828
+    },
+    {
+      "arm": "full",
+      "description": "产品配置：四路全开",
+      "control": false,
+      "available": true,
+      "reason": "",
+      "n": 62,
+      "overall": {
+        "hit_rate": {
+          "value": 0.9838709677419355,
+          "low": 0.9516129032258065,
+          "high": 1.0,
+          "n": 62
+        },
+        "mrr": {
+          "value": 0.8231182795698925,
+          "low": 0.7438172043010752,
+          "high": 0.8951612903225806,
+          "n": 62
+        },
+        "top1_rate": {
+          "value": 0.7258064516129032,
+          "low": 0.6129032258064516,
+          "high": 0.8387096774193549,
+          "n": 62
+        }
+      },
+      "by_kind": {
+        "name": {
+          "hit_rate": {
+            "value": 1.0,
+            "low": 1.0,
+            "high": 1.0,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.8933333333333333,
+            "low": 0.8,
+            "high": 0.9733333333333333,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.8,
+            "low": 0.64,
+            "high": 0.96,
+            "n": 25
+          }
+        },
+        "docstring": {
+          "hit_rate": {
+            "value": 1.0,
+            "low": 1.0,
+            "high": 1.0,
+            "n": 25
+          },
+          "mrr": {
+            "value": 0.87,
+            "low": 0.77,
+            "high": 0.96,
+            "n": 25
+          },
+          "top1_rate": {
+            "value": 0.76,
+            "low": 0.6,
+            "high": 0.92,
+            "n": 25
+          }
+        },
+        "concept": {
+          "hit_rate": {
+            "value": 0.9166666666666666,
+            "low": 0.75,
+            "high": 1.0,
+            "n": 12
+          },
+          "mrr": {
+            "value": 0.5791666666666667,
+            "low": 0.3361111111111111,
+            "high": 0.7986111111111112,
+            "n": 12
+          },
+          "top1_rate": {
+            "value": 0.5,
+            "low": 0.25,
+            "high": 0.75,
+            "n": 12
+          }
+        }
+      },
+      "delta_mrr_vs_bm25": 0.1321044546850999
+    }
+  ],
+  "caveats": [
+    "题目由索引自动生成，ground truth 是符号的 file:line——不是人工标注，也没有人工复核。",
+    "`concept` 题的 ground truth 是该概念的**任意一处**实例（含测试文件里的用法）——问的是「哪里用了 X」，答到另一处不算错；定位题则只认唯一那个符号。",
+    "只测了定位（检索）；结构正确率、问答正确率、人工探索效率不在本报告内。",
+    "n 较小时区间很宽，臂间差值小于区间重叠范围时**不能**当作结论。",
+    "所有臂共用同一份索引、同一个 seed、同一批题；差别只有通道开关。"
+  ]
+}

@@ -128,6 +128,32 @@ def test_search_returns_nothing_for_unmatched(index: Fts5KeywordIndex) -> None:
     assert index.search("kubernetes_operator_reconciler", k=5) == []
 
 
+def test_query_plan_scans_fts_first(index: Fts5KeywordIndex, conn: sqlite3.Connection) -> None:
+    """检索必须**由 FTS 驱动**，不能对 chunk 逐行探 FTS。
+
+    曾经写成普通 JOIN 时，SQLite 把带 project_id 索引的 `chunk` 放在外层，
+    对 6400 行逐行去探 FTS（计划里的 `… =M1` 就是逐行探针），
+    单次检索 2–5 秒；M5 跑 300 次直接卡死。CROSS JOIN 禁止重排后约 5 毫秒。
+
+    这里断言的是**查询计划形状**而不是耗时——耗时测试在 CI 上不稳，
+    而计划形状直接对应那个 bug。
+    """
+    plan = plan_query("jwt decode")
+    rows = conn.execute(
+        """
+        EXPLAIN QUERY PLAN
+        SELECT chunk_fts.rowid, bm25(chunk_fts)
+        FROM chunk_fts CROSS JOIN chunk c ON c.id = chunk_fts.rowid
+        WHERE chunk_fts MATCH ? AND c.project_id = ?
+        ORDER BY 2 LIMIT 5
+        """,
+        (plan.match, index._project_id),
+    ).fetchall()
+    text = " ".join(str(row[-1]) for row in rows)
+    assert "=M1" not in text, f"FTS 被当成逐行探针：{text}"
+    assert "chunk_fts" in text
+
+
 def test_empty_query_returns_nothing(index: Fts5KeywordIndex) -> None:
     assert index.search("", k=5) == []
 
