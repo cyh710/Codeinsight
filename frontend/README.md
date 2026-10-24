@@ -34,12 +34,18 @@ npm run build
 
 ## 快照更新
 
-`public/mock/sample-index.json` 是 `fixtures/sample-index.json` 的副本。
-A 线重跑 dump-fixture 后，在仓库根目录执行复制即可：
+`public/mock/sample-index.json` 以 `fixtures/sample-index.json` 为底，
+再用真引擎并入概念实例与流程（A 线的 dump-fixture 导出器目前不带概念检测）：
 
 ```bash
+# 1. 先同步 A 线的新快照底稿
 cp fixtures/sample-index.json frontend/public/mock/sample-index.json
+# 2. 真引擎检出 concepts/flows 并写入 mock 副本与本体 JSON
+uv run python frontend/tools/regen_mock.py --repo "<被测仓库>" --ref agent-v1
 ```
+
+工具会做引用完整性过滤：只保留 qualname 命中样本符号的概念实例
+（样本外实例点过去就是 404，完整性比数量重要）。
 
 快照里没有的东西（concepts、flows、源码正文），mock 如实返回空/占位，
 不编造——等 B 线检测器与 A5 流程检测落地后重跑快照即补齐。

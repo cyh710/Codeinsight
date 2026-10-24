@@ -2,9 +2,10 @@
  * mock 数据层：按契约返回 `public/mock/sample-index.json`（A 线
  * `ci dump-fixture` 产出的**真实解析快照**，非手写假数据）。
  *
- * 快照缺的东西（concepts/flows 还没有、符号没有源码正文），mock 只有两选：
- * 派生（度数、symbol_count 从 edges/symbols 算）或如实地返回空/占位——
- * **不编造**。等 B 线检测器与 A5 流程落地后重跑 dump-fixture 即补齐。
+ * 快照里没有的东西，mock 只有两选：**派生**（度数、symbol_count、概念标签
+ * 从 edges/symbols/concepts 算）或**如实返回空/占位**（源码正文）——不编造。
+ * 概念实例与流程由 `frontend/tools/regen_mock.py` 用真引擎检出后并入快照，
+ * 概念本体从 `/mock/ontology.json`（B 线 YAML 的 JSON 拍平版）读取。
  */
 import { ApiError } from './client'
 import type { SseHandler, StreamResult } from './stream'
@@ -75,14 +76,44 @@ interface SnapEdge {
   confidence: number
 }
 
+/** 概念实例（`frontend/tools/regen_mock.py` 用真引擎检出的数据）。 */
+interface SnapConcept {
+  concept_id: string
+  path: string
+  lineno: number
+  qualname: string | null
+  evidence: string
+  confidence: number
+}
+
+/** 关键业务流程（A5 检测，同上来源）。 */
+interface SnapFlow {
+  name: string
+  description: string
+  entry_qualname: string | null
+  steps: Array<{ ordinal: number; qualname: string | null; path: string | null; lineno: number | null; note: string | null }>
+}
+
 interface Snapshot {
   project: { id: number; name: string; root_path: string; head_commit: string; head_branch: string }
   files: SnapFile[]
   modules: Array<{ qualname: string; path: string; docstring: string }>
   symbols: SnapSymbol[]
   edges: SnapEdge[]
-  concepts: unknown[]
-  flows: unknown[]
+  concepts: SnapConcept[]
+  flows: SnapFlow[]
+}
+
+/** 概念本体条目（`/mock/ontology.json`，B 线 YAML 拍平的产物）。 */
+export interface MockOntologyConcept {
+  concept_id: string
+  name: string
+  category: string
+  summary: string
+  principles: string
+  tradeoffs: string
+  alternatives: string
+  references: string[]
 }
 
 /** 流式回放的帧间隔。测试里 `setMockStreamDelay(0)` 让回放瞬时完成。 */
@@ -108,6 +139,22 @@ function loadSnapshot(): Promise<Snapshot> {
   return snapshotPromise
 }
 
+let ontologyPromise: Promise<Record<string, MockOntologyConcept>> | null = null
+let ontologyOverride: Record<string, MockOntologyConcept> | null = null
+
+/** 测试注入口：直接给本体表。 */
+export function provideOntology(map: Record<string, MockOntologyConcept>): void {
+  ontologyOverride = map
+}
+
+function loadOntology(): Promise<Record<string, MockOntologyConcept>> {
+  if (ontologyOverride) return Promise.resolve(ontologyOverride)
+  ontologyPromise ??= fetch('/mock/ontology.json')
+    .then((r) => (r.ok ? (r.json() as Promise<Record<string, MockOntologyConcept>>) : {}))
+    .catch(() => ({}))
+  return ontologyPromise
+}
+
 /** 派生索引：一次构建，之后全部查表。 */
 interface Derived {
   files: FileEntry[]
@@ -119,6 +166,15 @@ interface Derived {
 }
 
 function derive(snap: Snapshot): Derived {
+  // qualname → 概念 id 列表（供符号树挂概念标签）。
+  const conceptsByQualname = new Map<string, string[]>()
+  for (const c of snap.concepts) {
+    if (!c.qualname) continue
+    const list = conceptsByQualname.get(c.qualname) ?? []
+    if (!list.includes(c.concept_id)) list.push(c.concept_id)
+    conceptsByQualname.set(c.qualname, list)
+  }
+
   const symbolCountByPath = new Map<string, number>()
   for (const s of snap.symbols) {
     symbolCountByPath.set(s.path, (symbolCountByPath.get(s.path) ?? 0) + 1)
@@ -144,7 +200,8 @@ function derive(snap: Snapshot): Derived {
     is_dunder: s.name.startsWith('__') && s.name.endsWith('__'),
     in_degree: inDegree.get(s.qualname) ?? 0,
     out_degree: outDegree.get(s.qualname) ?? 0,
-    concept_ids: [],
+    // 概念标签从实例派生（快照的 concepts 是真检测结果）。
+    concept_ids: conceptsByQualname.get(s.qualname) ?? [],
   }))
 
   const symbolsByQualname = new Map<string, SymbolListItem & SnapSymbol>()
@@ -343,8 +400,11 @@ function mockGraph(d: Derived, snap: Snapshot, query: GraphQuery): GraphResponse
 
 // ─── 对话回放：事件全部取自真实快照数据 ───────────────────────
 
-function buildReplay(d: Derived, question: string): SseEvent[] {
+function buildReplay(d: Derived, snap: Snapshot, question: string): SseEvent[] {
   const hero = pickHeroSymbol(d)
+  const heroConcepts = snap.concepts
+    .filter((c) => c.qualname === hero.qualname)
+    .map((c) => c.concept_id)
   const heroSnippet = hero.header || `def ${hero.name}(...)`
   const callerEdge = snapEdgesOf(hero.qualname, 'dst', 'call')[0]
   const secondSymbol = callerEdge ? d.symbolsByQualname.get(callerEdge.src_qualname) : undefined
@@ -384,7 +444,7 @@ function buildReplay(d: Derived, question: string): SseEvent[] {
         qualname: hero.qualname,
         snippet: heroSnippet,
         lanes: ['symbol'],
-        concepts: [],
+        concepts: heroConcepts,
       },
     },
   ]
@@ -457,7 +517,7 @@ export async function mockStreamQuery(
   const snap = await loadSnapshot()
   snapEdges = snap.edges
   const d = derive(snap)
-  for (const event of buildReplay(d, request.question)) {
+  for (const event of buildReplay(d, snap, request.question)) {
     if (signal?.aborted) return { aborted: true }
     if (mockStreamDelayMs > 0) await delay(mockStreamDelayMs)
     onEvent(event)
@@ -652,8 +712,23 @@ export const mockApi = {
 
   async listFlows(id: number): Promise<ListResponse<Flow>> {
     void id
-    // 快照的 flows 为空（A5 未落地）——如实返回空。
-    return { items: [], total: 0 }
+    // 流程由 regen_mock.py 从真索引检出（步骤跨取样模块，qualname 是
+    // 真实线索；文件列表全量，path 均可导航）。
+    const snap = await loadSnapshot()
+    const items: Flow[] = snap.flows.map((f, i) => ({
+      id: i + 1,
+      name: f.name,
+      description: f.description,
+      entry_qualname: f.entry_qualname ?? '',
+      steps: f.steps.map((st) => ({
+        ordinal: st.ordinal,
+        qualname: st.qualname ?? '',
+        path: st.path ?? '',
+        lineno: st.lineno ?? 0,
+        note: st.note,
+      })),
+    }))
+    return { items, total: items.length }
   },
 
   async getGraph(id: number, query: GraphQuery = {}): Promise<GraphResponse> {
@@ -711,32 +786,98 @@ export const mockApi = {
     }
   },
 
-  async listConcepts(projectId: number): Promise<ListResponse<ConceptListItem>> {
+  // ─── 概念：快照的 concepts 由 frontend/tools/regen_mock.py 用真引擎检出 ──
+
+  async listConcepts(projectId: number, filter: { q?: string; category?: string } = {}): Promise<ListResponse<ConceptListItem>> {
     void projectId
-    // B 线检测器未落地，快照 concepts 为空——如实返回空列表。
-    return { items: [], total: 0 }
+    const [snap, ontology] = await Promise.all([loadSnapshot(), loadOntology()])
+    snapEdges = snap.edges
+    const byId = new Map<string, SnapConcept[]>()
+    for (const c of snap.concepts) {
+      const list = byId.get(c.concept_id) ?? []
+      list.push(c)
+      byId.set(c.concept_id, list)
+    }
+    const q = filter.q?.toLowerCase()
+    const items: ConceptListItem[] = [...byId.entries()]
+      .flatMap(([id, instances]): ConceptListItem[] => {
+        const o = ontology[id]
+        const name = o?.name ?? id
+        const summary = o?.summary ?? ''
+        if (q && !`${id} ${name} ${summary}`.toLowerCase().includes(q)) return []
+        if (filter.category && (o?.category ?? 'other') !== filter.category) return []
+        return [
+          {
+            concept_id: id,
+            name,
+            category: (o?.category ?? 'other') as ConceptListItem['category'],
+            summary,
+            instance_count: instances.length,
+            first_instance_path: instances[0]?.path ?? null,
+          },
+        ]
+      })
+      .sort((a, b) => b.instance_count - a.instance_count)
+    return { items, total: items.length }
   },
 
   async getConcept(projectId: number, conceptId: string): Promise<ConceptDetail> {
     void projectId
-    throw new ApiError({
-      code: 'concept_not_found',
-      title: '概念不存在',
-      hint: 'mock 快照尚无概念数据（等 B 线检测器落地后重跑 dump-fixture）',
-      detail: `concept_id=${conceptId}`,
-      status: 404,
-    })
+    const [snap, ontology] = await Promise.all([loadSnapshot(), loadOntology()])
+    const instances = snap.concepts.filter((c) => c.concept_id === conceptId)
+    const o = ontology[conceptId]
+    if (instances.length === 0 && !o) {
+      throw new ApiError({
+        code: 'concept_not_found',
+        title: '概念不存在',
+        hint: '快照里没有这个概念的实例，本体里也没有定义',
+        detail: `concept_id=${conceptId}`,
+        status: 404,
+      })
+    }
+    return {
+      concept_id: conceptId,
+      name: o?.name ?? conceptId,
+      category: (o?.category ?? 'other') as ConceptDetail['category'],
+      summary: o?.summary ?? '',
+      principles: o?.principles ?? '',
+      tradeoffs: o?.tradeoffs ?? '',
+      alternatives: o?.alternatives ?? '',
+      references: o?.references ?? [],
+      instance_count: instances.length,
+      instance_paths: [...new Set(instances.map((c) => c.path))].sort(),
+    }
   },
 
   async listConceptInstances(projectId: number, conceptId: string): Promise<ListResponse<ConceptInstance>> {
     void projectId
-    throw new ApiError({
-      code: 'concept_not_found',
-      title: '概念不存在',
-      hint: 'mock 快照尚无概念数据',
-      detail: `concept_id=${conceptId}`,
-      status: 404,
-    })
+    const snap = await loadSnapshot()
+    snapEdges = snap.edges
+    const d = derive(snap)
+    const rows = snap.concepts
+      .map((c, i) => ({ c, i }))
+      .filter(({ c }) => c.concept_id === conceptId)
+    if (rows.length === 0) {
+      throw new ApiError({
+        code: 'concept_not_found',
+        title: '概念不存在',
+        hint: '快照里没有这个概念的实例',
+        detail: `concept_id=${conceptId}`,
+        status: 404,
+      })
+    }
+    const items: ConceptInstance[] = rows.map(({ c, i }) => ({
+      id: i + 1,
+      concept_id: c.concept_id,
+      path: c.path,
+      lineno: c.lineno,
+      qualname: c.qualname,
+      symbol_id: c.qualname ? d.symbolsByQualname.get(c.qualname)?.id ?? null : null,
+      evidence: c.evidence,
+      confidence: c.confidence,
+      snippet: c.qualname ? d.symbolsByQualname.get(c.qualname)?.header ?? '' : '',
+    }))
+    return { items, total: items.length }
   },
 
   async explainConcept(
@@ -745,14 +886,63 @@ export const mockApi = {
     depth: ConceptDepth,
   ): Promise<ConceptExplanation> {
     void projectId
-    void depth
-    throw new ApiError({
-      code: 'concept_not_found',
-      title: '概念不存在',
-      hint: 'mock 快照尚无概念数据',
-      detail: `concept_id=${conceptId}`,
-      status: 404,
-    })
+    // 与后端 knowledge.py 同一套语义：quick 读本体、project 从实例派生、
+    // deep 依赖 LLM（mock 不装）。
+    const [snap, ontology] = await Promise.all([loadSnapshot(), loadOntology()])
+    const instances = snap.concepts.filter((c) => c.concept_id === conceptId)
+    const o = ontology[conceptId]
+    if (instances.length === 0 && !o) {
+      throw new ApiError({
+        code: 'concept_not_found',
+        title: '概念不存在',
+        hint: '快照里没有这个概念的实例，本体里也没有定义',
+        detail: `concept_id=${conceptId}`,
+        status: 404,
+      })
+    }
+    const items: ConceptInstance[] = instances.map((c, i) => ({
+      id: i + 1,
+      concept_id: c.concept_id,
+      path: c.path,
+      lineno: c.lineno,
+      qualname: c.qualname,
+      symbol_id: null,
+      evidence: c.evidence,
+      confidence: c.confidence,
+      snippet: '',
+    }))
+    if (depth === 'deep') {
+      throw new ApiError({
+        code: 'upstream_error',
+        title: '深度解释暂不可用',
+        hint: 'deep 依赖 LLM Provider；quick 与 project 现在可用',
+        detail: 'mock replay has no llm',
+        status: 502,
+      })
+    }
+    if (depth === 'quick') {
+      return {
+        concept_id: conceptId,
+        depth: 'quick',
+        summary: o?.summary ?? '',
+        facts: [],
+        inferences: [],
+        instances: items,
+        llm_used: false,
+      }
+    }
+    return {
+      concept_id: conceptId,
+      depth: 'project',
+      summary: o?.summary ?? '',
+      facts: items.map((inst) => ({
+        text: `${inst.evidence}（${inst.path}:${inst.lineno}）`,
+        citation: { path: inst.path, lineno: inst.lineno, end_lineno: inst.lineno, qualname: inst.qualname, snippet: '' },
+      })),
+      inferences: [],
+      instances: items,
+      llm_used: false,
+    }
   },
 
   async query(request: QueryRequest): Promise<QueryResponse> {

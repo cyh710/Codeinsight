@@ -64402,6 +64402,3388 @@
       "confidence": 1.0
     }
   ],
-  "concepts": [],
-  "flows": []
+  "concepts": [
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 5,
+      "qualname": "backend.api.asr",
+      "evidence": "imports asyncio",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "dependency-injection",
+      "path": "backend/api/asr.py",
+      "lineno": 7,
+      "qualname": "backend.api.asr",
+      "evidence": "imports fastapi",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "dependency-injection",
+      "path": "backend/api/asr.py",
+      "lineno": 8,
+      "qualname": "backend.api.asr",
+      "evidence": "imports fastapi.responses",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/asr.py",
+      "lineno": 40,
+      "qualname": "backend.api.asr.transcribe_audio",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 41,
+      "qualname": "backend.api.asr.transcribe_audio",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/asr.py",
+      "lineno": 68,
+      "qualname": "backend.api.asr.list_audio_recordings",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 69,
+      "qualname": "backend.api.asr.list_audio_recordings",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 72,
+      "qualname": "backend.api.asr.list_audio_recordings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/asr.py",
+      "lineno": 72,
+      "qualname": "backend.api.asr.list_audio_recordings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/asr.py",
+      "lineno": 76,
+      "qualname": "backend.api.asr.retry_audio_recording",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 77,
+      "qualname": "backend.api.asr.retry_audio_recording",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/asr.py",
+      "lineno": 95,
+      "qualname": "backend.api.asr.serve_audio_recording",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 96,
+      "qualname": "backend.api.asr.serve_audio_recording",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 98,
+      "qualname": "backend.api.asr.serve_audio_recording",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/asr.py",
+      "lineno": 98,
+      "qualname": "backend.api.asr.serve_audio_recording",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/asr.py",
+      "lineno": 113,
+      "qualname": "backend.api.asr.delete_all_audio_recordings",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 114,
+      "qualname": "backend.api.asr.delete_all_audio_recordings",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 115,
+      "qualname": "backend.api.asr.delete_all_audio_recordings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/asr.py",
+      "lineno": 115,
+      "qualname": "backend.api.asr.delete_all_audio_recordings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/asr.py",
+      "lineno": 118,
+      "qualname": "backend.api.asr.delete_audio_recording",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 119,
+      "qualname": "backend.api.asr.delete_audio_recording",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 121,
+      "qualname": "backend.api.asr.delete_audio_recording",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/asr.py",
+      "lineno": 121,
+      "qualname": "backend.api.asr.delete_audio_recording",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/asr.py",
+      "lineno": 133,
+      "qualname": "backend.api.asr.get_asr_settings",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 134,
+      "qualname": "backend.api.asr.get_asr_settings",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 135,
+      "qualname": "backend.api.asr.get_asr_settings",
+      "evidence": "call asyncio.gather",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 136,
+      "qualname": "backend.api.asr.get_asr_settings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/asr.py",
+      "lineno": 136,
+      "qualname": "backend.api.asr.get_asr_settings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 137,
+      "qualname": "backend.api.asr.get_asr_settings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/asr.py",
+      "lineno": 137,
+      "qualname": "backend.api.asr.get_asr_settings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/asr.py",
+      "lineno": 142,
+      "qualname": "backend.api.asr.patch_asr_settings",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 143,
+      "qualname": "backend.api.asr.patch_asr_settings",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 145,
+      "qualname": "backend.api.asr.patch_asr_settings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/asr.py",
+      "lineno": 145,
+      "qualname": "backend.api.asr.patch_asr_settings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/asr.py",
+      "lineno": 151,
+      "qualname": "backend.api.asr.patch_asr_settings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/asr.py",
+      "lineno": 151,
+      "qualname": "backend.api.asr.patch_asr_settings",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 28,
+      "qualname": "backend.api.provider_settings",
+      "evidence": "imports asyncio",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "dependency-injection",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 30,
+      "qualname": "backend.api.provider_settings",
+      "evidence": "imports fastapi",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 126,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 132,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 132,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 148,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 148,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 162,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 162,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 179,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 179,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 181,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 181,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 183,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 183,
+      "qualname": "backend.api.provider_settings._add_catalog_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 188,
+      "qualname": "backend.api.provider_settings._add_custom_provider",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 196,
+      "qualname": "backend.api.provider_settings._add_custom_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 196,
+      "qualname": "backend.api.provider_settings._add_custom_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 204,
+      "qualname": "backend.api.provider_settings._add_custom_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 204,
+      "qualname": "backend.api.provider_settings._add_custom_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 207,
+      "qualname": "backend.api.provider_settings._add_custom_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 207,
+      "qualname": "backend.api.provider_settings._add_custom_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 218,
+      "qualname": "backend.api.provider_settings._add_custom_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 218,
+      "qualname": "backend.api.provider_settings._add_custom_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 226,
+      "qualname": "backend.api.provider_settings.get_provider_catalog",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 227,
+      "qualname": "backend.api.provider_settings.get_provider_catalog",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 233,
+      "qualname": "backend.api.provider_settings.list_providers",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 234,
+      "qualname": "backend.api.provider_settings.list_providers",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 235,
+      "qualname": "backend.api.provider_settings.list_providers",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 235,
+      "qualname": "backend.api.provider_settings.list_providers",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 238,
+      "qualname": "backend.api.provider_settings.add_provider",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 239,
+      "qualname": "backend.api.provider_settings.add_provider",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 245,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 246,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 249,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 249,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 252,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 252,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 266,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 266,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 271,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 271,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 279,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 279,
+      "qualname": "backend.api.provider_settings.patch_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 282,
+      "qualname": "backend.api.provider_settings.delete_provider",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 283,
+      "qualname": "backend.api.provider_settings.delete_provider",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 285,
+      "qualname": "backend.api.provider_settings.delete_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 285,
+      "qualname": "backend.api.provider_settings.delete_provider",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 291,
+      "qualname": "backend.api.provider_settings.list_provider_models",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 292,
+      "qualname": "backend.api.provider_settings.list_provider_models",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 293,
+      "qualname": "backend.api.provider_settings.list_provider_models",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 293,
+      "qualname": "backend.api.provider_settings.list_provider_models",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 297,
+      "qualname": "backend.api.provider_settings.add_provider_model",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 298,
+      "qualname": "backend.api.provider_settings.add_provider_model",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 299,
+      "qualname": "backend.api.provider_settings.add_provider_model",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 299,
+      "qualname": "backend.api.provider_settings.add_provider_model",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 303,
+      "qualname": "backend.api.provider_settings.add_provider_model",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 303,
+      "qualname": "backend.api.provider_settings.add_provider_model",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 318,
+      "qualname": "backend.api.provider_settings.patch_model",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 319,
+      "qualname": "backend.api.provider_settings.patch_model",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 321,
+      "qualname": "backend.api.provider_settings.patch_model",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 321,
+      "qualname": "backend.api.provider_settings.patch_model",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 334,
+      "qualname": "backend.api.provider_settings.delete_model",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 335,
+      "qualname": "backend.api.provider_settings.delete_model",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 337,
+      "qualname": "backend.api.provider_settings.delete_model",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 337,
+      "qualname": "backend.api.provider_settings.delete_model",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 370,
+      "qualname": "backend.api.provider_settings.discover_models",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 371,
+      "qualname": "backend.api.provider_settings.discover_models",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 379,
+      "qualname": "backend.api.provider_settings.discover_models",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 379,
+      "qualname": "backend.api.provider_settings.discover_models",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 391,
+      "qualname": "backend.api.provider_settings.discover_models",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 391,
+      "qualname": "backend.api.provider_settings.discover_models",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 467,
+      "qualname": "backend.api.provider_settings.get_chat_primary_binding",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 468,
+      "qualname": "backend.api.provider_settings.get_chat_primary_binding",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 469,
+      "qualname": "backend.api.provider_settings.get_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 469,
+      "qualname": "backend.api.provider_settings.get_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 472,
+      "qualname": "backend.api.provider_settings.put_chat_primary_binding",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 473,
+      "qualname": "backend.api.provider_settings.put_chat_primary_binding",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 475,
+      "qualname": "backend.api.provider_settings.put_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 475,
+      "qualname": "backend.api.provider_settings.put_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 495,
+      "qualname": "backend.api.provider_settings.put_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 495,
+      "qualname": "backend.api.provider_settings.put_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 496,
+      "qualname": "backend.api.provider_settings.put_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 496,
+      "qualname": "backend.api.provider_settings.put_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 499,
+      "qualname": "backend.api.provider_settings.reset_chat_primary_binding",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 500,
+      "qualname": "backend.api.provider_settings.reset_chat_primary_binding",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 504,
+      "qualname": "backend.api.provider_settings.reset_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 504,
+      "qualname": "backend.api.provider_settings.reset_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 505,
+      "qualname": "backend.api.provider_settings.reset_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 505,
+      "qualname": "backend.api.provider_settings.reset_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 506,
+      "qualname": "backend.api.provider_settings.reset_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/api/provider_settings.py",
+      "lineno": 506,
+      "qualname": "backend.api.provider_settings.reset_chat_primary_binding",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/capabilities/image_understanding.py",
+      "lineno": 23,
+      "qualname": "backend.capabilities.image_understanding",
+      "evidence": "imports asyncio",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/capabilities/image_understanding.py",
+      "lineno": 88,
+      "qualname": "backend.capabilities.image_understanding.ImageUnderstandingCapability.execute",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/core/prompt_builder.py",
+      "lineno": 271,
+      "qualname": "backend.core.prompt_builder.PromptBuilder._dedupe_chunk_ids",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/core/prompt_builder.py",
+      "lineno": 321,
+      "qualname": "backend.core.prompt_builder.PromptBuilder._system_token_limit",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/core/prompt_builder.py",
+      "lineno": 679,
+      "qualname": "backend.core.prompt_builder.PromptBuilder._limit_relationship_block",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "config-env",
+      "path": "backend/llm/token_counter.py",
+      "lineno": 26,
+      "qualname": "backend.llm.token_counter._resolve_tiktoken_cache_dir",
+      "evidence": "call os.environ.get",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "config-env",
+      "path": "backend/llm/token_counter.py",
+      "lineno": 64,
+      "qualname": "backend.llm.token_counter._get_encoding",
+      "evidence": "call os.environ.get",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/memory/memory_manager.py",
+      "lineno": 1,
+      "qualname": "backend.memory.memory_manager",
+      "evidence": "imports asyncio",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/memory/memory_manager.py",
+      "lineno": 71,
+      "qualname": "backend.memory.memory_manager.MemoryManager.add_working_async",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/memory/memory_manager.py",
+      "lineno": 73,
+      "qualname": "backend.memory.memory_manager.MemoryManager.add_working_async",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/memory/memory_manager.py",
+      "lineno": 73,
+      "qualname": "backend.memory.memory_manager.MemoryManager.add_working_async",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/memory/memory_manager.py",
+      "lineno": 75,
+      "qualname": "backend.memory.memory_manager.MemoryManager.post_conversation_extract",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 7,
+      "qualname": "backend.services.agent_conversations",
+      "evidence": "imports contextlib",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 33,
+      "qualname": "backend.services.agent_conversations.ensure_schema",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 98,
+      "qualname": "backend.services.agent_conversations.get_snapshot",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 130,
+      "qualname": "backend.services.agent_conversations.set_mode",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "db-transaction",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 131,
+      "qualname": "backend.services.agent_conversations.set_mode",
+      "evidence": "组合证据：conn.execute 开启事务；同作用域 conn.commit 提交；辅助字符串 131: BEGIN IMMEDIATE",
+      "confidence": 0.95
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 168,
+      "qualname": "backend.services.agent_conversations.enqueue",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "db-transaction",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 169,
+      "qualname": "backend.services.agent_conversations.enqueue",
+      "evidence": "组合证据：conn.execute 开启事务；同作用域 conn.commit 提交；辅助字符串 169: BEGIN IMMEDIATE",
+      "confidence": 0.95
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 207,
+      "qualname": "backend.services.agent_conversations.claim_next",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "db-transaction",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 208,
+      "qualname": "backend.services.agent_conversations.claim_next",
+      "evidence": "组合证据：conn.execute 开启事务；同作用域 conn.commit 提交；辅助字符串 208: BEGIN IMMEDIATE",
+      "confidence": 0.95
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 256,
+      "qualname": "backend.services.agent_conversations.update_queued_input",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "db-transaction",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 257,
+      "qualname": "backend.services.agent_conversations.update_queued_input",
+      "evidence": "组合证据：conn.execute 开启事务；同作用域 conn.commit 提交；辅助字符串 257: BEGIN IMMEDIATE",
+      "confidence": 0.95
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 303,
+      "qualname": "backend.services.agent_conversations.cancel_queued_input",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 315,
+      "qualname": "backend.services.agent_conversations.release_active",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "db-transaction",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 316,
+      "qualname": "backend.services.agent_conversations.release_active",
+      "evidence": "组合证据：conn.execute 开启事务；同作用域 conn.commit 提交；辅助字符串 316: BEGIN IMMEDIATE",
+      "confidence": 0.95
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 335,
+      "qualname": "backend.services.agent_conversations.get_task_id_for_queue_item",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 342,
+      "qualname": "backend.services.agent_conversations.get_active_task",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 353,
+      "qualname": "backend.services.agent_conversations.recent_dialogue",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 390,
+      "qualname": "backend.services.agent_conversations.persist_visible_message",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "db-transaction",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 391,
+      "qualname": "backend.services.agent_conversations.persist_visible_message",
+      "evidence": "组合证据：conn.execute 开启事务；同作用域 conn.commit 提交；辅助字符串 391: BEGIN IMMEDIATE",
+      "confidence": 0.95
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 419,
+      "qualname": "backend.services.agent_conversations.get_turn_id_for_task",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 429,
+      "qualname": "backend.services.agent_conversations.bind_queue_task",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 439,
+      "qualname": "backend.services.agent_conversations.attach_answer_to_active",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 449,
+      "qualname": "backend.services.agent_conversations.claim_steer",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "db-transaction",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 450,
+      "qualname": "backend.services.agent_conversations.claim_steer",
+      "evidence": "组合证据：conn.execute 开启事务；同作用域 conn.commit 提交；辅助字符串 450: BEGIN IMMEDIATE",
+      "confidence": 0.95
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 470,
+      "qualname": "backend.services.agent_conversations.recover_after_restart",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "db-transaction",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 471,
+      "qualname": "backend.services.agent_conversations.recover_after_restart",
+      "evidence": "组合证据：conn.execute 开启事务；同作用域 conn.commit 提交；辅助字符串 471: BEGIN IMMEDIATE",
+      "confidence": 0.95
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 493,
+      "qualname": "backend.services.agent_conversations.set_halted",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 503,
+      "qualname": "backend.services.agent_conversations.activate_existing_task",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "db-transaction",
+      "path": "backend/services/agent_conversations.py",
+      "lineno": 504,
+      "qualname": "backend.services.agent_conversations.activate_existing_task",
+      "evidence": "组合证据：conn.execute 开启事务；同作用域 conn.commit 提交；辅助字符串 504: BEGIN IMMEDIATE",
+      "confidence": 0.95
+    },
+    {
+      "concept_id": "abstract-base",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 11,
+      "qualname": "backend.services.asset_provider",
+      "evidence": "imports abc",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 19,
+      "qualname": "backend.services.asset_provider.StripResult",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "abstract-base",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 35,
+      "qualname": "backend.services.asset_provider.MotionAssetProvider",
+      "evidence": "inherits abc.ABC",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 38,
+      "qualname": "backend.services.asset_provider.MotionAssetProvider.name",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "abstract-base",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 40,
+      "qualname": "backend.services.asset_provider.MotionAssetProvider.name",
+      "evidence": "decorator abc.abstractmethod",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 43,
+      "qualname": "backend.services.asset_provider.MotionAssetProvider.is_configured",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "abstract-base",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 44,
+      "qualname": "backend.services.asset_provider.MotionAssetProvider.is_configured",
+      "evidence": "decorator abc.abstractmethod",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 51,
+      "qualname": "backend.services.asset_provider.MotionAssetProvider.generate_strip",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "abstract-base",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 52,
+      "qualname": "backend.services.asset_provider.MotionAssetProvider.generate_strip",
+      "evidence": "decorator abc.abstractmethod",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 52,
+      "qualname": "backend.services.asset_provider.MotionAssetProvider.generate_strip",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 70,
+      "qualname": "backend.services.asset_provider.OpenAIImage2StripProvider.name",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/asset_provider.py",
+      "lineno": 79,
+      "qualname": "backend.services.asset_provider.OpenAIImage2StripProvider.generate_strip",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/character_importer.py",
+      "lineno": 277,
+      "qualname": "backend.services.character_importer._wipe_character_state",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 10,
+      "qualname": "backend.services.hatch_pet_runs",
+      "evidence": "imports asyncio",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "dependency-injection",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 19,
+      "qualname": "backend.services.hatch_pet_runs",
+      "evidence": "imports fastapi",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 265,
+      "qualname": "backend.services.hatch_pet_runs.mutate_run",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "generator",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 420,
+      "qualname": "backend.services.hatch_pet_runs._all_records",
+      "evidence": "结构 yield：函数按需产生值",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 657,
+      "qualname": "backend.services.hatch_pet_runs.start_pilot",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 683,
+      "qualname": "backend.services.hatch_pet_runs.start_core",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 733,
+      "qualname": "backend.services.hatch_pet_runs._generate_many",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 740,
+      "qualname": "backend.services.hatch_pet_runs._generate_many",
+      "evidence": "call asyncio.gather",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 757,
+      "qualname": "backend.services.hatch_pet_runs._bounded_request",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 758,
+      "qualname": "backend.services.hatch_pet_runs._bounded_request",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 762,
+      "qualname": "backend.services.hatch_pet_runs._generate_action",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 766,
+      "qualname": "backend.services.hatch_pet_runs._generate_action",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 790,
+      "qualname": "backend.services.hatch_pet_runs._generate_action",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 825,
+      "qualname": "backend.services.hatch_pet_runs._generate_action",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 825,
+      "qualname": "backend.services.hatch_pet_runs._generate_action",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 978,
+      "qualname": "backend.services.hatch_pet_runs._mirror_left",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 994,
+      "qualname": "backend.services.hatch_pet_runs._mirror_left",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 994,
+      "qualname": "backend.services.hatch_pet_runs._mirror_left",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 1349,
+      "qualname": "backend.services.hatch_pet_runs.retry_action",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 1361,
+      "qualname": "backend.services.hatch_pet_runs.recover_generated_action",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 1371,
+      "qualname": "backend.services.hatch_pet_runs.recover_generated_action",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 1402,
+      "qualname": "backend.services.hatch_pet_runs.recover_generated_action",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "backend/services/hatch_pet_runs.py",
+      "lineno": 1402,
+      "qualname": "backend.services.hatch_pet_runs.recover_generated_action",
+      "evidence": "call asyncio.to_thread",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 36,
+      "qualname": "backend.services.pet_policy.policy",
+      "evidence": "imports asyncio",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 54,
+      "qualname": "backend.services.pet_policy.policy.Trigger",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 89,
+      "qualname": "backend.services.pet_policy.policy.PetPolicy.notify_turn_presented",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 111,
+      "qualname": "backend.services.pet_policy.policy.PetPolicy.notify_proactive_fired",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 133,
+      "qualname": "backend.services.pet_policy.policy.PetPolicy.notify_emotion_changed",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 155,
+      "qualname": "backend.services.pet_policy.policy.PetPolicy.notify_session_switched",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 173,
+      "qualname": "backend.services.pet_policy.policy.PetPolicy._enqueue",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 175,
+      "qualname": "backend.services.pet_policy.policy.PetPolicy._enqueue",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 214,
+      "qualname": "backend.services.pet_policy.policy.PetPolicy.close",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 218,
+      "qualname": "backend.services.pet_policy.policy.PetPolicy.close",
+      "evidence": "call asyncio.gather",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 257,
+      "qualname": "backend.services.pet_policy.policy._PetPolicyImpl.__init__",
+      "evidence": "call asyncio.create_task",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 269,
+      "qualname": "backend.services.pet_policy.policy._PetPolicyImpl.enqueue",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 297,
+      "qualname": "backend.services.pet_policy.policy._PetPolicyImpl.close",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 318,
+      "qualname": "backend.services.pet_policy.policy._PetPolicyImpl._run",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 352,
+      "qualname": "backend.services.pet_policy.policy._PetPolicyImpl._decide",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 403,
+      "qualname": "backend.services.pet_policy.policy._PetPolicyImpl._decide",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "backend/services/pet_policy/policy.py",
+      "lineno": 465,
+      "qualname": "backend.services.pet_policy.policy._PetPolicyImpl._call_llm",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "dependency-injection",
+      "path": "backend/services/portrait_candidates.py",
+      "lineno": 19,
+      "qualname": "backend.services.portrait_candidates",
+      "evidence": "imports fastapi",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/portrait_candidates.py",
+      "lineno": 149,
+      "qualname": "backend.services.portrait_candidates.normalize_generated_portrait",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/portrait_candidates.py",
+      "lineno": 238,
+      "qualname": "backend.services.portrait_candidates.stage",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/portrait_candidates.py",
+      "lineno": 332,
+      "qualname": "backend.services.portrait_candidates.stale_all",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/portrait_candidates.py",
+      "lineno": 352,
+      "qualname": "backend.services.portrait_candidates.review",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/portrait_candidates.py",
+      "lineno": 401,
+      "qualname": "backend.services.portrait_candidates.rework_item",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/portrait_candidates.py",
+      "lineno": 480,
+      "qualname": "backend.services.portrait_candidates.commit_rework",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/portrait_candidates.py",
+      "lineno": 517,
+      "qualname": "backend.services.portrait_candidates.cancel_rework",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/portrait_candidates.py",
+      "lineno": 547,
+      "qualname": "backend.services.portrait_candidates.publish",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/portrait_candidates.py",
+      "lineno": 586,
+      "qualname": "backend.services.portrait_candidates.reject",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "backend/services/portrait_candidates.py",
+      "lineno": 603,
+      "qualname": "backend.services.portrait_candidates.delete",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "mobile_sam/modeling/sam.py",
+      "lineno": 50,
+      "qualname": "mobile_sam.modeling.sam.Sam.device",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "mobile_sam/modeling/sam.py",
+      "lineno": 54,
+      "qualname": "mobile_sam.modeling.sam.Sam.forward",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "packaged_main.py",
+      "lineno": 146,
+      "qualname": "packaged_main._find_free_port",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "packaged_main.py",
+      "lineno": 164,
+      "qualname": "packaged_main._wait_for_health",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "config-env",
+      "path": "packaged_main.py",
+      "lineno": 188,
+      "qualname": "packaged_main._run_uvicorn",
+      "evidence": "call os.getenv",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "packaged_main.py",
+      "lineno": 248,
+      "qualname": "packaged_main._JsApi.save_download",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "config-env",
+      "path": "packaged_main.py",
+      "lineno": 729,
+      "qualname": "packaged_main.main",
+      "evidence": "call os.getenv",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "config-env",
+      "path": "packaged_main.py",
+      "lineno": 734,
+      "qualname": "packaged_main.main",
+      "evidence": "call os.getenv",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "scripts/manual/agent_live_acceptance.py",
+      "lineno": 36,
+      "qualname": "scripts.manual.agent_live_acceptance.main.request",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "scripts/manual/agent_live_acceptance.py",
+      "lineno": 70,
+      "qualname": "scripts.manual.agent_live_acceptance.main",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "dependency-injection",
+      "path": "tests/api/test_chat_history_pagination.py",
+      "lineno": 3,
+      "qualname": "tests.api.test_chat_history_pagination",
+      "evidence": "imports fastapi",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "dependency-injection",
+      "path": "tests/api/test_chat_history_pagination.py",
+      "lineno": 4,
+      "qualname": "tests.api.test_chat_history_pagination",
+      "evidence": "imports fastapi.testclient",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/api/test_chat_history_pagination.py",
+      "lineno": 68,
+      "qualname": "tests.api.test_chat_history_pagination._client.resolve",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 45,
+      "qualname": "tests.character.test_character_card._reset_skill_loader_cache",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "generator",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 50,
+      "qualname": "tests.character.test_character_card._reset_skill_loader_cache",
+      "evidence": "结构 yield：函数按需产生值",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 87,
+      "qualname": "tests.character.test_character_card._charx",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 147,
+      "qualname": "tests.character.test_character_card.test_non_card_zip_points_to_backup_import",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 158,
+      "qualname": "tests.character.test_character_card.test_charx_rejects_duplicate_and_case_conflicting_entries",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 168,
+      "qualname": "tests.character.test_character_card.test_charx_rejects_symlink_member",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 233,
+      "qualname": "tests.character.test_character_card.test_png_without_embedded_data_rejected",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 239,
+      "qualname": "tests.character.test_character_card.test_oversized_json_rejected",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 247,
+      "qualname": "tests.character.test_character_card.test_card_without_name_rejected",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 307,
+      "qualname": "tests.character.test_character_card.test_fixed_core_over_budget_is_rejected_instead_of_silently_truncated",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 686,
+      "qualname": "tests.character.test_character_card.test_import_source_snapshot_failure_rolls_back_skill",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 698,
+      "qualname": "tests.character.test_character_card.test_import_name_conflict_returns_conflict",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/character/test_character_card.py",
+      "lineno": 710,
+      "qualname": "tests.character.test_character_card.test_import_rolls_back_when_generated_skill_fails_to_load",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/evals/test_character_native_ablation_fixture.py",
+      "lineno": 253,
+      "qualname": "tests.evals.test_character_native_ablation_fixture.test_reuse_frozen_fixtures_pins_hashes_and_marks_round2",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/evals/test_character_native_ablation_fixture.py",
+      "lineno": 264,
+      "qualname": "tests.evals.test_character_native_ablation_fixture.test_round1_full_fixtures_hash_pinned",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/evals/test_character_native_ablation_fixture.py",
+      "lineno": 281,
+      "qualname": "tests.evals.test_character_native_ablation_fixture.test_round2_reuse_of_round1_full_matches_hashes",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/evals/test_character_native_ablation_fixture.py",
+      "lineno": 340,
+      "qualname": "tests.evals.test_character_native_ablation_fixture._build_prompt_builder",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 37,
+      "qualname": "tests.llm.test_openai_chat_client._install_transport.fake_request",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 41,
+      "qualname": "tests.llm.test_openai_chat_client._install_transport.fake_request_raises",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 42,
+      "qualname": "tests.llm.test_openai_chat_client._install_transport.fake_request_raises.inner",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 48,
+      "qualname": "tests.llm.test_openai_chat_client._install_transport._StreamCtx.__aenter__",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 52,
+      "qualname": "tests.llm.test_openai_chat_client._install_transport._StreamCtx.__aexit__",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 61,
+      "qualname": "tests.llm.test_openai_chat_client._install_transport._FakeStreamResponse.aiter_lines",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "generator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 63,
+      "qualname": "tests.llm.test_openai_chat_client._install_transport._FakeStreamResponse.aiter_lines",
+      "evidence": "结构 yield：函数按需产生值",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 98,
+      "qualname": "tests.llm.test_openai_chat_client.test_turn_control_can_force_only_the_named_tool_without_changing_default",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 99,
+      "qualname": "tests.llm.test_openai_chat_client.test_turn_control_can_force_only_the_named_tool_without_changing_default",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 110,
+      "qualname": "tests.llm.test_openai_chat_client.test_builtin_cloud_clients_forward_named_control_choice",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 112,
+      "qualname": "tests.llm.test_openai_chat_client.test_builtin_cloud_clients_forward_named_control_choice",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 115,
+      "qualname": "tests.llm.test_openai_chat_client.test_builtin_cloud_clients_forward_named_control_choice.request",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 127,
+      "qualname": "tests.llm.test_openai_chat_client.test_stream_sends_frozen_model_and_filtered_sampling",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 128,
+      "qualname": "tests.llm.test_openai_chat_client.test_stream_sends_frozen_model_and_filtered_sampling",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 147,
+      "qualname": "tests.llm.test_openai_chat_client.test_sampling_overrides_take_precedence_over_baseline",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 148,
+      "qualname": "tests.llm.test_openai_chat_client.test_sampling_overrides_take_precedence_over_baseline",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 164,
+      "qualname": "tests.llm.test_openai_chat_client.test_unknown_explicit_model_argument_wins_for_contract",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 165,
+      "qualname": "tests.llm.test_openai_chat_client.test_unknown_explicit_model_argument_wins_for_contract",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 178,
+      "qualname": "tests.llm.test_openai_chat_client.test_minimax_profile_strips_think_spans_from_stream",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 179,
+      "qualname": "tests.llm.test_openai_chat_client.test_minimax_profile_strips_think_spans_from_stream",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 200,
+      "qualname": "tests.llm.test_openai_chat_client.test_generic_profile_keeps_think_tags",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 201,
+      "qualname": "tests.llm.test_openai_chat_client.test_generic_profile_keeps_think_tags",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 214,
+      "qualname": "tests.llm.test_openai_chat_client.test_minimax_profile_strips_think_tags_when_complete",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 215,
+      "qualname": "tests.llm.test_openai_chat_client.test_minimax_profile_strips_think_tags_when_complete",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 228,
+      "qualname": "tests.llm.test_openai_chat_client.test_complete_with_tools_returns_tool_calls",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 229,
+      "qualname": "tests.llm.test_openai_chat_client.test_complete_with_tools_returns_tool_calls",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 249,
+      "qualname": "tests.llm.test_openai_chat_client.test_complete_with_tools_response_preserves_text_and_calls",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 250,
+      "qualname": "tests.llm.test_openai_chat_client.test_complete_with_tools_response_preserves_text_and_calls",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 269,
+      "qualname": "tests.llm.test_openai_chat_client.test_route_timeout_is_forwarded",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/llm/test_openai_chat_client.py",
+      "lineno": 270,
+      "qualname": "tests.llm.test_openai_chat_client.test_route_timeout_is_forwarded",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 14,
+      "qualname": "tests.memory.test_turn_triggered_consolidation",
+      "evidence": "imports asyncio",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 24,
+      "qualname": "tests.memory.test_turn_triggered_consolidation._reset_consolidation_locks",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "generator",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 28,
+      "qualname": "tests.memory.test_turn_triggered_consolidation._reset_consolidation_locks",
+      "evidence": "结构 yield：函数按需产生值",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 193,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_runs_extract_and_skips_when_under_threshold.fake_extract",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 203,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_runs_extract_and_skips_when_under_threshold.FakeConsolidator.consolidate",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 234,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_triggers_standard_when_threshold_crossed.FakeConsolidator.consolidate",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 242,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_triggers_standard_when_threshold_crossed.fake_extract",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 269,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_triggers_deep_when_deep_threshold_crossed.FakeConsolidator.consolidate",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 277,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_triggers_deep_when_deep_threshold_crossed.fake_extract",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 301,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_skips_consolidation_when_lock_already_held.FakeConsolidator.consolidate",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 309,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_skips_consolidation_when_lock_already_held.fake_extract",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 312,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_skips_consolidation_when_lock_already_held.main",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 316,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_skips_consolidation_when_lock_already_held.main",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 339,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_continues_to_consolidation_when_extract_fails.FakeConsolidator.consolidate",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 347,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_continues_to_consolidation_when_extract_fails.fake_extract",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 374,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_respects_last_consolidated_turn_offset.FakeConsolidator.consolidate",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/memory/test_turn_triggered_consolidation.py",
+      "lineno": 382,
+      "qualname": "tests.memory.test_turn_triggered_consolidation.test_helper_respects_last_consolidated_turn_offset.fake_extract",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/pet/hatch_test_support.py",
+      "lineno": 28,
+      "qualname": "tests.pet.hatch_test_support.isolated_run_data",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "tests/pet/test_pet_settings.py",
+      "lineno": 3,
+      "qualname": "tests.pet.test_pet_settings",
+      "evidence": "imports concurrent.futures",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/pet/test_pet_settings.py",
+      "lineno": 12,
+      "qualname": "tests.pet.test_pet_settings.test_pet_settings_concurrent_updates_preserve_both_fields",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "tests/pet/test_pet_settings.py",
+      "lineno": 12,
+      "qualname": "tests.pet.test_pet_settings.test_pet_settings_concurrent_updates_preserve_both_fields",
+      "evidence": "call ThreadPoolExecutor → concurrent.futures.ThreadPoolExecutor",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/pet/test_pet_settings.py",
+      "lineno": 35,
+      "qualname": "tests.pet.test_pet_settings.test_pet_settings_write_failure_does_not_change_previous_snapshot",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/pet_runtime/test_pet_outbox_signal.py",
+      "lineno": 3,
+      "qualname": "tests.pet_runtime.test_pet_outbox_signal",
+      "evidence": "imports asyncio",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/pet_runtime/test_pet_outbox_signal.py",
+      "lineno": 10,
+      "qualname": "tests.pet_runtime.test_pet_outbox_signal._clear_signal_state",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/pet_runtime/test_pet_outbox_signal.py",
+      "lineno": 12,
+      "qualname": "tests.pet_runtime.test_pet_outbox_signal._clear_signal_state",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "generator",
+      "path": "tests/pet_runtime/test_pet_outbox_signal.py",
+      "lineno": 15,
+      "qualname": "tests.pet_runtime.test_pet_outbox_signal._clear_signal_state",
+      "evidence": "结构 yield：函数按需产生值",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/pet_runtime/test_pet_outbox_signal.py",
+      "lineno": 21,
+      "qualname": "tests.pet_runtime.test_pet_outbox_signal.test_long_poll_wakes_when_new_command_is_signalled",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/pet_runtime/test_pet_outbox_signal.py",
+      "lineno": 22,
+      "qualname": "tests.pet_runtime.test_pet_outbox_signal.test_long_poll_wakes_when_new_command_is_signalled",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/pet_runtime/test_pet_outbox_signal.py",
+      "lineno": 24,
+      "qualname": "tests.pet_runtime.test_pet_outbox_signal.test_long_poll_wakes_when_new_command_is_signalled",
+      "evidence": "call asyncio.create_task",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/pet_runtime/test_pet_outbox_signal.py",
+      "lineno": 32,
+      "qualname": "tests.pet_runtime.test_pet_outbox_signal.test_version_prevents_missed_signal_before_waiter_registration",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/pet_runtime/test_pet_outbox_signal.py",
+      "lineno": 33,
+      "qualname": "tests.pet_runtime.test_pet_outbox_signal.test_version_prevents_missed_signal_before_waiter_registration",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/pet_runtime/test_pet_outbox_signal.py",
+      "lineno": 39,
+      "qualname": "tests.pet_runtime.test_pet_outbox_signal.test_long_poll_times_out_without_a_command",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/pet_runtime/test_pet_outbox_signal.py",
+      "lineno": 40,
+      "qualname": "tests.pet_runtime.test_pet_outbox_signal.test_long_poll_times_out_without_a_command",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/platform/test_runtime_registry_locks.py",
+      "lineno": 3,
+      "qualname": "tests.platform.test_runtime_registry_locks",
+      "evidence": "imports asyncio",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/platform/test_runtime_registry_locks.py",
+      "lineno": 10,
+      "qualname": "tests.platform.test_runtime_registry_locks.test_retired_consolidation_lock_remains_authoritative_until_release",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/platform/test_runtime_registry_locks.py",
+      "lineno": 11,
+      "qualname": "tests.platform.test_runtime_registry_locks.test_retired_consolidation_lock_remains_authoritative_until_release",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/platform/test_runtime_registry_locks.py",
+      "lineno": 15,
+      "qualname": "tests.platform.test_runtime_registry_locks.test_retired_consolidation_lock_remains_authoritative_until_release",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/platform/test_runtime_registry_locks.py",
+      "lineno": 27,
+      "qualname": "tests.platform.test_runtime_registry_locks.test_tracked_task_deduplicates_and_exposes_terminal_status",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/platform/test_runtime_registry_locks.py",
+      "lineno": 28,
+      "qualname": "tests.platform.test_runtime_registry_locks.test_tracked_task_deduplicates_and_exposes_terminal_status",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/platform/test_runtime_registry_locks.py",
+      "lineno": 31,
+      "qualname": "tests.platform.test_runtime_registry_locks.test_tracked_task_deduplicates_and_exposes_terminal_status.work",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "dependency-injection",
+      "path": "tests/relationship/test_relationship_modes.py",
+      "lineno": 4,
+      "qualname": "tests.relationship.test_relationship_modes",
+      "evidence": "imports fastapi",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "dependency-injection",
+      "path": "tests/relationship/test_relationship_modes.py",
+      "lineno": 5,
+      "qualname": "tests.relationship.test_relationship_modes",
+      "evidence": "imports fastapi.testclient",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/relationship/test_relationship_modes.py",
+      "lineno": 23,
+      "qualname": "tests.relationship.test_relationship_modes.FakeLLMClient.complete",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/relationship/test_relationship_modes.py",
+      "lineno": 204,
+      "qualname": "tests.relationship.test_relationship_modes.test_relationship_mode_settings_api_round_trips_branch_mode",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/relationship/test_relationship_modes.py",
+      "lineno": 205,
+      "qualname": "tests.relationship.test_relationship_modes.test_relationship_mode_settings_api_round_trips_branch_mode",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/relationship/test_relationship_modes.py",
+      "lineno": 220,
+      "qualname": "tests.relationship.test_relationship_modes.test_relationship_mode_settings_api_round_trips_branch_mode.fake_resolve_branch_context",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/relationship/test_relationship_modes.py",
+      "lineno": 258,
+      "qualname": "tests.relationship.test_relationship_modes.test_relationship_mode_http_api_round_trips_branch_mode.fake_resolve_branch_context",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/relationship/test_relationship_modes.py",
+      "lineno": 585,
+      "qualname": "tests.relationship.test_relationship_modes.test_response_style_settings_api_round_trips_branch_style",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/relationship/test_relationship_modes.py",
+      "lineno": 586,
+      "qualname": "tests.relationship.test_relationship_modes.test_response_style_settings_api_round_trips_branch_style",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/relationship/test_relationship_modes.py",
+      "lineno": 604,
+      "qualname": "tests.relationship.test_relationship_modes.test_response_style_settings_api_round_trips_branch_style.fake_resolve_branch_context",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 3,
+      "qualname": "tests.services.test_agent_turns",
+      "evidence": "imports concurrent.futures",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 4,
+      "qualname": "tests.services.test_agent_turns",
+      "evidence": "imports contextlib",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 13,
+      "qualname": "tests.services.test_agent_turns.ledger",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 24,
+      "qualname": "tests.services.test_agent_turns.test_greeting_creates_turn_but_not_task_or_workspace",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 32,
+      "qualname": "tests.services.test_agent_turns.test_create_idempotency_and_conflicting_content",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 43,
+      "qualname": "tests.services.test_agent_turns.test_concurrent_create_admits_one_turn",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "thread-pool",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 43,
+      "qualname": "tests.services.test_agent_turns.test_concurrent_create_admits_one_turn",
+      "evidence": "call ThreadPoolExecutor → concurrent.futures.ThreadPoolExecutor",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 53,
+      "qualname": "tests.services.test_agent_turns.test_state_transitions_and_duplicate_operations",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 74,
+      "qualname": "tests.services.test_agent_turns.test_event_cursor_order_dedup_and_branch_scope",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 84,
+      "qualname": "tests.services.test_agent_turns.test_question_answer_returns_to_same_call_once",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 99,
+      "qualname": "tests.services.test_agent_turns.test_answer_wrong_session_and_second_answer_rejected",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 116,
+      "qualname": "tests.services.test_agent_turns.test_capability_snapshot_changed_revision_rejects_old_proposal",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 130,
+      "qualname": "tests.services.test_agent_turns.test_restart_interrupts_waiting_and_never_replays",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 141,
+      "qualname": "tests.services.test_agent_turns.test_migration_backup_keeps_committed_wal_and_old_tables",
+      "evidence": "call closing → contextlib.closing；结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/services/test_agent_turns.py",
+      "lineno": 148,
+      "qualname": "tests.services.test_agent_turns.test_migration_backup_keeps_committed_wal_and_old_tables",
+      "evidence": "call closing → contextlib.closing",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 20,
+      "qualname": "tests.wx.test_ilink_bot_dispatch",
+      "evidence": "imports asyncio",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "decorator",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 35,
+      "qualname": "tests.wx.test_ilink_bot_dispatch._isolate_data_dir",
+      "evidence": "结构 @decorator：定义对象时应用装饰器",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "generator",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 46,
+      "qualname": "tests.wx.test_ilink_bot_dispatch._isolate_data_dir",
+      "evidence": "结构 yield：函数按需产生值",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 88,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_first_message_binds_owner",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 103,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_message_without_openid_is_dropped",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 116,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_non_owner_message_is_silently_dropped",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 133,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_non_owner_command_is_silently_dropped",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 148,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_owner_text_message_reaches_handle_text",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 161,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_owner_command_message_reaches_handle_command",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 177,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_welcome_fires_once_then_stays_silent",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 194,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_dispatch_queue_preserves_order",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 204,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_dispatch_queue_preserves_order.slow_handle_text",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 214,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_dispatch_queue_preserves_order",
+      "evidence": "call asyncio.create_task",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 229,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_dispatch_queue_drop_when_worker_cancelled",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 240,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_dispatch_queue_drop_when_worker_cancelled",
+      "evidence": "call asyncio.create_task",
+      "confidence": 0.5
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 257,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_owner_rebind_then_rebind_dispatches",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 282,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_use_command_switches_active_character",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 289,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_use_command_switches_active_character",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 300,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_use_command_unknown_alias_replies_error",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 306,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_use_command_unknown_alias_replies_error",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 315,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_use_command_preserves_branch_id",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 322,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_use_command_preserves_branch_id",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 330,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_reset_command_creates_real_branch_and_switches",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 361,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_reset_command_creates_real_branch_and_switches",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 377,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_voice_command_sets_tts_voice",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 383,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_voice_command_sets_tts_voice",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 389,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_voice_command_unknown_alias_replies_error",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 395,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_voice_command_unknown_alias_replies_error",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 404,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_list_command_works_for_owner",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 410,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_list_command_works_for_owner",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 417,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_unknown_command_replies_with_help",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 432,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_handle_text_uses_wx_store_character_when_set",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 442,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_handle_text_uses_wx_store_character_when_set.fake_run_chat_for_wx",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 452,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_handle_text_uses_wx_store_character_when_set",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 459,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_handle_text_falls_back_to_desktop_when_wx_store_empty",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 468,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_handle_text_falls_back_to_desktop_when_wx_store_empty.fake_run_chat_for_wx",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 478,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_handle_text_falls_back_to_desktop_when_wx_store_empty",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 485,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_handle_text_falls_back_to_wx_default_when_both_empty",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "async",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 493,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_handle_text_falls_back_to_wx_default_when_both_empty.fake_run_chat_for_wx",
+      "evidence": "结构 async def：协程函数声明",
+      "confidence": 1.0
+    },
+    {
+      "concept_id": "context-manager",
+      "path": "tests/wx/test_ilink_bot_dispatch.py",
+      "lineno": 503,
+      "qualname": "tests.wx.test_ilink_bot_dispatch.test_handle_text_falls_back_to_wx_default_when_both_empty",
+      "evidence": "结构 with/async with：通过上下文协议管理进入与退出",
+      "confidence": 1.0
+    }
+  ],
+  "flows": [
+    {
+      "name": "backend.main → 模块初始化",
+      "description": "从 backend.main 到 backend.main，经由 0 步调用；副作用：_tts_dir.mkdir",
+      "entry_qualname": "backend.main",
+      "steps": [
+        {
+          "ordinal": 0,
+          "qualname": "backend.main",
+          "path": "backend/main.py",
+          "lineno": 1,
+          "note": "入口"
+        }
+      ]
+    },
+    {
+      "name": "backend.main → backend.main._install_pet_log_sink",
+      "description": "从 backend.main 到 backend.main._install_pet_log_sink，经由 1 步调用；副作用：log_dir.mkdir",
+      "entry_qualname": "backend.main",
+      "steps": [
+        {
+          "ordinal": 0,
+          "qualname": "backend.main",
+          "path": "backend/main.py",
+          "lineno": 1,
+          "note": "入口"
+        },
+        {
+          "ordinal": 1,
+          "qualname": "backend.main._install_pet_log_sink",
+          "path": "backend/main.py",
+          "lineno": 65,
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "backend.main → backend.main._install_access_log_filters",
+      "description": "从 backend.main 到 backend.main._install_access_log_filters，经由 2 步调用；副作用：logging.getLogger",
+      "entry_qualname": "backend.main",
+      "steps": [
+        {
+          "ordinal": 0,
+          "qualname": "backend.main",
+          "path": "backend/main.py",
+          "lineno": 1,
+          "note": "入口"
+        },
+        {
+          "ordinal": 1,
+          "qualname": "backend.main.lifespan",
+          "path": "backend/main.py",
+          "lineno": 92,
+          "note": ""
+        },
+        {
+          "ordinal": 2,
+          "qualname": "backend.main._install_access_log_filters",
+          "path": "backend/main.py",
+          "lineno": 55,
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "backend.main:app → 模块初始化",
+      "description": "从 backend.main 到 backend.main，经由 0 步调用；副作用：_tts_dir.mkdir",
+      "entry_qualname": "backend.main",
+      "steps": [
+        {
+          "ordinal": 0,
+          "qualname": "backend.main",
+          "path": "backend/main.py",
+          "lineno": 1,
+          "note": "入口"
+        }
+      ]
+    },
+    {
+      "name": "backend.main:app → backend.main._install_pet_log_sink",
+      "description": "从 backend.main 到 backend.main._install_pet_log_sink，经由 1 步调用；副作用：log_dir.mkdir",
+      "entry_qualname": "backend.main",
+      "steps": [
+        {
+          "ordinal": 0,
+          "qualname": "backend.main",
+          "path": "backend/main.py",
+          "lineno": 1,
+          "note": "入口"
+        },
+        {
+          "ordinal": 1,
+          "qualname": "backend.main._install_pet_log_sink",
+          "path": "backend/main.py",
+          "lineno": 65,
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "backend.main:app → backend.main._install_access_log_filters",
+      "description": "从 backend.main 到 backend.main._install_access_log_filters，经由 2 步调用；副作用：logging.getLogger",
+      "entry_qualname": "backend.main",
+      "steps": [
+        {
+          "ordinal": 0,
+          "qualname": "backend.main",
+          "path": "backend/main.py",
+          "lineno": 1,
+          "note": "入口"
+        },
+        {
+          "ordinal": 1,
+          "qualname": "backend.main.lifespan",
+          "path": "backend/main.py",
+          "lineno": 92,
+          "note": ""
+        },
+        {
+          "ordinal": 2,
+          "qualname": "backend.main._install_access_log_filters",
+          "path": "backend/main.py",
+          "lineno": 55,
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "backend.mobile_gateway:app → backend.mobile_gateway._backend_json",
+      "description": "从 backend.mobile_gateway 到 backend.mobile_gateway._backend_json，经由 1 步调用；副作用：httpx.AsyncClient",
+      "entry_qualname": "backend.mobile_gateway",
+      "steps": [
+        {
+          "ordinal": 0,
+          "qualname": "backend.mobile_gateway",
+          "path": "backend/mobile_gateway.py",
+          "lineno": 1,
+          "note": "入口"
+        },
+        {
+          "ordinal": 1,
+          "qualname": "backend.mobile_gateway._backend_json",
+          "path": "backend/mobile_gateway.py",
+          "lineno": 38,
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "backend.mobile_gateway:app → backend.mobile_gateway.chat_stream.relay",
+      "description": "从 backend.mobile_gateway 到 backend.mobile_gateway.chat_stream.relay，经由 2 步调用；副作用：httpx.AsyncClient, json.dumps",
+      "entry_qualname": "backend.mobile_gateway",
+      "steps": [
+        {
+          "ordinal": 0,
+          "qualname": "backend.mobile_gateway",
+          "path": "backend/mobile_gateway.py",
+          "lineno": 1,
+          "note": "入口"
+        },
+        {
+          "ordinal": 1,
+          "qualname": "backend.mobile_gateway.chat_stream",
+          "path": "backend/mobile_gateway.py",
+          "lineno": 117,
+          "note": ""
+        },
+        {
+          "ordinal": 2,
+          "qualname": "backend.mobile_gateway.chat_stream.relay",
+          "path": "backend/mobile_gateway.py",
+          "lineno": 118,
+          "note": ""
+        }
+      ]
+    },
+    {
+      "name": "backend.mobile_gateway:app → backend.mobile_gateway.media",
+      "description": "从 backend.mobile_gateway 到 backend.mobile_gateway.media，经由 1 步调用；副作用：httpx.AsyncClient",
+      "entry_qualname": "backend.mobile_gateway",
+      "steps": [
+        {
+          "ordinal": 0,
+          "qualname": "backend.mobile_gateway",
+          "path": "backend/mobile_gateway.py",
+          "lineno": 1,
+          "note": "入口"
+        },
+        {
+          "ordinal": 1,
+          "qualname": "backend.mobile_gateway.media",
+          "path": "backend/mobile_gateway.py",
+          "lineno": 150,
+          "note": ""
+        }
+      ]
+    }
+  ]
 }
