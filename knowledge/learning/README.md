@@ -38,6 +38,31 @@ answer = link_answer('SQL 可以查询数据库中的表。', library, recommend
 text = validate_answer_links(answer.text, library)
 ```
 
+跨线接入优先使用 `integration.LearningBridge`，目录/正文/检索返回可序列化的
+`ToolResult.data`；`prepare_turn()` 返回同一回合的只读快照，最终答案沿用该快照：
+
+```python
+from codeinsight.cognitive.concepts.integration import LearningBridge
+
+bridge = LearningBridge(service)
+directory = bridge.tree().data
+article = bridge.topic('sql-database').data
+prepared = bridge.prepare_turn('SQL 是什么', max_bytes=12000)
+model_context = prepared.as_tool_result()  # content 注入模型，data 单独保存
+final = bridge.finalize_answer('SQL 是语言；“表”组织数据，SELECT 查询数据。', prepared)
+# 非流式答案与 SSE 最终 answer 都复用 final，不重复检索、更换来源。
+```
+
+阅读上下文只传 `kind='knowledge'`、`topic_id`、`section_id`、`version`。
+`reading_status` 区分 `ok/stale/not_found/invalid/outside_budget`；无效目标仍可独立检索
+问题，但不能把“这里”假装解释成功。`kind='code'` 明确交给 A 线重新读取项目代码。
+客户端附带的 title/snippet/body 不会进入模型。`knowledge_sources` 只列实际注入章节；
+正文的学习链接在 `learning_targets` 中独立保存，不因链接存在就伪造已引用来源。
+这些字段是 B 线接入建议，正式 HTTP 契约仍由 A 冻结、C 注册路由。
+纯指代续问缺少目标时标记 `missing`，不把通用词检索产生的碰巧命中当作答案。
+同名术语根据当前文章语言消歧：React 中的“函数”指向 JavaScript 函数；
+没有足够上下文的歧义词保持普通文字。“请求”这样的通用词不独立当作 HTTP。
+
 - 默认复用 A 线 `split_identifiers`，入库与查询使用同一实例；也可通过 `tokenizer=` 注入对照实现。
   当前环境未安装 jieba，共享分词器按 A 线实现回退到中文二元词，不将此结果描述为 jieba 验证。
 - 搜索返回章节而不是整本书；来源与版本不藏在可截断正文里。
@@ -64,6 +89,18 @@ python -m codeinsight.cognitive.concepts.examples.validate_tapestry --repo '<被
 不是主线 scanner 排除规则的验收。实际源快照与解析器哈希写进报告。
 30 条样本保留源码与 pending_human_review 标记；没有人工标签就不输出精确率，
 没有完整 gold set 就不输出召回率。主要分支不使用付费模型。
+
+M5 人工审核计分（不自动填写标签）：
+
+```powershell
+python -m codeinsight.cognitive.concepts.examples.score_review
+python -m codeinsight.cognitive.concepts.examples.score_review --review .ci/human-reviewed.json --out .ci/review-score.json
+```
+
+请复制审核文件后逐条填 `label: true/false` 与 `reviewed_by`；未审核保留 `null`。
+脚本拒绝重复位置、混用冻结版本、非布尔标签和缺少审核者的记录。
+全部至少 30 条完成才判断样本是否达到 0.8；部分标签只显示部分样本精确率。
+计分工具不认证审核者身份，且没有完整真值全集时始终不报告 recall/F1。
 
 ## 来源与许可
 

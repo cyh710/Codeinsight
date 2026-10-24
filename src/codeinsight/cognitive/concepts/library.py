@@ -211,14 +211,32 @@ class LearningLibrary:
             return None
         return LearningTarget(topic.id, topic.title, topic.version, section_id)
 
-    def resolve_term(self, term: str) -> LearningTarget | None:
-        """别名歧义时不随意挑一篇，交给搜索或用户明确语言。"""
+    def resolve_term(
+        self, term: str, *, context_topic_id: str | None = None
+    ) -> LearningTarget | None:
+        """同名术语优先当前文章语言；仍有歧义时不随意挑一篇。"""
         ids = self._aliases.get(_normalize(term), set())
+        if len(ids) > 1 and context_topic_id in self.topics:
+            group = self.topics[context_topic_id].group
+            groups = {
+                "React": ("React", "JavaScript", "TypeScript"),
+                "TypeScript": ("TypeScript", "JavaScript"),
+                "工程概念": ("工程概念", "Python"),
+            }.get(group, (group,))
+            for preferred in groups:
+                matches = {tid for tid in ids if self.topics[tid].group == preferred}
+                if matches:
+                    ids = matches
+                    break
         return self.target(next(iter(ids))) if len(ids) == 1 else None
 
     def resolve_href(self, href: str) -> LearningTarget | None:
         """站内地址严格限制目标格式，不把外部 URL 当知识目标。"""
-        parts = urlsplit(href)
+        try:
+            parts = urlsplit(href)
+        except ValueError:
+            # 未闭合的 IPv6 地址等也可能来自流式文本，不能中断整个回答。
+            return None
         if parts.scheme or parts.netloc or parts.query or not parts.path.startswith("/learn/"):
             return None
         tid = unquote(parts.path[len("/learn/") :])
@@ -277,7 +295,8 @@ class LearningLibrary:
         truncated = False
         for hit in hits:
             topic = self.get(hit.target.topic_id)
-            target = self.target(hit.target.topic_id, hit.target.section_id)
+            section_id = hit.target.section_id or "overview"
+            target = self.target(hit.target.topic_id, section_id)
             if topic is None or target is None or target.version != hit.target.version:
                 truncated = True
                 continue
