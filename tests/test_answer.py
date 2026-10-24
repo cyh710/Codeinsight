@@ -44,11 +44,16 @@ def test_fabricated_citation_is_removed_and_demoted() -> None:
     assert result.dropped_citations == ["backend/api/pet.py:9999"]
 
 
-def test_citation_inside_grounded_range() -> None:
-    """行号落在工具给出的窗口内也算通过。"""
+def test_citation_inside_grounded_range_keeps_the_exact_line() -> None:
+    """行号落在工具给出的窗口内也算通过，但引用要精确到那一行。
+
+    校验用「窗口包含」判断真伪，展示不能用窗口起点——否则读过 1-200 行之后，
+    每条事实都会指向第 1 行，用户点过去看到的是文件头。
+    """
     result = split_answer("这里组装上下文 [backend/core/chat.py:55]。", _grounding())
     assert len(result.facts) == 1
-    assert result.facts[0]["citation"]["lineno"] == 42  # 引用到窗口起点，便于定位
+    assert result.facts[0]["citation"]["lineno"] == 55
+    assert result.citations[0].lineno == 55
 
 
 def test_citations_are_deduplicated() -> None:

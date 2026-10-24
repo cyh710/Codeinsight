@@ -142,16 +142,20 @@ def split_answer(text: str, grounding: Grounding) -> SplitAnswer:
         if not cleaned.strip():
             continue
         if cited:
-            anchor = grounding.nearest(cited[0][0], cited[0][1])
+            path, lineno = cited[0]
+            anchor = grounding.nearest(path, lineno)
             if anchor is None:  # pragma: no cover —— _verify 只放行 grounded 位置
                 continue
+            # 引用落到**模型说的那一行**，不是它所在窗口的起点。
+            # 校验用「窗口包含」判断真伪，但给用户的 `file:line` 必须精确——
+            # 否则读了 1-200 行之后，每条事实都指向第 1 行。
             result.facts.append(
                 {
                     "text": _strip_markers(cleaned).strip(),
                     "citation": {
-                        "path": anchor.path,
-                        "lineno": anchor.lineno,
-                        "end_lineno": anchor.end_lineno,
+                        "path": path,
+                        "lineno": lineno,
+                        "end_lineno": lineno,
                         "qualname": anchor.qualname,
                         "snippet": anchor.snippet,
                     },
@@ -165,7 +169,7 @@ def split_answer(text: str, grounding: Grounding) -> SplitAnswer:
                 match = grounding.nearest(path, lineno)
                 if match is not None:
                     result.citations.append(
-                        Citation(match.path, match.lineno, match.end_lineno, match.qualname, match.snippet)
+                        Citation(path, lineno, lineno, match.qualname, match.snippet)
                     )
         elif not _looks_like_heading(cleaned):
             result.inferences.append(
