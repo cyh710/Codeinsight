@@ -111,7 +111,7 @@ cd <仓库根>-wt-frontend  && git merge main
 - [x] M1：真实仓库建索引成功；符号数与 AST 抽查一致；超大符号正确二次切分
 - [x] M2：10 个"在哪里实现"的问题全部给出正确 `file:line`（name 与 docstring 两种题型各 10/10）
 - [x] M3：截断不破坏 `file:line`；事实与推断分栏；无命中时明确弃答
-      （引擎与 `ci ask` 已通过；HTTP/SSE 端点由 C 线按 `requests/0004` 接线）
+      （引擎与 `ci ask` 已通过；HTTP/SSE 端点由 C 线按 `requests/0004` 接线（已归档到 `docs/archive/three-lines/`））
 - [x] M5：`ci eval` 一条命令产出对照报告，含 95% CI 与样本量 n
       （6 臂 × 3 题型，报告在 `eval/reports/`）
 - [x] M6：改一个函数后只有相关 chunk 的 `source_sha256` 变化（SQL 断言）

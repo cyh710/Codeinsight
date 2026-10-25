@@ -157,7 +157,7 @@ def run_index(
     """扫描 → 解析 → 落库 → `repo_state` 收尾（**不含** `index_run` 记账）。
 
     这是 C 线 `api/indexing.py::_ENGINE_CALLABLE` 要接的入口
-    （见 `docs/requests/0002-index-engine-entry.md`）：
+    （见 `docs/archive/three-lines/0002-index-engine-entry.md`）：
 
     - `conn` 由调用方传入——事务与 `index_run` 记账归 API 层，引擎只管数据；
     - 只返回原始计数，概览由调用方自己 `COUNT(*)` 生成，避免两处口径漂移；
