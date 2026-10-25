@@ -1,0 +1,56 @@
+/* 局部关系保持实际字号；窄中栏改为纵向阅读，不用缩放压缩文字。 */
+.reading-graph {
+  container-type: inline-size;
+}
+.reading-graph-heading {
+  padding: 24px 20px;
+}
+.reading-graph-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 26px;
+  padding: 0 20px;
+}
+.reading-graph-center {
+  position: sticky;
+  top: 20px;
+  min-width: 0;
+}
+.reading-graph-center::before,
+.reading-graph-center::after {
+  content: '→';
+  position: absolute;
+  top: 72px;
+  color: var(--color-accent);
+  font-size: 20px;
+}
+.reading-graph-center::before {
+  left: -23px;
+}
+.reading-graph-center::after {
+  right: -23px;
+}
+.reading-connection {
+  min-width: 0;
+}
+.reading-graph button:focus-visible,
+.reading-graph summary:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+@container (max-width: 460px) {
+  .reading-graph-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px;
+  }
+  .reading-graph-center {
+    position: static;
+    top: auto;
+    order: -1;
+  }
+  .reading-graph-center::before,
+  .reading-graph-center::after {
+    display: none;
+  }
+}
