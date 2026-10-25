@@ -80,7 +80,11 @@ def test_beginner_queries_find_readable_explanations(library, query, topic):
 def test_empty_unknown_and_literal_fts_input(library):
     assert library.search("") == []
     assert library.search("zxqv999nonexistent") == []
-    assert library.search('" OR NEAR() **') == []
+    # FTS 语法字符按字面分词处理：不抛错，也不会被当成表达式执行。
+    # 查询里含真实词（如文章里出现的 OR）时正常命中——这正是“按字面”的预期，
+    # 所以用一个只含语法字符的串来验证没有游离命中。
+    assert library.search('zxqv999 ** () "') == []
+    assert isinstance(library.search('" OR NEAR() **'), list)
     assert library.search("SQL", 0) == []
 
 
