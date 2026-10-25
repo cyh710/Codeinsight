@@ -18,8 +18,10 @@ import { chatStore } from './store/chatStore'
 import { persistenceStore } from './store/persistence'
 import { restoreLocation, startNavigation } from './store/navigation'
 import SplitHandle from './components/common/SplitHandle'
+import WorkspacePanel from './components/common/WorkspacePanel'
 import './workbench.css'
 import './workbench-density.css'
+import './workbench-motion.css'
 
 // 引用点击 → 右栏符号详情（无 qualname 时退回文件选中）。
 function openCitation(c: Citation) {
@@ -47,7 +49,7 @@ export default function App() {
   const projectsError = useStore(projectStore, (s) => s.error)
 
   return (
-    <div className="wb-app flex h-screen flex-col overflow-hidden bg-bg text-slate-800" style={styles}>
+    <div className="wb-app flex h-screen flex-col overflow-hidden bg-bg text-slate-800" style={styles} data-resizing={layout.resizing || undefined}>
       <header className="workbench-header shrink-0 border-b border-slate-200/80 bg-bg-elevated">
         <div className="flex min-w-0 items-center gap-3">
           <h1 className="text-sm font-semibold tracking-tight text-slate-700">CodeInsight</h1>
@@ -75,18 +77,18 @@ export default function App() {
 
       {saving.error && <p role="alert" className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">{saving.error}</p>}
       <main className={`wb-main ${single ? 'wb-single' : ''} ${layout.full ? 'wb-full' : ''}`}>
-        <div id="workspace-left" className={`wb-left ${!layout.left || layout.full ? 'wb-hidden' : ''} ${leftOverlay ? 'wb-overlay' : ''}`}>
+        <WorkspacePanel id="workspace-left" side="left" open={layout.left && !layout.full} overlay={leftOverlay}>
           <LeftPanel />
-        </div>
+        </WorkspacePanel>
         <SplitHandle side="left" overlay={leftOverlay} />
         {layout.left && leftOverlay && !layout.full && <button type="button" aria-label="关闭项目侧栏" className="wb-scrim" onClick={layout.toggleLeft} />}
         <div className={`wb-center ${single && layout.right ? 'wb-hidden' : ''}`}>
           <CenterPanel onOpenCitation={openCitation} />
         </div>
         <SplitHandle side="right" overlay={single} />
-        <div id="workspace-materials" className={`wb-materials ${!layout.right ? 'wb-hidden' : ''}`}>
+        <WorkspacePanel id="workspace-materials" side="right" open={layout.right}>
           <RightPanel />
-        </div>
+        </WorkspacePanel>
       </main>
       <footer className="wb-status"><span>{saving.pending ? '正在保存工作区…' : saving.error ? '本地保存异常' : '已自动保存'}</span></footer>
     </div>

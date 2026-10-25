@@ -7,14 +7,14 @@
 .workbench-header{min-height:54px;padding-inline:18px;border-color:#e7ecf1}
 .workbench-header h1{font-size:15px}.workbench-header nav button{font-size:14px}
 .workbench-header nav svg{width:16px;height:16px}
-.wb-left{background:#f6f8fa}.wb-left>aside{background:transparent;border:0}
-.wb-left>aside>div:first-child{padding:12px 12px 6px;border:0}
-.wb-left>aside>nav{border:0;padding:6px 10px}
-.wb-left>aside>nav button{border:0;font-size:14px;padding:6px 12px;background:transparent}
-.wb-left>aside>nav button[aria-pressed=true]{background:#e4eef5;color:#087fac}
-.wb-left>aside>div:last-child{border:0}
+.wb-left{background:#f6f8fa}.wb-left>.wb-panel-surface>aside{background:transparent;border:0}
+.wb-left>.wb-panel-surface>aside>div:first-child{padding:12px 12px 6px;border:0}
+.wb-left>.wb-panel-surface>aside>nav{border:0;padding:6px 10px}
+.wb-left>.wb-panel-surface>aside>nav button{border:0;font-size:14px;padding:6px 12px;background:transparent}
+.wb-left>.wb-panel-surface>aside>nav button[aria-pressed=true]{background:#e4eef5;color:#087fac}
+.wb-left>.wb-panel-surface>aside>div:last-child{border:0}
 .wb-center,.wb-center>section,.wb-center [data-chat-scroll]{background:#fff}
-.wb-materials>aside{border-color:#e7ecf1}.wb-full .learning-article{max-width:780px}
+.wb-materials>.wb-panel-surface>aside{border-color:#e7ecf1}.wb-full .learning-article{max-width:780px}
 .wb-split{background:#eef2f5}
 .wb-button,.wb-primary{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;border:0;padding:5px 9px;font-size:13px}
 .wb-button{color:#596b7d;background:transparent}.wb-button:hover{background:#edf4f8}

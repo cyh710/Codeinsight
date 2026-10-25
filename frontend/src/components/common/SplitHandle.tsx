@@ -57,6 +57,9 @@ export default function SplitHandle({ side, overlay = false }: {
       if (event.button !== 0) return
       event.preventDefault()
       const panel = document.getElementById(side === 'left' ? 'workspace-left' : 'workspace-materials')
+      // 拖动直接跟手，开始拖动前结束尚未完成的按钮开关过渡。
+      panel?.getAnimations().forEach(animation => animation.finish())
+      layoutStore.setState({ resizing: true })
       drag.current = { x: event.clientX, width: visible ? panel?.getBoundingClientRect().width ?? width : 0,
         visible, full: layout.full, single: side === 'right' && (layout.full || layout.viewport < 1100), storedWidth: width,
         originalOpen: side === 'left' ? layout.left : layout.right }
@@ -72,15 +75,15 @@ export default function SplitHandle({ side, overlay = false }: {
         layoutStore.setState({ right: inward > -80, full: inward > -80 && start.full })
       } else layoutStore.getState().dragSidebar(side, start.width + inward, !start.visible)
     }}
-    onPointerUp={() => { drag.current = null }}
+    onPointerUp={() => { drag.current = null; layoutStore.setState({ resizing: false }) }}
     onPointerCancel={() => {
       const start = drag.current
       drag.current = null
       if (!start) return
       layoutStore.setState(side === 'left'
-        ? { left: start.originalOpen, leftWidth: start.storedWidth, full: start.full }
-        : { right: start.originalOpen, rightWidth: start.storedWidth, full: start.full })
+        ? { left: start.originalOpen, leftWidth: start.storedWidth, full: start.full, resizing: false }
+        : { right: start.originalOpen, rightWidth: start.storedWidth, full: start.full, resizing: false })
     }}
-    onLostPointerCapture={() => { drag.current = null }}
+    onLostPointerCapture={() => { drag.current = null; layoutStore.setState({ resizing: false }) }}
   />
 }

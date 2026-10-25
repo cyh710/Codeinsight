@@ -1,0 +1,47 @@
+/* 状态变化有来路和收尾；拖动不跟随缓动，轮询与流式增量不重复播放。 */
+.wb-motion-panel{opacity:1;overflow:clip;transition:width var(--motion-base) var(--ease-standard),opacity var(--motion-fast) var(--ease-standard)}
+.wb-panel-surface{height:100%;min-height:0}
+.wb-left>.wb-panel-surface{width:var(--left-width)}
+.wb-materials>.wb-panel-surface{width:var(--right-width)}
+.wb-motion-panel[data-panel-state=exiting]{width:0;opacity:0;pointer-events:none}
+.wb-single .wb-materials>.wb-panel-surface{width:100%}
+.wb-single .wb-materials{transition:opacity var(--motion-fast) var(--ease-standard)}
+.wb-single .wb-materials[data-panel-state=exiting]{position:absolute;inset:0 0 0 auto;width:100%;z-index:1;flex:none}
+.wb-full .wb-left[data-panel-state=exiting]{position:absolute}
+.wb-left[data-panel-state=open]>.wb-panel-surface{animation:wb-panel-left-in var(--motion-base) var(--ease-enter)}
+.wb-materials[data-panel-state=open]>.wb-panel-surface{animation:wb-panel-right-in var(--motion-base) var(--ease-enter)}
+.wb-full .wb-materials[data-panel-state=open]>.wb-panel-surface{animation:wb-reading-focus-in var(--motion-base) var(--ease-enter)}
+@starting-style{
+  .wb-motion-panel[data-panel-state=open]{opacity:0;width:0}
+  .wb-single .wb-materials[data-panel-state=open]{width:100%}
+}
+@keyframes wb-panel-left-in{from{opacity:.3;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+@keyframes wb-panel-right-in{from{opacity:.3;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+@keyframes wb-reading-focus-in{from{opacity:.45;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.wb-app[data-resizing]{cursor:col-resize;user-select:none}
+.wb-app[data-resizing] .wb-motion-panel,.wb-app[data-resizing] .wb-panel-surface{transition:none!important;animation:none!important}
+.wb-view-navigation{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:3px;isolation:isolate}
+.wb-view-navigation::before{content:"";position:absolute;inset:3px auto 3px 3px;width:calc((100% - 6px)/3);border-radius:8px;background:#e4f2fa;transform:translateX(calc(var(--active-view)*100%));transition:transform var(--motion-base) var(--ease-standard);z-index:-1}
+.wb-view-navigation>button{justify-content:center;background:transparent;white-space:nowrap}
+.wb-view-enter{animation:wb-view-in var(--motion-fast) var(--ease-enter)}
+.wb-material-enter{animation:wb-content-in var(--motion-fast) var(--ease-enter)}
+/* 侧栏过渡会让对话重排；显式保存的滚动位置不能再叠加浏览器的锚定补偿。 */
+.wb-app [data-chat-scroll]{overflow-anchor:none}
+@keyframes wb-view-in{from{opacity:.35;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes wb-content-in{from{opacity:.3}to{opacity:1}}
+.wb-menu-entering{transform-origin:top right;animation:wb-menu-in var(--motion-fast) var(--ease-enter)}
+.wb-menu-exiting{pointer-events:none;animation:wb-menu-out var(--motion-instant) var(--ease-exit) forwards}
+@keyframes wb-menu-in{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes wb-menu-out{to{opacity:0;transform:translateY(-3px)}}
+.wb-button,.wb-primary,.wb-icon-button,.conversation-row,.material-tab,.wb-view-navigation>button,.wb-action-menu button{transition:background-color var(--motion-fast) ease,color var(--motion-fast) ease,opacity var(--motion-fast) ease,transform var(--motion-instant) ease}
+.wb-button:active:not(:disabled),.wb-primary:active:not(:disabled),.wb-icon-button:active:not(:disabled),.wb-view-navigation>button:active:not(:disabled),.wb-action-menu button:active:not(:disabled){transform:scale(.97)}
+.wb-app details[open]>:not(summary){animation:wb-content-in var(--motion-fast) var(--ease-enter)}
+@supports(interpolate-size:allow-keywords){
+  .wb-app details{interpolate-size:allow-keywords}
+  .wb-app details::details-content{block-size:0;overflow:clip;transition:block-size var(--motion-base) var(--ease-standard),content-visibility var(--motion-base) allow-discrete}
+  .wb-app details[open]::details-content{block-size:auto}
+}
+.wb-scrim{animation:wb-content-in var(--motion-fast) ease}
+@media(prefers-reduced-motion:reduce){
+  .wb-motion-panel,.wb-panel-surface,.wb-view-enter,.wb-material-enter,.wb-action-menu,.wb-view-navigation::before,.wb-app details::details-content{animation:none!important;transition:none!important}
+}

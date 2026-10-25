@@ -139,7 +139,7 @@ export default function RightPanel() {
         onScroll={onScroll}
         className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
       >
-        <div key={key}>
+        <div key={key} className="wb-material-enter">
           {panel.mode === 'evidence' && <EvidenceList messageId={panel.messageId} />}
           {panel.mode === 'symbol' && (
             <SymbolDetailCard qualname={panel.qualname} focusLine={panel.lineno} version={panel.version} />

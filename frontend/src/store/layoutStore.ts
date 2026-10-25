@@ -3,7 +3,7 @@ import { persistenceStore } from './persistence'
 
 interface Layout {
   left: boolean; right: boolean; full: boolean; leftWidth: number; rightWidth: number
-  sidebar: 'conversations' | 'files'; viewport: number
+  sidebar: 'conversations' | 'files'; viewport: number; resizing: boolean
   toggleLeft: () => void; toggleRight: () => void; showRight: () => void
   toggleFull: () => void; resize: (side: 'left' | 'right', width: number) => void
   dragSidebar: (side: 'left' | 'right', width: number, opening: boolean) => void
@@ -22,7 +22,7 @@ function saved() {
   } catch { return defaults() }
 }
 export const layoutStore = createStore<Layout>((set) => ({
-  ...saved(), viewport,
+  ...saved(), viewport, resizing: false,
   toggleLeft: () => set((s) => ({ left: !s.left, full: false })),
   toggleRight: () => set((s) => ({ right: !s.right, full: false })),
   showRight: () => set({ right: true }),

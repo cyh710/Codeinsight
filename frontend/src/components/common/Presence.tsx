@@ -1,4 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+
+const reducedQuery = '(prefers-reduced-motion: reduce)'
+function subscribeReducedMotion(listener: () => void) {
+  if (typeof matchMedia === 'undefined') return () => {}
+  const query = matchMedia(reducedQuery)
+  query.addEventListener('change', listener)
+  return () => query.removeEventListener('change', listener)
+}
+
+/** 跟随系统偏好变化；减少动态效果时不保留只为退出动画存在的内容。 */
+export function useReducedMotion(): boolean {
+  return useSyncExternalStore(subscribeReducedMotion,
+    () => typeof matchMedia !== 'undefined' && matchMedia(reducedQuery).matches,
+    () => false)
+}
 
 /**
  * Presence 原语（docs/tasks/2026-09-10-system-motion.md §3）。
@@ -10,8 +25,7 @@ import { useCallback, useEffect, useState } from 'react'
  *              → animationend（或兜底计时器）→ 真正卸载
  *
  * 挂载期间再次 open=true 会取消退出（exiting → open），内容原地保留。
- * 全部动画遵守 index.css 的 prefers-reduced-motion 全局降级——那时
- * animationend 几乎立即触发，行为等同直接卸载。
+ * 系统开启减少动态效果时直接隐藏退出内容，不依赖 animationend 才收尾。
  */
 
 export type PresencePhase = 'closed' | 'open' | 'exiting'
@@ -47,6 +61,7 @@ export interface PresenceResult {
  *   丢失（如面板被 display:none、事件被拦截）时由它保证最终一定卸载。
  */
 export function usePresence(open: boolean, exitMs = 400): PresenceResult {
+  const reduced = useReducedMotion()
   const [phase, setPhase] = useState<PresencePhase>(() => presenceTransition('closed', open))
   // open 变化统一走状态机。这里用 React 官方的"渲染期依据 props 调整 state"
   // 模式（以 prevOpen 作护栏），而不是 effect 里 setState——后者会触发
@@ -64,9 +79,9 @@ export function usePresence(open: boolean, exitMs = 400): PresenceResult {
   // 兜底计时器：animationend 是主信号，计时器只兜丢失场景。
   useEffect(() => {
     if (phase !== 'exiting') return
-    const timer = window.setTimeout(finishExit, exitMs)
+    const timer = window.setTimeout(finishExit, reduced ? 0 : exitMs)
     return () => window.clearTimeout(timer)
-  }, [phase, exitMs, finishExit])
+  }, [phase, exitMs, finishExit, reduced])
 
-  return { mounted: phase !== 'closed', exiting: phase === 'exiting', finishExit }
+  return { mounted: open || (!reduced && phase !== 'closed'), exiting: !reduced && phase === 'exiting', finishExit }
 }
