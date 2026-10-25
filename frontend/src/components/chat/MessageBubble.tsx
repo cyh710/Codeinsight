@@ -31,14 +31,11 @@ function FactList({
   onOpenCitation: (c: Citation) => void
 }) {
   return (
-    <section
-      className="mt-2 rounded-xl border border-success/25 bg-success/[0.04] px-3 py-2"
-      aria-label="事实"
-    >
-      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-success">
-        事实（带代码出处）
-      </h4>
-      <ul className="mt-1 space-y-1.5">
+    <details className="mt-2 rounded-lg border border-slate-200/70 px-3 py-2" aria-label="事实">
+      <summary className="cursor-pointer text-[11px] text-slate-500">
+        事实（带代码出处） · {facts.length} 条
+      </summary>
+      <ul className="mt-3 space-y-1.5">
         {facts.map((fact, i) => (
           <li
             key={i}
@@ -49,20 +46,17 @@ function FactList({
           </li>
         ))}
       </ul>
-    </section>
+    </details>
   )
 }
 
 function InferenceList({ inferences }: { inferences: Inference[] }) {
   return (
-    <section
-      className="mt-2 rounded-xl border border-warning/25 bg-warning/[0.04] px-3 py-2"
-      aria-label="推断"
-    >
-      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-warning">
-        推断（模型判断，非代码事实）
-      </h4>
-      <ul className="mt-1 space-y-1.5">
+    <details className="mt-2 rounded-lg border border-slate-200/70 px-3 py-2" aria-label="推断">
+      <summary className="cursor-pointer text-[11px] text-slate-500">
+        推断（模型判断，非代码事实） · {inferences.length} 条
+      </summary>
+      <ul className="mt-3 space-y-1.5">
         {inferences.map((inf, i) => (
           <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-slate-600">
             <span className="shrink-0 rounded bg-warning/10 px-1 py-px font-mono text-[10px] text-warning">
@@ -72,7 +66,7 @@ function InferenceList({ inferences }: { inferences: Inference[] }) {
           </li>
         ))}
       </ul>
-    </section>
+    </details>
   )
 }
 
