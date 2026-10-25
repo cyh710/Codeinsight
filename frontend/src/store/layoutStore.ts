@@ -6,6 +6,7 @@ interface Layout {
   sidebar: 'conversations' | 'files'; viewport: number
   toggleLeft: () => void; toggleRight: () => void; showRight: () => void
   toggleFull: () => void; resize: (side: 'left' | 'right', width: number) => void
+  dragSidebar: (side: 'left' | 'right', width: number, opening: boolean) => void
   reset: () => void; setSidebar: (sidebar: 'conversations' | 'files') => void
   setViewport: (viewport: number) => void
 }
@@ -29,6 +30,15 @@ export const layoutStore = createStore<Layout>((set) => ({
   resize: (side, width) => set(side === 'left'
     ? { leftWidth: Math.max(220, Math.min(360, width)) }
     : { rightWidth: Math.max(360, Math.min(720, width)) }),
+  dragSidebar: (side, width, opening) => set(() => {
+    // 关闭时保留上次宽度；重新展开后再进入正常的尺寸调整。
+    if (width < (opening ? 48 : 64)) return side === 'left'
+      ? { left: false }
+      : { right: false, full: false }
+    return side === 'left'
+      ? { left: true, full: false, leftWidth: Math.max(220, Math.min(360, width)) }
+      : { right: true, full: false, rightWidth: Math.max(360, Math.min(720, width)) }
+  }),
   reset: () => set(defaults()), setSidebar: (sidebar) => set({ sidebar }),
   setViewport: (viewport) => set((s) => ({ viewport, ...(viewport < 1280 && s.viewport >= 1280 ? { left: false } : {}) })),
 }))

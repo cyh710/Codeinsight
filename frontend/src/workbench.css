@@ -11,6 +11,15 @@
 .wb-scrim{position:absolute;inset:0;z-index:2;background:#20364c18;border:0}
 .wb-split{width:6px;flex:none;cursor:col-resize;background:#e2e8f0;touch-action:none;transition:background .1s}
 .wb-split:hover,.wb-split:focus-visible{background:#7bc7e7;outline:2px solid #0284c7;outline-offset:-2px}
+.wb-edge,.wb-split-overlay{position:absolute;inset-block:0;z-index:4}
+.wb-edge{width:9px;background:transparent}
+.wb-edge::after{content:"";position:absolute;top:calc(50% - 24px);height:48px;width:3px;border-radius:3px;background:#b4c9d9}
+.wb-edge-left{left:0}.wb-edge-left::after{left:1px}
+.wb-edge-right{right:0}.wb-edge-right::after{right:1px}
+.wb-edge:hover{background:#d7ecf8b0}
+.wb-split-overlay-left{left:var(--left-width)}
+.wb-split-overlay-right{left:0}
+.wb-single .wb-split-overlay-right{left:10px;z-index:2}
 .wb-button,.wb-primary{border:1px solid #dce5ed;border-radius:7px;padding:6px 9px;font-size:11px;white-space:nowrap;transition:background .12s}
 .wb-button:hover{background:#edf7fc;color:#087fac}
 .wb-button[aria-pressed=true],.wb-primary{background:#e7f4fb;border-color:#b2daeb;color:#087fac}

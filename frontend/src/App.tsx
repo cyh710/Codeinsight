@@ -79,12 +79,12 @@ export default function App() {
         <div id="workspace-left" className={`wb-left ${!layout.left || layout.full ? 'wb-hidden' : ''} ${leftOverlay ? 'wb-overlay' : ''}`}>
           <LeftPanel />
         </div>
-        {layout.left && !layout.full && !leftOverlay && <SplitHandle side="left" />}
+        <SplitHandle side="left" overlay={leftOverlay} />
         {layout.left && leftOverlay && !layout.full && <button type="button" aria-label="关闭项目侧栏" className="wb-scrim" onClick={layout.toggleLeft} />}
         <div className={`wb-center ${single && layout.right ? 'wb-hidden' : ''}`}>
           <CenterPanel onOpenCitation={openCitation} />
         </div>
-        {layout.right && !single && <SplitHandle side="right" />}
+        <SplitHandle side="right" overlay={single} />
         <div id="workspace-materials" className={`wb-materials ${!layout.right ? 'wb-hidden' : ''}`}>
           <RightPanel />
         </div>
