@@ -40,7 +40,10 @@ function FactList({
       </h4>
       <ul className="mt-1 space-y-1.5">
         {facts.map((fact, i) => (
-          <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-slate-700">
+          <li
+            key={i}
+            className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs leading-relaxed text-slate-700"
+          >
             <CitationLine citation={fact.citation} onOpen={onOpenCitation} />
             <span className="min-w-0">{fact.text}</span>
           </li>
@@ -106,7 +109,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation }: M
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--chat-bubble-user-background)] px-3.5 py-2 text-sm leading-relaxed text-white shadow-sm">
+        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-[var(--chat-bubble-user-background)] px-3.5 py-2 text-sm leading-relaxed text-white shadow-sm">
           {message.text}
         </div>
       </div>
@@ -163,7 +166,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation }: M
   const settled = !message.streaming
   return (
     <div className="flex justify-start">
-      <div className="max-w-[92%] rounded-2xl rounded-bl-md border border-[var(--chat-bubble-border)] bg-[var(--chat-bubble-background)] px-3.5 py-2.5 shadow-[var(--chat-bubble-shadow)] backdrop-blur-[var(--chat-bubble-filter)]">
+      <div className="min-w-0 max-w-[96%] rounded-2xl rounded-bl-md border border-[var(--chat-bubble-border)] bg-[var(--chat-bubble-background)] px-4 py-3.5 shadow-[var(--chat-bubble-shadow)] backdrop-blur-[var(--chat-bubble-filter)]">
         <div
           className={`text-sm leading-relaxed text-slate-800 ${message.streaming ? 'reply-text-in' : settled ? 'reply-settled' : ''}`}
         >
@@ -187,11 +190,6 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation }: M
         {message.error && message.text && (
           <p role="status" className="mt-2 text-xs leading-6 text-warning">
             {message.error.title} · {message.error.hint}
-          </p>
-        )}
-        {message.incomplete && (
-          <p role="status" className="mt-2 text-xs leading-6 text-warning">
-            这次分析尚未完成，可以缩小问题范围后继续提问。
           </p>
         )}
         {!message.streaming && message.learningEntries && message.learningEntries.length > 0 && (
@@ -240,7 +238,10 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation }: M
         {settled && message.incomplete && (
           // 未完成≠没找到（契约 §8.3 新增字段）：内容照常显示，追加提示条，
           // 不能和上面的 abstained 弃答卡合并成同一种提示。
-          <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warning/10 px-2.5 py-1.5 text-[11px] leading-relaxed text-warning" role="status">
+          <p
+            className="mt-2 flex items-start gap-1.5 rounded-lg bg-warning/10 px-2.5 py-1.5 text-[11px] leading-relaxed text-warning"
+            role="status"
+          >
             <Hourglass size={12} strokeWidth={1.8} className="mt-0.5 shrink-0" />
             回答未完成——模型轮次达到上限。已有的内容仍然可用；继续追问或换个问法可以推进。
           </p>

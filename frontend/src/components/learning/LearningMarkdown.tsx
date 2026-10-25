@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm'
 import type { LearningTarget } from '../../api/types'
 import { workbenchStore } from '../../store/workbenchStore'
 import { resolveLearningLink } from './links'
+import './reading.css'
 
 export default function LearningMarkdown({
   text,
@@ -15,7 +16,7 @@ export default function LearningMarkdown({
   streaming?: boolean
 }) {
   return (
-    <div className="learning-prose space-y-2 break-words [&_p]:leading-7 [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-slate-100 [&_pre]:p-3 [&_pre]:text-xs [&_code]:font-mono [&_h3]:mt-4 [&_h3]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_td]:border [&_td]:border-slate-200 [&_td]:p-2 [&_th]:border [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:p-2">
+    <div className="learning-prose">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{

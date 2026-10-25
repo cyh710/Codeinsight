@@ -18,7 +18,13 @@ test('真实 API 的知识阅读、续问、往返和项目隔离', async ({ pag
     reader.getByRole('heading', { name: 'SQL 是什么：数据库、表、行与列' }),
   ).toBeVisible()
   await expect(reader.getByRole('button').filter({ hasText: '组合证据' })).toBeVisible()
-  await reader.getByRole('button', { name: '跟着例子理解', exact: true }).click()
+  const topic = await (await page.request.get('/api/knowledge/topics/sql-database')).json()
+  const example = topic.sections.find((s: { id: string }) => s.id === 'example')
+  await reader.getByText('本篇目录', { exact: false }).click()
+  await reader
+    .getByRole('navigation', { name: '章节目录' })
+    .getByRole('button', { name: example.title, exact: false })
+    .click()
   const scroll = reader.locator('[data-reading-scroll]')
   await expect.poll(() => scroll.evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
   const request = page.waitForRequest(
@@ -85,7 +91,7 @@ test('Provider 故障后教材仍能阅读，错误目标有可解释降级', as
   await expect(
     reader.getByRole('heading', { name: 'SQL 是什么：数据库、表、行与列' }),
   ).toBeVisible()
-  await reader.getByRole('button', { name: '知识目录', exact: true }).click()
+  await reader.getByRole('button', { name: '教材目录', exact: true }).click()
   await reader.getByRole('textbox', { name: '搜索知识' }).fill('React state 是什么')
   await reader.getByRole('button', { name: '搜索章节', exact: true }).click()
   await expect(reader.getByRole('button').filter({ hasText: 'State' }).first()).toBeVisible()
@@ -115,4 +121,95 @@ test('真实项目实例、代码概念标签与 deep 降级形成往返', async
   await reader.getByRole('button', { name: '回到代码', exact: true }).click()
   await expect(reader.getByRole('heading', { name: /save/ })).toBeVisible()
   expect(external).toEqual([])
+})
+
+test('长回答保留代码与阅读入口，顶栏切换后对话仍在', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('/learn/sql-database')
+  const topic = await (await page.request.get('/api/knowledge/topics/sql-database')).json()
+  const target = {
+    topic_id: topic.id,
+    title: topic.title,
+    version: topic.version,
+    section_id: 'overview',
+    href: '/learn/sql-database#overview',
+  }
+  const code = `SELECT name, price FROM products WHERE name = '${'example_'.repeat(24)}';`
+  const text = [
+    '## SQL，把需求写成查询',
+    'SQL 是用来与数据库交流的语言。先理解[表](/learn/sql-database#overview)，再试着查询需要的数据。以下是教学示例。',
+    '### 从一张商品表开始',
+    '1. **表**把一类数据组织在一起。\n2. **行**是一条记录。\n3. **列**描述记录的一个属性。',
+    '| name | price |\n| --- | --- |\n| 笔记本 | 12.00 |\n| 钢笔 | 35.00 |',
+    '### 用 SELECT 说清你需要什么',
+    '```sql\nSELECT name, price\nFROM products\nWHERE price < 20;\n```',
+    '这句查询只返回价格低于 `20` 的商品。它描述需要的结果，数据库决定怎样执行。',
+    '```sql\n' + code + '\n```',
+  ].join('\n\n')
+  await page.route('**/api/query/stream', async (route) => {
+    const events = [
+      ['meta', { conversation_id: 'visual-offline-fixture' }],
+      [
+        'answer',
+        {
+          text,
+          facts: [],
+          inferences: [],
+          citations: [],
+          abstained: false,
+          learning_entries: [target],
+          learning_targets: [target],
+        },
+      ],
+      ['done', { abstained: false }],
+    ]
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body: events
+        .map(([event, data]) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+        .join(''),
+    })
+  })
+  await page.getByRole('textbox').last().fill('SQL 是什么？可以举个例子吗？')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+  const heading = page.getByRole('heading', { name: 'SQL，把需求写成查询', exact: true })
+  await expect(heading).toBeVisible()
+  const prose = page.locator('.learning-prose').first()
+  await expect(prose.locator('pre').last()).toHaveText(code)
+  await expect(prose.getByRole('table')).toBeVisible()
+  await prose.getByRole('link', { name: '表', exact: true }).click()
+  await expect(
+    page.locator('aside').last().getByRole('heading', { name: topic.title, exact: true }),
+  ).toBeVisible()
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true)
+  await heading.scrollIntoViewIfNeeded()
+  await page.screenshot({
+    path: resolve('..', '.ci/browser/frontend-refined-1440.png'),
+    fullPage: true,
+  })
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true)
+  await heading.scrollIntoViewIfNeeded()
+  await page.screenshot({
+    path: resolve('..', '.ci/browser/frontend-refined-1280.png'),
+    fullPage: true,
+  })
+  const nav = page.getByRole('navigation', { name: '工作台视图' })
+  await nav.getByRole('button', { name: '关系图', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: '搜索关系图中心符号' })).toBeVisible()
+  await nav.getByRole('button', { name: '时间线', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '演进时间线', exact: true })).toBeVisible()
+  await nav.getByRole('button', { name: '对话', exact: true }).click()
+  await expect(heading).toBeVisible()
+  await prose.getByRole('link', { name: '表', exact: true }).click()
+  await expect(
+    page.locator('aside').last().getByRole('heading', { name: topic.title, exact: true }),
+  ).toBeVisible()
+  expect(errors).toEqual([])
 })

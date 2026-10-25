@@ -1,0 +1,17 @@
+/* 视图切换与三栏共用一条顶栏，让对话区域恢复连续的阅读空间。 */
+.workbench-header {
+  display: grid;
+  grid-template-columns: 18rem minmax(0, 1fr) 26rem;
+  align-items: center;
+  min-height: 44px;
+}
+
+.workbench-header > nav {
+  padding-inline: 1rem;
+}
+
+@media (max-width: 1100px) {
+  .workbench-header {
+    grid-template-columns: 18rem minmax(0, 1fr) auto;
+  }
+}

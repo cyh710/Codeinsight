@@ -93,7 +93,7 @@ export default function KnowledgeArticle({ target }: { target: LearningTarget })
     <article
       ref={articleRef}
       data-reading-ready={contentReady || undefined}
-      className="space-y-5 pb-8"
+      className="space-y-7 pb-8"
     >
       <header className="border-b border-slate-200 pb-4">
         <p className="text-[10px] font-semibold tracking-widest text-accent">{topic.group}</p>
@@ -113,25 +113,37 @@ export default function KnowledgeArticle({ target }: { target: LearningTarget })
         {topic.dialect && (
           <p className="mt-2 text-[11px] text-slate-400">SQL 方言：{topic.dialect}</p>
         )}
-        <nav aria-label="章节目录" className="mt-3 flex flex-wrap gap-2">
-          {topic.sections.map((s) => (
-            <button
-              key={s.id}
-              onClick={() =>
-                open({
-                  topic_id: topic.id,
-                  title: topic.title,
-                  section_id: s.id,
-                  version: topic.version,
-                  href: `/learn/${topic.id}#${s.id}`,
-                })
-              }
-              className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-500 hover:bg-accent-soft hover:text-accent"
-            >
-              {s.title}
-            </button>
-          ))}
-        </nav>
+        <details className="mt-4 rounded-lg border border-slate-200/80 bg-slate-50/70 px-3 py-2.5">
+          <summary className="cursor-pointer text-xs font-medium text-slate-500">
+            本篇目录{' '}
+            <span className="ml-1 font-normal text-slate-400">· {topic.sections.length} 节</span>
+          </summary>
+          <nav
+            aria-label="章节目录"
+            className="mt-2 flex flex-col border-t border-slate-200/70 pt-2"
+          >
+            {topic.sections.map((s, index) => (
+              <button
+                key={s.id}
+                onClick={() =>
+                  open({
+                    topic_id: topic.id,
+                    title: topic.title,
+                    section_id: s.id,
+                    version: topic.version,
+                    href: `/learn/${topic.id}#${s.id}`,
+                  })
+                }
+                className="flex items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-500 hover:bg-accent-soft hover:text-accent"
+              >
+                <span className="w-4 shrink-0 font-mono text-[10px] text-slate-400">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                {s.title}
+              </button>
+            ))}
+          </nav>
+        </details>
       </header>
       {topic.prerequisite_targets.length > 0 && (
         <section className="border-l-2 border-accent/30 pl-3">
@@ -153,7 +165,9 @@ export default function KnowledgeArticle({ target }: { target: LearningTarget })
         .filter((s) => s.id !== 'sources' && s.id !== 'related')
         .map((section) => (
           <section key={section.id} data-section-id={section.id} className="scroll-mt-4">
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">{section.title}</h3>
+            <h3 className="mb-3 text-[15px] font-semibold leading-7 text-slate-800">
+              {section.title}
+            </h3>
             <div className="text-sm text-slate-600">
               <LearningMarkdown text={section.content} targets={topic.learning_targets} />
             </div>

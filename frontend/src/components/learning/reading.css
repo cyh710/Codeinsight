@@ -1,0 +1,97 @@
+/* 对话与教材共用排版，避免同一段内容在两个入口呈现不同的阅读层级。 */
+.learning-prose {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.95;
+}
+
+.learning-prose > :first-child {
+  margin-top: 0;
+}
+.learning-prose > :last-child {
+  margin-bottom: 0;
+}
+
+.learning-prose :where(p, ul, ol, blockquote, pre, table) {
+  margin-block: 0.8em;
+}
+
+.learning-prose :where(h1, h2, h3, h4, h5, h6) {
+  color: #1e293b;
+  font-weight: 650;
+  line-height: 1.6;
+  margin-block: 1.6em 0.6em;
+  text-wrap: pretty;
+}
+
+.learning-prose h1 {
+  font-size: 1.4em;
+}
+.learning-prose h2 {
+  font-size: 1.2em;
+}
+.learning-prose h3 {
+  font-size: 1.08em;
+}
+.learning-prose :where(h4, h5, h6) {
+  font-size: 1em;
+}
+
+.learning-prose ul {
+  list-style: disc;
+  padding-inline-start: 1.5em;
+}
+.learning-prose ol {
+  list-style: decimal;
+  padding-inline-start: 1.5em;
+}
+.learning-prose li {
+  margin-block: 0.3em;
+}
+.learning-prose li > p {
+  margin-block: 0.35em;
+}
+.learning-prose li::marker {
+  color: #94a3b8;
+}
+
+.learning-prose code {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.88em;
+}
+
+.learning-prose :not(pre) > code {
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #f1f5f9;
+  padding: 0.1em 0.35em;
+  box-decoration-break: clone;
+}
+
+.learning-prose pre {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 14px;
+  line-height: 1.8;
+  tab-size: 4;
+}
+
+.learning-prose pre code {
+  font-size: 12px;
+  overflow-wrap: normal;
+}
+.learning-prose :where(th, td) {
+  border: 1px solid #e2e8f0;
+  padding: 8px 10px;
+  line-height: 1.75;
+}
+.learning-prose th {
+  background: #f8fafc;
+}
+.learning-prose hr {
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+  margin-block: 1.5em;
+}

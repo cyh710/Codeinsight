@@ -19,38 +19,38 @@ const TABS: Array<{ id: CenterTab; label: string; icon: typeof MessageSquare }> 
   { id: 'timeline', label: '时间线', icon: History },
 ]
 
-export default function CenterPanel({ onOpenCitation }: { onOpenCitation: (c: Citation) => void }) {
+export function CenterNavigation() {
   const centerTab = useStore(viewStore, (s) => s.centerTab)
 
   return (
-    <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-bg">
-      <div className="flex shrink-0 items-center gap-0.5 border-b border-slate-200/70 bg-bg-elevated px-2 py-1">
-        {TABS.map(({ id, label, icon: Icon }) => {
-          const active = centerTab === id
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => viewStore.getState().setCenterTab(id)}
-              aria-current={active ? 'page' : undefined}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] transition-colors ${
-                active
-                  ? 'bg-accent-soft text-accent'
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-              }`}
-            >
-              <Icon size={13} strokeWidth={1.8} />
-              {label}
-            </button>
-          )
-        })}
-        <span className="ml-auto hidden pr-1 text-[10px] text-slate-400 lg:block">
-          {centerTab === 'chat' && '答案会指出代码位置，可点开看源码'}
-          {centerTab === 'graph' && '单击看详情 · 双击跳源码'}
-          {centerTab === 'timeline' && '每次索引与变更都可展开'}
-        </span>
-      </div>
+    <nav aria-label="工作台视图" className="flex items-center gap-1">
+      {TABS.map(({ id, label, icon: Icon }) => {
+        const active = centerTab === id
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => viewStore.getState().setCenterTab(id)}
+            aria-current={active ? 'page' : undefined}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-colors ${
+              active
+                ? 'bg-accent-soft text-accent'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+            }`}
+          >
+            <Icon size={13} strokeWidth={1.8} />
+            {label}
+          </button>
+        )
+      })}
+    </nav>
+  )
+}
 
+export default function CenterPanel({ onOpenCitation }: { onOpenCitation: (c: Citation) => void }) {
+  const centerTab = useStore(viewStore, (s) => s.centerTab)
+  return (
+    <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-bg">
       <div className="min-h-0 flex-1">
         {centerTab === 'chat' && <ChatWindow onOpenCitation={onOpenCitation} />}
         {centerTab === 'graph' && <GraphView />}

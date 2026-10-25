@@ -11,9 +11,10 @@ import { workbenchStore } from './store/workbenchStore'
 import { isMockMode } from './api/dataSource'
 import type { Citation } from './api/types'
 import LeftPanel from './components/tree/LeftPanel'
-import CenterPanel from './components/center/CenterPanel'
+import CenterPanel, { CenterNavigation } from './components/center/CenterPanel'
 import RightPanel from './components/evidence/RightPanel'
 import { getKnowledgeTopic } from './api/learning'
+import './workbench.css'
 
 // 引用点击 → 右栏符号详情（无 qualname 时退回文件选中）。
 function openCitation(c: Citation) {
@@ -31,15 +32,13 @@ export default function App() {
       try {
         const topic = await getKnowledgeTopic(match[1])
         if (alive)
-          workbenchStore
-            .getState()
-            .openKnowledge({
-              topic_id: topic.id,
-              title: topic.title,
-              version: topic.version,
-              section_id: window.location.hash.slice(1) || null,
-              href: window.location.pathname + window.location.hash,
-            })
+          workbenchStore.getState().openKnowledge({
+            topic_id: topic.id,
+            title: topic.title,
+            version: topic.version,
+            section_id: window.location.hash.slice(1) || null,
+            href: window.location.pathname + window.location.hash,
+          })
       } catch {
         if (alive) workbenchStore.getState().openKnowledgeTree()
       }
@@ -53,22 +52,27 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-bg text-slate-800">
-      <header className="flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-bg-elevated px-4 py-2">
-        <h1 className="text-sm font-semibold tracking-tight text-slate-700">CodeInsight</h1>
-        <span className="text-[10px] text-slate-400">代码理解工作台</span>
-        {isMockMode && (
-          <span
-            className="rounded bg-warning/10 px-1.5 py-px text-[10px] text-warning"
-            title="当前使用真实索引快照回放（VITE_CI_MOCK=0 切换真实后端）"
-          >
-            mock 快照模式
-          </span>
-        )}
-        {projectsError && (
-          <span className="ml-auto text-[11px] text-danger" role="alert">
-            {projectsError}
-          </span>
-        )}
+      <header className="workbench-header shrink-0 border-b border-slate-200/80 bg-bg-elevated">
+        <div className="flex items-center gap-3 px-4">
+          <h1 className="text-sm font-semibold tracking-tight text-slate-700">CodeInsight</h1>
+          <span className="text-[10px] text-slate-400">代码理解工作台</span>
+        </div>
+        <CenterNavigation />
+        <div className="flex min-w-0 items-center justify-end gap-2 px-4">
+          {isMockMode && (
+            <span
+              className="rounded bg-warning/10 px-1.5 py-px text-[10px] text-warning"
+              title="当前使用真实索引快照回放（VITE_CI_MOCK=0 切换真实后端）"
+            >
+              mock 快照模式
+            </span>
+          )}
+          {projectsError && (
+            <span className="truncate text-[11px] text-danger" role="alert" title={projectsError}>
+              {projectsError}
+            </span>
+          )}
+        </div>
       </header>
 
       <main className="flex min-h-0 flex-1">
