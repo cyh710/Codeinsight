@@ -188,6 +188,11 @@ export interface ProjectSummary {
   chunks: number
 }
 
+/** 本机系统文件夹选择框；取消时路径为 null，不会创建项目。 */
+export interface FolderSelectionResponse {
+  root_path: string | null
+}
+
 /** `POST /projects` 请求体（契约 §3.3）。 */
 export interface CreateProjectRequest {
   root_path: string

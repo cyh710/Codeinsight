@@ -1,12 +1,14 @@
 /**
- * 导入项目对话框（POST /projects，契约 §3.3）：本地仓库绝对路径 + 可选
+ * 导入项目对话框（POST /projects，契约 §3.3）：选择本地仓库文件夹 + 可选
  * 名称与 git ref。提交后 202 返回，状态由左栏的状态行接管（轮询）。
  * 失败在对话框内联显示（契约错误形状的 title/hint），不弹 Toast——
  * 用户改一下输入就能重试，上下文不该被打断。
  */
 import { useState } from 'react'
 import { useStore } from 'zustand'
-import { AlertTriangle, FolderInput } from 'lucide-react'
+import { AlertTriangle, FolderInput, FolderOpen, LoaderCircle } from 'lucide-react'
+import { ApiError } from '../../api/client'
+import { selectProjectFolder } from '../../api/projects'
 import { isMockMode } from '../../api/dataSource'
 import { projectStore } from '../../store/projectStore'
 import Modal from '../common/Modal'
@@ -18,9 +20,28 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
   const [rootPath, setRootPath] = useState('')
   const [name, setName] = useState('')
   const [ref, setRef] = useState('')
+  const [picking, setPicking] = useState(false)
+  const [pickerError, setPickerError] = useState('')
+
+  const selectFolder = async () => {
+    setPicking(true)
+    setPickerError('')
+    projectStore.setState({ importError: '' })
+    try {
+      const selected = await selectProjectFolder()
+      if (selected.root_path) setRootPath(selected.root_path)
+    } catch (error) {
+      setPickerError(error instanceof ApiError
+        ? error.status === 404
+          ? '文件夹选择服务尚未加载，请重启 CodeInsight 后端后重试。'
+          : `${error.title}。${error.hint}`
+        : '文件夹选择失败，请重试。')
+    } finally { setPicking(false) }
+  }
 
   const submit = async () => {
     if (!rootPath.trim()) return
+    setPickerError('')
     await projectStore.getState().importProject(rootPath.trim(), name.trim() || undefined, ref.trim() || undefined)
     // 成功（开始轮询）即关对话框：状态交给左栏状态行；
     // 失败（importError 非空）留在对话框里让用户改了再试。
@@ -31,27 +52,29 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
     'w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none transition-colors focus:border-accent'
 
   return (
-    <Modal open={open} onClose={onClose} title="导入项目并建索引" widthClass="max-w-md" closeOnBackdrop={false}>
+    <Modal open={open} onClose={() => { if (!picking && !importing) onClose() }} title="导入项目并建索引" widthClass="max-w-md" closeOnBackdrop={false}>
       <div className="space-y-3">
         <p className="text-[11px] leading-relaxed text-slate-500">
-          选择一个本地 Git 仓库的绝对路径。索引会在后台建立，
+          选择一个本地 Git 项目文件夹。索引会在后台建立，
           提交后左栏会显示进度状态，完成后文件树自动刷新。
         </p>
-        <label className="block">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            仓库路径（必填）
-          </span>
-          <input
-            className={`mt-1 ${inputCls} font-mono`}
-            placeholder="/path/to/some-repo"
-            value={rootPath}
-            onChange={(e) => setRootPath(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.nativeEvent.isComposing) void submit()
-            }}
+        <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-700">
+            <FolderOpen size={16} className="shrink-0 text-sky-600" />
+            {rootPath ? '已选项目文件夹' : '项目文件夹'}
+          </div>
+          <p className="mb-3 break-all text-xs leading-5 text-slate-500" aria-live="polite">
+            {rootPath || '从电脑中选择要理解和探索的 Git 项目。'}
+          </p>
+          <Button variant="secondary" size="sm" onClick={() => void selectFolder()}
+            disabled={picking || importing || isMockMode}
             autoFocus
-          />
-        </label>
+          >
+            {picking ? <LoaderCircle size={14} className="animate-spin" /> : <FolderOpen size={14} />}
+            {picking ? '等待选择…' : rootPath ? '更换文件夹' : '选择文件夹'}
+          </Button>
+          {picking && <p role="status" className="mt-2 text-[11px] text-slate-500">请在系统窗口中选择文件夹，或取消返回。</p>}
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
@@ -85,22 +108,22 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
           </p>
         )}
 
-        {importError && (
+        {(pickerError || importError) && (
           <p className="flex items-start gap-1.5 rounded-lg bg-danger-soft/50 px-2.5 py-1.5 text-[11px] leading-relaxed text-danger" role="alert">
             <AlertTriangle size={13} strokeWidth={1.7} className="mt-px shrink-0" />
-            {importError}
+            {pickerError || importError}
           </p>
         )}
 
         <div className="flex justify-end gap-2 pt-1">
-          <Button variant="secondary" size="sm" onClick={onClose} disabled={importing}>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={importing || picking}>
             取消
           </Button>
           <Button
             variant="primary"
             size="sm"
             onClick={() => void submit()}
-            disabled={!rootPath.trim() || importing}
+            disabled={!rootPath.trim() || importing || picking}
           >
             <FolderInput size={13} strokeWidth={1.8} />
             {importing ? '提交中…' : '导入并建索引'}

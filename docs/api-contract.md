@@ -1095,3 +1095,14 @@ offset 为章节 content 原文中零起点、右开的 UTF-16 代码单元偏�
 客户端界面错误新增 conversation_busy/reading_invalid/aborted/not_found；错误仍使用 §0.3 形状。
 旧 `/learn/{id}#章节` 可继续访问；工作台位置附带 project/conversation/view/material 查询参数。
 布局偏好使用 `ci.layout.v1`；草稿/页签/来路使用 IndexedDB `codeinsight-workbench`，存储失败明确提示。
+
+## 11. 本机文件夹选择（请求 0008）
+
+`POST /local/select-folder` 无请求体。在后端所在电脑打开系统文件夹选择框，
+选中后返回 `{root_path: string}`，用户取消返回 `{root_path: null}`（200）。
+不上传文件、不创建项目；前端随后使用现有 `POST /projects` 明确提交导入。
+
+仅允许 loopback 客户端及本机 Origin；远程来源返回 403 `bad_request`。
+选择框已打开返回 409 `bad_request`；五分钟未完成返回 504 `timeout`；
+桌面不可用或系统调用失败返回 503 `internal_error`，均遵循 §0.3 错误形状。
+Windows 使用系统 PowerShell/Windows Forms，其他桌面使用 Python tkinter；不增加依赖。

@@ -8,6 +8,7 @@ import type {
   CreateProjectRequest,
   CreateProjectResponse,
   FileEntry,
+  FolderSelectionResponse,
   Flow,
   HealthResponse,
   ListResponse,
@@ -31,6 +32,11 @@ export function listProjects(): Promise<ProjectSummary[]> {
 
 export function createProject(req: CreateProjectRequest): Promise<CreateProjectResponse> {
   return jsonRequest<CreateProjectResponse>('/projects', { method: 'POST', body: JSON.stringify(req) })
+}
+
+/** 打开本机系统选择框；沿用原导入接口提交选中的完整路径。 */
+export function selectProjectFolder(): Promise<FolderSelectionResponse> {
+  return jsonRequest<FolderSelectionResponse>('/local/select-folder', { method: 'POST' })
 }
 
 export function getProject(id: number): Promise<ProjectDetail> {

@@ -310,6 +310,53 @@ async function dragSide(page: Page, label: string, x: number) {
   await page.mouse.up()
 }
 
+test('导入通过选择文件夹提交路径，取消和失败不丢失已有选择', async ({ page }) => {
+  const folder = 'D:\\中文项目\\demo with spaces'
+  let selection = 0
+  let imports = 0
+  await page.route('**/api/local/select-folder', async route => {
+    selection++
+    if (selection === 4) {
+      await route.fulfill({ status: 404, json: { error: {
+        code: 'project_not_found', title: 'Not Found', hint: '', detail: '',
+      } } })
+    } else if (selection === 3) {
+      await route.fulfill({ status: 503, json: { error: {
+        code: 'internal_error', title: '无法打开系统文件夹选择框', hint: '请重试。', detail: '',
+      } } })
+    } else await route.fulfill({ json: { root_path: selection === 1 ? null : folder } })
+  })
+  await page.route('**/api/projects', async route => {
+    if (route.request().method() !== 'POST') { await route.continue(); return }
+    imports++
+    expect(route.request().postDataJSON()).toEqual({ root_path: folder })
+    await route.fulfill({ status: 400, json: { error: {
+      code: 'bad_request', title: '所选文件夹不是 Git 仓库', hint: '请更换文件夹。', detail: '',
+    } } })
+  })
+  await ready(page)
+  await page.getByRole('button', { name: '导入项目并建索引', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '导入项目并建索引' })
+  const submit = dialog.getByRole('button', { name: '导入并建索引', exact: true })
+  await expect(submit).toBeDisabled()
+  await dialog.getByRole('button', { name: '选择文件夹', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: '选择文件夹', exact: true })).toBeEnabled()
+  await expect(submit).toBeDisabled()
+  await dialog.getByRole('button', { name: '选择文件夹', exact: true }).click()
+  await expect(dialog.getByText(folder, { exact: true })).toBeVisible()
+  await expect(submit).toBeEnabled()
+  expect(imports).toBe(0)
+  await dialog.getByRole('button', { name: '更换文件夹', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toContainText('无法打开系统文件夹选择框')
+  await expect(dialog.getByText(folder, { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: '更换文件夹', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toContainText('请重启 CodeInsight 后端后重试')
+  await submit.click()
+  await expect(dialog.getByRole('alert')).toContainText('所选文件夹不是 Git 仓库')
+  await expect(dialog.getByRole('button', { name: '更换文件夹', exact: true })).toBeEnabled()
+  expect(imports).toBe(1)
+})
+
 test('拖动侧栏直接收起并从边缘展开，保留阅读和草稿', async ({ page }) => {
   await ready(page, '/learn/sql-database')
   await expect(reader(page).getByRole('heading', { name: 'SQL 是什么：数据库、表、行与列', exact: true })).toBeVisible()
