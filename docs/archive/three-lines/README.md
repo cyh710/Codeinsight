@@ -13,9 +13,11 @@
 | [0004](0004-query-endpoint.md) | 问答端点接线 `POST /query`、`POST /query/stream` | A 线 | 已解决 |
 | [0005](0005-learning-runtime.md) | 知识层接入 Agent 运行时 | B 线 | 已合入 |
 | [0006](0006-learning-loop-implementation.md) | 内置学习流程接入实施与临时跨线授权 | B 线 | 实施记录 |
+| [0007](0007-frontend-ownership.md) | 前端接手与截图风格恢复 | 前端线 | 已合入 |
+| [0008](0008-readable-local-graph.md) | 关系图改为局部阅读，保留高级全图 | 前端线 | 已合入 |
+| [0009](0009-frontend-main-integration.md) | 前端版本合入主线及教材装配性能修正 | 前端线 | 已合入 |
 
-0007（前端接手与截图风格恢复）还在 `codex/frontend-refinement` 分支上，尚未并入主线；
-前端这条线收尾时一并挪到这里。
+前端线在 `189930a` 同步主线、`e4860ca` 修正只读快照复用后合入，与 main 同一提交。
 
 请求单里保留了当时的缺口描述和验收口径，不代表当前代码状态。
 当前状态以 `knowledge/learning/VALIDATION.md` 和 `pytest` 为准。
