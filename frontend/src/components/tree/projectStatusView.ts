@@ -16,7 +16,7 @@ export function projectStatusView(status: string): StatusView {
       return {
         label: '索引失败',
         tone: 'danger',
-        title: '本次索引未完成：仓库不可读、或索引引擎尚未接入（见后端日志与 docs/requests/0002）',
+        title: '本次索引未完成：仓库不可读、或索引引擎尚未接入（见后端日志与 docs/archive/three-lines/0002）',
       }
     case 'stale':
       return {
