@@ -3,13 +3,14 @@
  * （`wasAtBottomRef` 记住用户是否在底部，只在底部时自动跟随新内容——
  * 用户正往上翻历史时不许拽他下来）。
  */
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import { chatStore } from '../../store/chatStore'
 import type { Citation } from '../../api/types'
 import MessageBubble from './MessageBubble'
 import InputBox from './InputBox'
 import { workbenchStore } from '../../store/workbenchStore'
+import { ArrowDown, ArrowUp, Search, X } from 'lucide-react'
 
 export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Citation) => void }) {
   const messages = useStore(chatStore, (s) => s.messages)
@@ -24,6 +25,16 @@ export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Cit
   const scrollRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const wasAtBottomRef = useRef(true)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [matchIndex, setMatchIndex] = useState(0)
+  const title = useStore(chatStore, s => s.currentTitle)
+  const matches = messages.filter(m => find && m.text.toLowerCase().includes(find.toLowerCase()))
+  const locate = (direction: number) => {
+    if (!matches.length) return
+    const next = (matchIndex + direction + matches.length) % matches.length
+    setMatchIndex(next)
+    document.getElementById(`message-${matches[next].id}`)?.scrollIntoView({ block: 'center' })
+  }
   useLayoutEffect(() => {
     const el = scrollRef.current
     if (el && saved !== null) el.scrollTop = saved
@@ -53,11 +64,22 @@ export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Cit
 
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-bg">
-      <div className="chat-toolbar flex items-center gap-2 border-b border-slate-200/60 px-4 py-2">
-        <input aria-label="查找当前对话" placeholder="查找当前对话…" value={find} onChange={e => chatStore.getState().setFind(e.target.value)} className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs" />
-        {find && <span className="text-xs text-slate-500">{messages.filter(m => m.text.toLowerCase().includes(find.toLowerCase())).length} 处</span>}
-        {find && <button type="button" className="text-xs text-accent" onClick={() => scrollRef.current?.querySelector('[data-match="true"]')?.scrollIntoView({ block: 'center' })}>定位首处</button>}
+      <div className="chat-toolbar">
+        {searchOpen ? <>
+          <Search size={16} className="shrink-0 text-slate-400" />
+          <input autoFocus aria-label="查找当前对话" placeholder="查找已加载消息…" value={find} onChange={e => {
+            chatStore.getState().setFind(e.target.value); setMatchIndex(0)
+            const first = e.target.value && messages.find(m => m.text.toLowerCase().includes(e.target.value.toLowerCase()))
+            if (first) requestAnimationFrame(() => document.getElementById(`message-${first.id}`)?.scrollIntoView({ block: 'center' }))
+          }} className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+            onKeyDown={e => { if (e.key === 'Enter') locate(e.shiftKey ? -1 : 1); if (e.key === 'Escape') { setSearchOpen(false); chatStore.getState().setFind('') } }} />
+          {find && <span className="whitespace-nowrap text-xs text-slate-500">{matches.length ? `${matchIndex % matches.length + 1}/` : ''}{matches.length} 条</span>}
+          <button className="wb-icon-button" aria-label="上一条匹配消息" disabled={!matches.length} onClick={() => locate(-1)}><ArrowUp size={15} /></button>
+          <button className="wb-icon-button" aria-label="下一条匹配消息" disabled={!matches.length} onClick={() => locate(1)}><ArrowDown size={15} /></button>
+          <button className="wb-icon-button" aria-label="关闭对话查找" onClick={() => { setSearchOpen(false); chatStore.getState().setFind('') }}><X size={16} /></button>
+        </> : <><h2 className="min-w-0 flex-1 truncate text-sm font-medium text-slate-600">{title}</h2><button className="wb-icon-button" aria-label="查找当前对话" title="查找当前对话" onClick={() => setSearchOpen(true)}><Search size={17} /></button></>}
       </div>
+      {searchOpen && cursor !== null && <p className="px-5 pb-2 text-xs text-slate-500">仅查找已加载消息。<button className="text-accent" onClick={() => void chatStore.getState().loadMore()}>加载更早记录</button></p>}
       {error && <p role="alert" className="px-4 py-2 text-xs text-danger">{error} <button type="button" onClick={() => void chatStore.getState().openConversation(chatStore.getState().projectId!, conversationId)}>重新读取</button></p>}
       {archived && <p className="px-4 py-2 text-xs text-slate-500">这份对话已归档；继续提问会恢复到当前项目列表。</p>}
       <div ref={scrollRef} data-chat-scroll className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
@@ -66,12 +88,8 @@ export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Cit
           {cursor !== null && <button type="button" className="text-xs text-accent" onClick={() => void chatStore.getState().loadMore()}>加载更早的对话</button>}
           {messages.length === 0 && (
             <div className="mt-10 text-center">
-              <h2 className="text-sm font-semibold text-slate-500">问点什么，从代码里找答案</h2>
-              <p className="mt-1.5 text-xs leading-relaxed text-slate-400">
-                问代码，比如「对话流在哪个文件实现？」，答案会指出具体位置，点开就能看到源码。
-                <br />
-                问概念，比如「SQL 是什么？」，答案里的链接可以打开教材继续读。
-              </p>
+              <h2 className="text-xl font-semibold text-slate-700">从一个问题开始</h2>
+              <p className="mt-3 text-sm text-slate-500">读懂项目，也弄懂代码背后的概念。</p>
             </div>
           )}
           {messages.map((m) => (

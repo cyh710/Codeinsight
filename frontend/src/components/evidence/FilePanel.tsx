@@ -6,6 +6,7 @@ import { panelKey, workbenchStore } from '../../store/workbenchStore'
 import { layoutStore } from '../../store/layoutStore'
 import CodeViewer from './CodeViewer'
 import type { CodeReadingContext } from '../../api/types'
+import { viewStore } from '../../store/viewStore'
 
 type CodeWindow = Awaited<ReturnType<typeof readProjectCode>>
 export default function FilePanel({ path, lineno, version }: { path: string; lineno: number; version?: string }) {
@@ -46,6 +47,7 @@ export default function FilePanel({ path, lineno, version }: { path: string; lin
       content_sha256: data.content_sha256, lineno: selection.startLine, end_lineno: selection.endLine,
       selection: { start_column: selection.startColumn, end_column: selection.endColumn }, preview: selection.text }
     workbenchStore.getState().fixReading(context)
+    viewStore.getState().setCenterTab('chat')
     if (layoutStore.getState().viewport < 1100) layoutStore.setState({ right: false, full: false })
     else layoutStore.setState({ full: false })
     requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.wb-center textarea')?.focus())

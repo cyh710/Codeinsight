@@ -2,7 +2,8 @@
 .learning-prose {
   min-width: 0;
   overflow-wrap: anywhere;
-  line-height: 1.95;
+  font-size: 15px;
+  line-height: 1.8;
 }
 
 .learning-prose > :first-child {
@@ -61,7 +62,7 @@
 }
 
 .learning-prose :not(pre) > code {
-  border: 1px solid #e2e8f0;
+  border: 0;
   border-radius: 4px;
   background: #f1f5f9;
   padding: 0.1em 0.35em;
@@ -70,16 +71,16 @@
 
 .learning-prose pre {
   overflow-x: auto;
-  border: 1px solid #e2e8f0;
+  border: 0;
   border-radius: 8px;
   background: #f8fafc;
-  padding: 14px;
+  padding: 12px 14px;
   line-height: 1.8;
   tab-size: 4;
 }
 
 .learning-prose pre code {
-  font-size: 12px;
+  font-size: 13px;
   overflow-wrap: normal;
 }
 .learning-prose :where(th, td) {

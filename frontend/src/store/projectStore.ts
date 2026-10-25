@@ -147,22 +147,24 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
       })
       // 列表刷新 + 立即切到新项目（此时 status=indexing，状态行开始转圈）。
       set({ currentProjectId: created.id, currentDetail: null, files: [], symbolsByPath: new Map(), loadingPaths: new Set(), loading: true })
-      await chatStore.getState().switchProject(created.id)
       storeProjectId(created.id)
-      try {
-        set({ projects: await api.listProjects() })
-      } catch {
-        // 列表刷新失败不阻塞轮询：详情才是权威。
-      }
-      const detail = await waitForIndexing((id) => api.getProject(id), created.id, {
-        // onTick 让状态行（索引中/失败）实时跟着走。
-        onTick: (d) => { if (get().currentProjectId === created.id) set({ currentDetail: d }) },
+      // 202 代表任务已接受；状态轮询不阻塞提交弹窗，也不能回写后来选择的项目。
+      void (async () => {
+        await chatStore.getState().switchProject(created.id)
+        try {
+          set({ projects: await api.listProjects() })
+        } catch {
+          // 列表刷新失败不阻塞状态读取，项目详情仍然是权威来源。
+        }
+        const detail = await waitForIndexing((id) => api.getProject(id), created.id, {
+          onTick: (d) => { if (get().currentProjectId === created.id) set({ currentDetail: d, loading: false }) },
+        })
+        if (get().currentProjectId !== created.id) return
+        set({ currentDetail: detail, loading: false })
+        if (detail.status === 'ready') await loadProjectData(set, created.id)
+      })().catch(error => {
+        if (get().currentProjectId === created.id) set({ loading: false, error: `项目状态读取失败：${error instanceof Error ? error.message : String(error)}` })
       })
-      if (get().currentProjectId === created.id) set({ currentDetail: detail })
-      if (detail.status === 'ready' && get().currentProjectId === created.id) {
-        await loadProjectData(set, created.id)
-      }
-      // failed/stale：数据保持空/旧，状态行如实呈现，不额外弹错。
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       set({ importError: msg })

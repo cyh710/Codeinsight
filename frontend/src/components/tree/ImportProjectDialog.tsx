@@ -55,8 +55,7 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
     <Modal open={open} onClose={() => { if (!picking && !importing) onClose() }} title="导入项目并建索引" widthClass="max-w-md" closeOnBackdrop={false}>
       <div className="space-y-3">
         <p className="text-[11px] leading-relaxed text-slate-500">
-          选择一个本地 Git 项目文件夹。索引会在后台建立，
-          提交后左栏会显示进度状态，完成后文件树自动刷新。
+          选择 Git 项目文件夹，索引将在后台建立。
         </p>
         <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-700">
@@ -64,7 +63,7 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
             {rootPath ? '已选项目文件夹' : '项目文件夹'}
           </div>
           <p className="mb-3 break-all text-xs leading-5 text-slate-500" aria-live="polite">
-            {rootPath || '从电脑中选择要理解和探索的 Git 项目。'}
+            {rootPath || '尚未选择文件夹'}
           </p>
           <Button variant="secondary" size="sm" onClick={() => void selectFolder()}
             disabled={picking || importing || isMockMode}
@@ -75,7 +74,7 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
           </Button>
           {picking && <p role="status" className="mt-2 text-[11px] text-slate-500">请在系统窗口中选择文件夹，或取消返回。</p>}
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <details className="import-options"><summary>更多选项</summary><div className="mt-3 grid grid-cols-2 gap-2">
           <label className="block">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               显示名（可选）
@@ -98,7 +97,7 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
               onChange={(e) => setRef(e.target.value)}
             />
           </label>
-        </div>
+        </div></details>
 
         {isMockMode && (
           <p className="rounded-lg bg-warning/10 px-2.5 py-1.5 text-[11px] leading-relaxed text-warning">

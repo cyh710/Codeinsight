@@ -19,6 +19,7 @@ import { persistenceStore } from './store/persistence'
 import { restoreLocation, startNavigation } from './store/navigation'
 import SplitHandle from './components/common/SplitHandle'
 import './workbench.css'
+import './workbench-density.css'
 
 // 引用点击 → 右栏符号详情（无 qualname 时退回文件选中）。
 function openCitation(c: Citation) {
@@ -31,7 +32,6 @@ export default function App() {
   const layout = useStore(layoutStore)
   const saving = useStore(persistenceStore)
   const newEvidence = useStore(workbenchStore, s => s.newEvidence)
-  const convo = useStore(chatStore, s => s.currentTitle)
   useEffect(() => {
     let alive = true, dispose: (() => void) | undefined
     initialization ??= projectStore.getState().init().then(restoreLocation)
@@ -52,7 +52,6 @@ export default function App() {
         <div className="flex min-w-0 items-center gap-3">
           <h1 className="text-sm font-semibold tracking-tight text-slate-700">CodeInsight</h1>
           <button type="button" className="wb-button" aria-expanded={layout.left} aria-controls="workspace-left" onClick={layout.toggleLeft}>项目与对话</button>
-          <span className="wb-conversation-title truncate text-xs text-slate-400">{convo ?? '代码理解工作台'}</span>
         </div>
         <CenterNavigation />
         <div className="flex min-w-0 items-center justify-end gap-2">
@@ -89,7 +88,7 @@ export default function App() {
           <RightPanel />
         </div>
       </main>
-      <footer className="wb-status"><span>{saving.pending ? '正在保存工作区…' : saving.error ? '本地保存异常' : '阅读与草稿自动保存'}</span><span>代码理解 · 学习按需展开</span></footer>
+      <footer className="wb-status"><span>{saving.pending ? '正在保存工作区…' : saving.error ? '本地保存异常' : '已自动保存'}</span></footer>
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { workbenchStore } from '../../store/workbenchStore'
 import { AlertTriangle, Ban, CheckCircle2, Hourglass, Loader2, Wrench } from 'lucide-react'
 import type { ChatMessage } from '../../store/types'
 import type { Citation, Inference } from '../../api/types'
+import ConfirmDialog from '../common/ConfirmDialog'
 
 function CitationLine({ citation, onOpen }: { citation: Citation; onOpen: (c: Citation) => void }) {
   return (
@@ -34,7 +35,7 @@ function FactList({
   return (
     <details className="mt-2 rounded-lg border border-slate-200/70 px-3 py-2" aria-label="事实">
       <summary className="cursor-pointer text-[11px] text-slate-500">
-        事实（带代码出处） · {facts.length} 条
+        代码事实 · {facts.length} 条
       </summary>
       <ul className="mt-3 space-y-1.5">
         {facts.map((fact, i) => (
@@ -55,7 +56,7 @@ function InferenceList({ inferences }: { inferences: Inference[] }) {
   return (
     <details className="mt-2 rounded-lg border border-slate-200/70 px-3 py-2" aria-label="推断">
       <summary className="cursor-pointer text-[11px] text-slate-500">
-        推断（模型判断，非代码事实） · {inferences.length} 条
+        推断（待核对） · {inferences.length} 条
       </summary>
       <ul className="mt-3 space-y-1.5">
         {inferences.map((inf, i) => (
@@ -72,7 +73,7 @@ function InferenceList({ inferences }: { inferences: Inference[] }) {
 }
 
 function ToolTimeline({ tools }: { tools: NonNullable<ChatMessage['tools']> }) {
-  return (
+  const rows = (
     <div className="mt-2 space-y-1" aria-label="工具调用">
       {tools.map((t, i) => (
         <div
@@ -94,6 +95,8 @@ function ToolTimeline({ tools }: { tools: NonNullable<ChatMessage['tools']> }) {
       ))}
     </div>
   )
+  if (tools.some(tool => tool.status === 'running')) return rows
+  return <details className="mt-2 text-xs text-slate-500"><summary className="cursor-pointer py-1">查阅过程 · {tools.length} 步{tools.some(tool => tool.status !== 'ok') ? ' · 有失败项' : ''}</summary>{rows}</details>
 }
 
 export interface MessageBubbleProps {
@@ -103,12 +106,22 @@ export interface MessageBubbleProps {
 
 function MessageActions({ message }: { message: ChatMessage }) {
   const [copied, setCopied] = useState('复制回答')
-  return <div className="mt-3 flex flex-wrap gap-3 border-t border-slate-100 pt-2 text-[11px] text-slate-400">
+  const [confirmRestore, setConfirmRestore] = useState(false)
+  const restore = () => {
+    const state = chatStore.getState()
+    const original = state.messages.find(item => item.role === 'user' && item.requestId === message.requestId)
+    if (!original) return
+    if (state.draft.trim() && state.draft !== original.text) setConfirmRestore(true)
+    else state.restoreQuestion(message)
+  }
+  return <><div className="message-actions">
     <button type="button" onClick={() => { void navigator.clipboard.writeText(message.text).then(() => setCopied('已复制'), () => setCopied('复制失败，请手动选择文字')) }}>{copied}</button>
     <button type="button" onClick={() => workbenchStore.getState().openEvidence(message.id)}>查看来源</button>
-    {message.requestId && <button type="button" onClick={() => chatStore.getState().restoreQuestion(message)}>恢复问题到草稿</button>}
-    {message.legacy && <span>旧记录：未保存的来源和版本无法恢复</span>}
-  </div>
+    {message.requestId && <button type="button" onClick={restore}>恢复问题到草稿</button>}
+    {message.legacy && <span title="这份旧记录未保存完整的来源和版本">旧记录</span>}
+  </div><ConfirmDialog open={confirmRestore} title="替换当前草稿？" message="恢复这个问题会替换你正在写的内容。"
+    confirmLabel="替换草稿" cancelLabel="保留草稿" onCancel={() => setConfirmRestore(false)}
+    onConfirm={() => { chatStore.getState().restoreQuestion(message); setConfirmRestore(false) }} /></>
 }
 
 const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: originalOpen }: MessageBubbleProps) {
@@ -176,7 +189,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
   const settled = !message.streaming
   return (
     <div className="flex justify-start">
-      <div className="min-w-0 max-w-[96%] rounded-2xl rounded-bl-md border border-[var(--chat-bubble-border)] bg-[var(--chat-bubble-background)] px-4 py-3.5 shadow-[var(--chat-bubble-shadow)] backdrop-blur-[var(--chat-bubble-filter)]">
+      <div className="assistant-answer min-w-0 max-w-full">
         <div
           className={`text-sm leading-relaxed text-slate-800 ${message.streaming ? 'reply-text-in' : settled ? 'reply-settled' : ''}`}
         >

@@ -92,7 +92,7 @@ export default function MonacoViewer({
       options={{
         readOnly: true,
         minimap: { enabled: false },
-        fontSize: 13,
+        fontSize: 14,
         lineNumbersMinChars: 4,
         scrollBeyondLastLine: false,
         renderLineHighlight: 'none',

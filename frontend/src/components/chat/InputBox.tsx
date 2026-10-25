@@ -4,7 +4,7 @@
  */
 import { useLayoutEffect, useRef } from 'react'
 import { useStore } from 'zustand'
-import { Send, Square } from 'lucide-react'
+import { Send, Square, X } from 'lucide-react'
 import { chatStore } from '../../store/chatStore'
 import { projectStore } from '../../store/projectStore'
 import { workbenchStore } from '../../store/workbenchStore'
@@ -32,25 +32,26 @@ export default function InputBox() {
   }
 
   return (
-    <div className="border-t border-slate-200/70 bg-bg-elevated/80 px-4 py-3">
-        <div className="reading-context mb-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+    <div className="chat-composer">
+        <div className="reading-context mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
           <span className="min-w-0 truncate" title={reading?.preview}>
             {reading ? (reading.kind === 'knowledge'
-              ? `结合《${reading.title ?? reading.topic_id}》${reading.section_title ? ` · ${reading.section_title}` : ''}`
-              : `结合代码 ${reading.path}:${reading.lineno}${reading.end_lineno ? `–${reading.end_lineno}` : ''}`) : '未关联阅读材料'}
+              ? `${reading.title ?? reading.topic_id}${reading.section_title ? ` · ${reading.section_title}` : ''}`
+              : `${reading.path.split('/').at(-1)}:${reading.lineno}${reading.end_lineno ? `–${reading.end_lineno}` : ''}`) : '未关联材料'}
             {reading?.selection ? ' · 已选择具体段落' : ''}
             {reading ? ` · ${mode === 'fixed' ? '已固定' : '跟随阅读'}` : ''}
           </span>
-          {reading && mode === 'follow' && <button type="button" onClick={() => workbenchStore.getState().fixReading()} className="text-accent">固定关联</button>}
+          {reading && mode === 'follow' && <button type="button" onClick={() => workbenchStore.getState().fixReading()} className="text-accent" title="切换阅读时保留这个提问目标">固定提问目标</button>}
           {mode !== 'follow' && <button type="button" onClick={() => workbenchStore.getState().followReading()} className="text-accent">跟随阅读</button>}
           {reading?.preview && <details className="w-full"><summary className="cursor-pointer">查看选区</summary><pre className="max-h-28 overflow-auto whitespace-pre-wrap rounded bg-slate-100 p-2">{reading.preview}</pre></details>}
           {reading &&
           <button
             aria-label="取消关联"
-            className="ml-auto text-slate-400 hover:text-accent"
+            title="取消关联"
+            className="wb-icon-button ml-auto text-slate-400 hover:text-accent"
             onClick={() => workbenchStore.getState().setReading(null)}
           >
-            取消关联
+            <X size={15} />
           </button>}
         </div>
       <div className="flex items-end gap-2 rounded-2xl border border-[var(--chat-input-border)] bg-[var(--chat-input-background)] px-3 py-2 shadow-[var(--chat-input-shadow)]">
@@ -61,7 +62,7 @@ export default function InputBox() {
           placeholder={
             projectId === null
               ? '先在左栏选择一个项目…'
-              : '问这个项目的代码，例如：对话流程是怎么走的？'
+              : reading?.selection ? '这段内容，你想了解什么？' : reading ? '针对当前材料继续问…' : '问代码，或探索一个概念…'
           }
           value={value}
           disabled={loading || projectId === null}

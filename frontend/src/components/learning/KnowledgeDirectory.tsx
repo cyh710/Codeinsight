@@ -56,21 +56,20 @@ export default function KnowledgeDirectory() {
     if (!result) return []
     const byTopic = new Map<
       string,
-      { topicId: string; target: LearningTarget; sections: string[]; snippet: string }
+      { topicId: string; target: LearningTarget; sections: LearningTarget[]; snippet: string }
     >()
     for (const hit of result.items) {
       const topicId = hit.target.topic_id
       const existing = byTopic.get(topicId)
       if (existing) {
-        if (hit.target.section_title) existing.sections.push(hit.target.section_title)
+        if (hit.target.section_title && !existing.sections.some(s => s.section_id === hit.target.section_id)) existing.sections.push(hit.target)
         continue
       }
       byTopic.set(topicId, {
         topicId,
-        // 打开文章本身（不带章节锚点）——读者要看的是整篇，
-        // 不是恰好命中分数最高的那个小节。
+        // 文章标题负责从头阅读，下面的命中章节分别提供精确跳转。
         target: { ...hit.target, section_id: null, section_title: null, href: `/learn/${topicId}` },
-        sections: hit.target.section_title ? [hit.target.section_title] : [],
+        sections: hit.target.section_title ? [hit.target] : [],
         snippet: hit.summary || hit.snippet,
       })
     }
@@ -100,11 +99,8 @@ export default function KnowledgeDirectory() {
       <div className="border-b border-slate-200 pb-4">
         <div className="flex items-center gap-2 text-accent">
           <BookOpen size={18} />
-          <h3 className="text-sm font-semibold">从一个问题，读懂一个概念</h3>
+          <h3 className="text-base font-semibold">教材目录</h3>
         </div>
-        <p className="mt-2 text-xs leading-6 text-slate-500">
-          围绕代码按需阅读。先看定义，再跟着例子理解；阅读时可以回到对话继续问。
-        </p>
         <form
           className="mt-3 flex gap-2"
           onSubmit={(e) => {
@@ -151,21 +147,18 @@ export default function KnowledgeDirectory() {
             </button>
           </div>
           {grouped.map((item) => (
-            <button
+            <article
               key={item.topicId}
-              onClick={() => open(item.target)}
-              className="w-full rounded-lg border border-slate-200/70 p-3 text-left hover:bg-accent-soft/40"
+              className="knowledge-result"
             >
-              <p className="text-xs font-semibold text-slate-700">{item.target.title}</p>
+              <button className="text-left text-sm font-medium text-slate-700 hover:text-accent" onClick={() => open(item.target)}>{item.target.title}</button>
               {item.sections.length > 0 && (
-                <p className="mt-0.5 text-[10px] text-slate-400">
-                  命中章节：{item.sections.join('、')}
-                </p>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">{item.sections.map(section => <button key={section.section_id} className="text-xs text-accent hover:underline" onClick={() => open(section)}>{section.section_title}</button>)}</div>
               )}
               <p className="mt-1 line-clamp-3 whitespace-pre-line text-[11px] leading-6 text-slate-500">
                 {item.snippet}
               </p>
-            </button>
+            </article>
           ))}
           {!result.total && (
             <p className="py-4 text-xs text-slate-400">没有匹配章节，请换个术语或浏览目录。</p>

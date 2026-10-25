@@ -1,0 +1,64 @@
+/* 用字号、留白和背景区分层次，分隔线只保留在空间边界。 */
+.wb-app,[role="dialog"]{--text-xs:.8125rem;--text-sm:.9375rem;font-size:14px}
+.wb-app{background:#f6f8fa}
+.wb-app [class*="text-[10"],.wb-app [class*="text-[11"],.wb-app [class*="text-[9"],
+[role="dialog"] [class*="text-[10"],[role="dialog"] [class*="text-[11"],[role="dialog"] [class*="text-[9"]{font-size:12px}
+.wb-app .text-slate-400,[role="dialog"] .text-slate-400{color:#758295}
+.workbench-header{min-height:54px;padding-inline:18px;border-color:#e7ecf1}
+.workbench-header h1{font-size:15px}.workbench-header nav button{font-size:14px}
+.workbench-header nav svg{width:16px;height:16px}
+.wb-left{background:#f6f8fa}.wb-left>aside{background:transparent;border:0}
+.wb-left>aside>div:first-child{padding:12px 12px 6px;border:0}
+.wb-left>aside>nav{border:0;padding:6px 10px}
+.wb-left>aside>nav button{border:0;font-size:14px;padding:6px 12px;background:transparent}
+.wb-left>aside>nav button[aria-pressed=true]{background:#e4eef5;color:#087fac}
+.wb-left>aside>div:last-child{border:0}
+.wb-center,.wb-center>section,.wb-center [data-chat-scroll]{background:#fff}
+.wb-materials>aside{border-color:#e7ecf1}.wb-full .learning-article{max-width:780px}
+.wb-split{background:#eef2f5}
+.wb-button,.wb-primary{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;border:0;padding:5px 9px;font-size:13px}
+.wb-button{color:#596b7d;background:transparent}.wb-button:hover{background:#edf4f8}
+.wb-button[aria-pressed=true],.wb-primary{background:#e4f2fa;color:#087fac}.wb-primary:hover{background:#d5ebf8}
+.wb-icon-button{display:inline-flex;flex:none;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:7px;background:transparent;color:#6b7c8f;cursor:pointer}
+.wb-icon-button:hover,.wb-icon-button[aria-expanded=true]{background:#e8f0f5;color:#087fac}
+.wb-icon-button:disabled{opacity:.4;cursor:not-allowed}
+.wb-input{border-color:#e3e9ef;padding:7px 9px;font-size:13px}
+.wb-status{justify-content:flex-end;min-height:22px;border:0;padding:2px 14px;font-size:12px;color:#7d8a98;background:#f6f8fa}
+.conversation-controls{display:grid;gap:10px;padding:8px 12px 12px}
+.conversation-row{border:0;border-radius:8px;padding:9px 8px;color:#4b5f72}
+.conversation-row:hover{background:#edf1f5}.conversation-row.active{background:#e4eef6;color:#1e4d6c}
+.conversation-meta{margin-top:3px;font-size:12px;color:#778596;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conversation-preview{margin-top:4px;font-size:12px;color:#718094;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wb-action-menu{position:fixed;z-index:120;min-width:224px;max-width:min(300px,calc(100vw - 16px));max-height:min(420px,calc(100dvh - 40px));overflow:auto;padding:5px;border:1px solid #e4eaf0;border-radius:10px;background:#fff;color:#465a6d;box-shadow:0 10px 35px #203b5626;font-size:13px}
+.wb-action-menu button{display:block;width:100%;min-height:34px;border:0;border-radius:6px;background:transparent;padding:7px 10px;text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.wb-action-menu button:hover{background:#edf5fa;color:#087fac}.wb-action-menu button:disabled{opacity:.4;cursor:not-allowed}
+.wb-action-menu small{display:block;margin-top:3px;color:#7b8a99;font-size:12px}
+.wb-menu-caption{padding:10px 10px 3px;color:#8391a0;font-size:12px}
+.material-toolbar{display:flex;align-items:center;gap:3px;min-height:46px;padding:5px 12px}
+.material-toolbar>button{min-width:28px;min-height:30px}
+.material-tabs{align-items:center;border-color:#edf0f4;padding:3px 10px 7px;background:#fff}
+.material-tab{max-width:240px;border:0;border-radius:6px;font-size:13px}
+.material-tab.active{background:#edf5fa;box-shadow:none}
+.material-tab>button{min-height:30px}.material-tab>button:last-child{min-width:28px}
+.material-tab svg{width:14px;height:14px}
+/* 阅读位置由工作区保存，避免浏览器在调宽时另做一次自动滚动补偿。 */
+.wb-materials [data-reading-scroll]{padding:16px 20px;overflow-anchor:none}.wb-full [data-reading-scroll]{padding:20px 36px}
+.wb-action-menu :focus-visible{outline:2px solid #1992c6;outline-offset:2px}
+.chat-toolbar{display:flex;align-items:center;gap:5px;min-height:44px;padding:4px 22px;background:#fff}
+.assistant-answer{padding:4px 2px 12px;width:100%;font-size:15px;line-height:1.8}
+.message-actions{display:flex;align-items:center;flex-wrap:wrap;gap:3px 10px;margin-top:14px;font-size:12px;color:#718296}
+.message-actions button{min-height:30px;padding:3px 0}.message-actions button:hover{color:#087fac}
+.message-actions span{margin-left:auto;color:#8b96a4}
+.assistant-answer details[aria-label="事实"],.assistant-answer details[aria-label="推断"]{border:0;background:transparent;padding:4px 0}
+.chat-composer{padding:10px 22px 16px;background:#fff}
+.reading-context{line-height:1.6}.reading-context>span{flex:1;max-width:100%}
+.reading-context .wb-icon-button{width:26px;height:26px}
+.article-selection-toolbar{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#ffffffef;padding:0 0 8px;margin-bottom:8px}
+.article-heading{padding-bottom:6px}.article-heading h2{font-size:21px;line-height:1.5;margin-top:8px}
+.article-toc{margin-top:14px;padding:6px 0;color:#63768a}
+.learning-article.space-y-7>:not(:last-child){margin-block-end:22px}
+.learning-article.space-y-7>.article-selection-toolbar{margin-block-end:10px}
+.knowledge-result{padding:12px 0}.knowledge-result+.knowledge-result{border-top:1px solid #edf0f4}
+.import-options{font-size:13px;color:#617487}.import-options summary{cursor:pointer;padding:5px 0}
+@media(max-width:1190px){.workbench-header{padding-inline:10px}}
+@media(max-width:700px){.wb-full [data-reading-scroll]{padding:16px}.chat-composer{padding-inline:16px}}

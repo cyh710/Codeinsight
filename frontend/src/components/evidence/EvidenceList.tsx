@@ -17,10 +17,10 @@ const LANE_LABEL: Record<string, string> = {
   neighbor: '邻域',
 }
 
-function EvidenceCard({ item }: { item: PanelEvidence }) {
+function EvidenceCard({ item, version }: { item: PanelEvidence; version?: string | null }) {
   const open = () => {
-    if (item.qualname) workbenchStore.getState().selectSymbol(item.qualname, item.path)
-    else workbenchStore.getState().selectFile(item.path)
+    if (item.qualname) workbenchStore.getState().selectSymbol(item.qualname, item.path, item.lineno, version ?? '')
+    else workbenchStore.getState().selectFile(item.path, item.lineno, version ?? '')
   }
   return (
     <article className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
@@ -43,6 +43,7 @@ function EvidenceCard({ item }: { item: PanelEvidence }) {
       {item.qualname && (
         <p className="mt-1 truncate font-mono text-[10px] text-slate-400">{item.qualname}</p>
       )}
+      {!version && <p className="mt-1 text-xs text-slate-500">原版本未记录，将打开当前索引。</p>}
       <pre className="mt-1.5 max-h-28 overflow-auto rounded-md bg-slate-50 px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-slate-600">
         {item.snippet}
       </pre>
@@ -90,7 +91,7 @@ export default function EvidenceList({ messageId }: { messageId?: string }) {
           提问后，这里会显示找到的代码位置。
         </p>
       ) : (
-        items.map((item, i) => <EvidenceCard key={`${item.path}:${item.lineno}:${i}`} item={item} />)
+        items.map((item, i) => <EvidenceCard key={`${item.path}:${item.lineno}:${i}`} item={item} version={last?.sourceHeadCommit ?? last?.citations?.find(c => c.path === item.path && c.lineno === item.lineno)?.head_commit} />)
       )}
     </div>
   )
