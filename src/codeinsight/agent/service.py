@@ -21,7 +21,7 @@ from codeinsight.agent.tools import ToolServices, build_tools
 from codeinsight.cognitive.concepts.assets import knowledge_directory
 from codeinsight.cognitive.concepts.integration import LearningBridge
 from codeinsight.cognitive.concepts.learning_models import KnowledgeError
-from codeinsight.cognitive.concepts.library import LearningLibrary
+from codeinsight.cognitive.concepts.library_loader import get_learning_library
 from codeinsight.cognitive.concepts.service import KnowledgeService
 from codeinsight.cognitive.embedding.siliconflow import SiliconFlowEmbedder
 from codeinsight.cognitive.retrieval.retriever import (
@@ -152,9 +152,7 @@ def open_agent(
     # 知识资产损坏时保留已有代码问答；教学端点会单独报告加载错误。
     learning = None
     try:
-        learning = LearningBridge(
-            KnowledgeService(LearningLibrary(knowledge_directory("learning")))
-        )
+        learning = LearningBridge(KnowledgeService(get_learning_library()))
     except KnowledgeError as exc:
         import logging
 

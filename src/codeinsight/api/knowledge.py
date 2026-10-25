@@ -22,7 +22,7 @@ from codeinsight.cognitive.concepts.assets import knowledge_directory
 from codeinsight.cognitive.concepts.builtin import concept_context
 from codeinsight.cognitive.concepts.explain import explain
 from codeinsight.cognitive.concepts.learning_models import KnowledgeError, Relation
-from codeinsight.cognitive.concepts.library import LearningLibrary
+from codeinsight.cognitive.concepts.library_loader import get_learning_library
 from codeinsight.cognitive.concepts.ontology import Concept, DetectionRules
 from codeinsight.cognitive.indexing.concepts_sync import refresh_project_concepts
 from codeinsight.config import settings
@@ -41,7 +41,7 @@ def _prepare_project(conn: Any, project_id: int) -> None:
 
 def _learning_targets(concept_id: str) -> list[dict]:
     try:
-        library = LearningLibrary(knowledge_directory("learning"))
+        library = get_learning_library()
     except KnowledgeError:
         # 教材安装错误不阻断已有项目证据；知识端点会给出独立错误。
         return []

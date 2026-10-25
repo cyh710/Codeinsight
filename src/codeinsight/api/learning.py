@@ -7,10 +7,9 @@ from fastapi import APIRouter, Query
 from codeinsight.api.errors import ApiFailure
 from codeinsight.api.knowledge import _prepare_project
 from codeinsight.api.projects import connect_db
-from codeinsight.cognitive.concepts.assets import knowledge_directory
 from codeinsight.cognitive.concepts.integration import LearningBridge
 from codeinsight.cognitive.concepts.learning_models import KnowledgeError
-from codeinsight.cognitive.concepts.library import LearningLibrary
+from codeinsight.cognitive.concepts.library_loader import get_learning_library
 from codeinsight.cognitive.concepts.service import KnowledgeService
 
 router = APIRouter(tags=["learning"])
@@ -18,7 +17,7 @@ router = APIRouter(tags=["learning"])
 
 def _bridge() -> LearningBridge:
     try:
-        return LearningBridge(KnowledgeService(LearningLibrary(knowledge_directory("learning"))))
+        return LearningBridge(KnowledgeService(get_learning_library()))
     except KnowledgeError as exc:
         raise ApiFailure(
             status_code=503,
