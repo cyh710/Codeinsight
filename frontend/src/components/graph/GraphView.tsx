@@ -13,11 +13,7 @@ export default function GraphView() {
   const projectId = useStore(projectStore, (s) => s.currentProjectId)
   const externalFocus = useStore(viewStore, (s) => s.graphFocus)
   const request = useStore(viewStore, (s) => s.graphRequest)
-  const [modeChoice, setModeChoice] = useState({ projectId, request, mode: 'reading' })
-  const mode =
-    modeChoice.projectId === projectId && modeChoice.request === request
-      ? modeChoice.mode
-      : 'reading'
+  const mode = useStore(viewStore, s => s.graphMode)
   const initialFocus = useMemo(() => {
     const panel = workbenchStore.getState().rightPanel
     return externalFocus ?? (panel.mode === 'symbol' ? panel.qualname : null)
@@ -36,14 +32,10 @@ export default function GraphView() {
     choice.external === externalFocus
       ? choice.focus
       : initialFocus
-  const [history, setHistory] = useState<{ projectId: number | null; items: (string | null)[] }>({
-    projectId,
-    items: [],
-  })
-  const trail = history.projectId === projectId ? history.items : []
+  const trail = useStore(viewStore, s => s.graphHistory)
   const changeFocus = (next: string | null, remember = true) => {
     if (next === focus) return
-    if (remember) setHistory({ projectId, items: [...trail, focus] })
+    if (remember) viewStore.setState({ graphHistory: [...trail, focus] })
     viewStore.getState().setGraphFocus(next)
     setChoice({ projectId, request, external: next, focus: next })
   }
@@ -59,7 +51,7 @@ export default function GraphView() {
               key={id}
               type="button"
               aria-pressed={mode === id}
-              onClick={() => setModeChoice({ projectId, request, mode: id })}
+              onClick={() => viewStore.setState({ graphMode: id })}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs ${mode === id ? 'bg-white text-accent shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <Icon size={13} />
@@ -75,7 +67,7 @@ export default function GraphView() {
                 aria-label="返回上一个关系中心"
                 onClick={() => {
                   const previous = trail.at(-1) ?? null
-                  setHistory({ projectId, items: trail.slice(0, -1) })
+                  viewStore.setState({ graphHistory: trail.slice(0, -1) })
                   changeFocus(previous, false)
                 }}
                 className="rounded-md p-1.5 text-slate-500 hover:bg-accent-soft hover:text-accent"

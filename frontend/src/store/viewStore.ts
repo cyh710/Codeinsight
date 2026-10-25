@@ -10,6 +10,11 @@ import { createStore } from 'zustand'
 export type CenterTab = 'chat' | 'graph' | 'timeline'
 
 export interface ViewStore {
+  timelineExpanded: string | null
+  timelineScroll: number
+  graphHistory: (string | null)[]
+  graphMode: string
+  setTimelineExpanded: (value: string | null | ((current: string | null) => string | null)) => void
   centerTab: CenterTab
   /** 关系图中心；null = 打开时的当前符号，仍没有就以概览图打开。 */
   graphFocus: string | null
@@ -24,6 +29,8 @@ export interface ViewStore {
 }
 
 export const viewStore = createStore<ViewStore>((set) => ({
+  timelineExpanded: null, timelineScroll: 0, graphHistory: [], graphMode: 'reading',
+  setTimelineExpanded: value => set(s => ({ timelineExpanded: typeof value === 'function' ? value(s.timelineExpanded) : value })),
   centerTab: 'chat',
   graphFocus: null,
   graphRequest: 0,
@@ -33,5 +40,5 @@ export const viewStore = createStore<ViewStore>((set) => ({
     set((s) => ({ centerTab: 'graph', graphFocus: qualname, graphRequest: s.graphRequest + 1 })),
   openTimeline: () => set({ centerTab: 'timeline' }),
   setGraphFocus: (qualname) => set({ graphFocus: qualname }),
-  reset: () => set({ centerTab: 'chat', graphFocus: null, graphRequest: 0 }),
+  reset: () => set({ centerTab: 'chat', graphFocus: null, graphRequest: 0, timelineExpanded: null, timelineScroll: 0, graphHistory: [], graphMode: 'reading' }),
 }))

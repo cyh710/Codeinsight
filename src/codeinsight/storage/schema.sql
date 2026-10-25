@@ -397,7 +397,7 @@ CREATE TABLE IF NOT EXISTS agent_task (
     project_id     INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
     conversation_id TEXT NOT NULL,
     question       TEXT NOT NULL,
-    status         TEXT NOT NULL,              -- queued|running|completed|failed|abstained
+    status         TEXT NOT NULL,              -- queued|running|completed|failed|abstained|interrupted
     reason         TEXT,
     created_at     TEXT NOT NULL DEFAULT (datetime('now')),
     finished_at    TEXT
@@ -415,6 +415,40 @@ CREATE TABLE IF NOT EXISTS agent_event (
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS ix_agent_event_task ON agent_event(task_id, id);
+
+-- 会话展示历史独立于模型的六轮窗口；投影保留结构化来源和请求目标。
+CREATE TABLE IF NOT EXISTS conversation (
+    project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+    id TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '新对话',
+    pinned INTEGER NOT NULL DEFAULT 0,
+    archived INTEGER NOT NULL DEFAULT 0,
+    last_read_at TEXT NOT NULL DEFAULT '',
+    focus_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY(project_id, id)
+);
+CREATE TABLE IF NOT EXISTS conversation_turn (
+    project_id INTEGER NOT NULL,
+    conversation_id TEXT NOT NULL,
+    request_id TEXT NOT NULL,
+    task_id TEXT,
+    question TEXT NOT NULL,
+    reading_json TEXT,
+    answer_json TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'running',
+    legacy INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY(project_id, conversation_id, request_id),
+    FOREIGN KEY(project_id,conversation_id) REFERENCES conversation(project_id,id) ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_conversation_running
+    ON conversation_turn(project_id,conversation_id) WHERE status = 'running';
+CREATE INDEX IF NOT EXISTS ix_conversation_recent ON conversation(project_id,updated_at);
+CREATE INDEX IF NOT EXISTS ix_conversation_turn_history
+    ON conversation_turn(project_id,conversation_id,created_at);
 
 -- ─────────────────────────────────────────────────────────────
 -- 评测（源文档 §6）

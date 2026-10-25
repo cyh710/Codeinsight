@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sqlite3
 from collections.abc import Awaitable, Callable
@@ -25,6 +26,7 @@ from codeinsight.agent.answer import GroundedFile, Grounding, split_answer
 from codeinsight.agent.context import ContextBudget, assemble, truncate_bytes
 from codeinsight.agent.ledger import EventLedger, new_task_id
 from codeinsight.agent.prompts import SYSTEM_PROMPT
+from codeinsight.agent.selection import SelectionError, code_selection
 from codeinsight.agent.session import ConversationStore, Focus
 from codeinsight.agent.tool import ToolContext, ToolRegistry
 from codeinsight.cognitive.concepts.answer_policy import LEARNING_PROMPT, can_answer_from_knowledge
@@ -118,6 +120,33 @@ class AgentRuntime:
         prepared = None
 
         try:
+            if (
+                reading_context
+                and reading_context.get("kind") == "knowledge"
+                and reading_context.get("selection") is not None
+                and self.learning is None
+            ):
+                raise SelectionError(
+                    "教材暂不可用，无法验证选区，请恢复知识资产后重试。", "not_found"
+                )
+            selected_code = None
+            reading_budget = min(self.budget.max_message_bytes, self.budget.max_turn_bytes)
+            if (
+                reading_context
+                and reading_context.get("kind") == "code"
+                and reading_context.get("selection") is not None
+            ):
+                if reading_context.get("project_id") != project_id:
+                    raise SelectionError("代码选区不属于当前项目。")
+                selected_code = code_selection(
+                    self.conn,
+                    project_id,
+                    reading_context,
+                    min(
+                        self.budget.max_tool_result_bytes,
+                        max(0, reading_budget - len(question.encode("utf-8")) - 300),
+                    ),
+                )
             if self.learning is not None:
                 goal, prepared = self.learning.prepare_goal(
                     question,
@@ -129,12 +158,30 @@ class AgentRuntime:
                     max_message_bytes=min(
                         self.budget.max_message_bytes, self.budget.max_turn_bytes
                     ),
-                    max_knowledge_bytes=self.budget.max_tool_result_bytes,
+                    max_knowledge_bytes=max(
+                        0,
+                        min(
+                            self.budget.max_tool_result_bytes,
+                            reading_budget
+                            - len(question.encode("utf-8"))
+                            - len((selected_code or "").encode("utf-8"))
+                            - 500,
+                        ),
+                    ),
                 )
                 answer.reading_status = prepared.reading_status
                 answer.knowledge_error = prepared.error
                 if ledger is not None:
                     ledger.record(task_id, "knowledge.prepared", prepared.as_tool_result().data)
+                if (
+                    reading_context
+                    and reading_context.get("selection")
+                    and reading_context.get("kind") == "knowledge"
+                    and answer.reading_status != "ok"
+                ):
+                    raise SelectionError(
+                        answer.knowledge_error or "无法验证教材选区。", answer.reading_status
+                    )
             if reading_context and reading_context.get("kind") == "code":
                 path = reading_context.get("path")
                 line = reading_context.get("lineno", 1)
@@ -151,6 +198,13 @@ class AgentRuntime:
                     and reading_context.get("project_id") == project_id
                 )
                 if valid:
+                    if selected_code is not None:
+                        goal = {
+                            "role": "user",
+                            "content": goal["content"]
+                            + "\n\n以下是服务端验证的代码选区：\n"
+                            + selected_code,
+                        }
                     call = ToolCall(
                         id=f"reading-{task_id}",
                         name="read_file",
@@ -280,6 +334,8 @@ class AgentRuntime:
                     "answer",
                     {
                         "text": answer.text,
+                        "tools_used": answer.tools_used,
+                        "evidence": answer.evidence,
                         "knowledge_sources": answer.knowledge_sources,
                         "learning_entries": answer.learning_entries,
                         "learning_targets": answer.learning_targets,
@@ -294,12 +350,34 @@ class AgentRuntime:
                     },
                 ),
             )
+        except SelectionError as exc:
+            answer.reading_status = exc.status
+            answer.knowledge_error = str(exc)
+            answer.error = {
+                "code": "reading_invalid",
+                "title": "阅读选区暂不可用",
+                "hint": str(exc),
+                "reading_status": exc.status,
+            }
+            await _emit(emit, RuntimeEvent("error", answer.error))
+        except asyncio.CancelledError:
+            answer.error = {
+                "code": "aborted",
+                "title": "回答已中断",
+                "hint": "已保存的内容保留，可以恢复问题后重试。",
+            }
+            await _emit(emit, RuntimeEvent("error", answer.error))
+            raise
         except Exception as exc:  # noqa: BLE001 —— 流中途出错也必须走完 done
             answer.error = _error_payload(exc)
             await _emit(emit, RuntimeEvent("error", answer.error))
         finally:
             status = (
-                "failed" if answer.error else ("abstained" if answer.abstained else "completed")
+                "interrupted"
+                if answer.error and answer.error.get("code") == "aborted"
+                else "failed"
+                if answer.error
+                else ("abstained" if answer.abstained else "completed")
             )
             if ledger is not None:
                 if not answer.error:
@@ -314,6 +392,8 @@ class AgentRuntime:
                         },
                     )
                 ledger.finish(task_id, status=status, reason=answer.abstention_reason)
+            if answer.error is None and conversation_id:
+                self.store.record_turn(session_key, question, answer.text, focus=focus)
             await _emit(
                 emit,
                 RuntimeEvent(
@@ -322,8 +402,6 @@ class AgentRuntime:
                 ),
             )
 
-        if answer.error is None and conversation_id:
-            self.store.record_turn(session_key, question, answer.text, focus=focus)
         return answer
 
     async def _invoke_tool(

@@ -8,7 +8,6 @@ import { waitForIndexing } from '../api/importFlow'
 import type { FileEntry, ProjectSummary, SymbolListItem } from '../api/types'
 import { chatStore } from './chatStore'
 import type { ProjectStore } from './types'
-import { viewStore } from './viewStore'
 import { workbenchStore } from './workbenchStore'
 
 const STORAGE_KEY = 'ci.projectId'
@@ -58,6 +57,7 @@ async function loadProjectData(
       loadingPaths: new Set(),
       loading: false,
     })
+    workbenchStore.getState().setIndexVersion(detail.head_commit)
   } catch (e) {
     if (projectStore.getState().currentProjectId !== projectId) return
     const msg = e instanceof Error ? e.message : String(e)
@@ -85,24 +85,23 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
       const preferred = projects.find((p) => p.id === stored)?.id ?? projects[0]?.id ?? null
       if (preferred !== null) {
         set({ currentProjectId: preferred })
-        chatStore.getState().switchProject(preferred)
+        await chatStore.getState().switchProject(preferred)
         storeProjectId(preferred)
         await loadProjectData(set, preferred)
-      }
+      } else chatStore.setState({ loading: false })
     } catch (e) {
+      chatStore.setState({ loading: false })
       set({ error: e instanceof Error ? e.message : String(e) })
     }
   },
 
   selectProject: async (id: number) => {
     if (get().currentProjectId === id) return
-    set({ currentProjectId: id })
+    set({ currentProjectId: id, currentDetail: null, files: [], symbolsByPath: new Map(), loadingPaths: new Set(), loading: true, error: '' })
     storeProjectId(id)
     // 切项目：会话按项目隔离（切回来会恢复该项目的对话），
     // 工作台与中栏视图重置，避免带着上一个项目的上下文继续看。
-    chatStore.getState().switchProject(id)
-    workbenchStore.getState().resetProject()
-    viewStore.getState().reset()
+    await chatStore.getState().switchProject(id)
     await loadProjectData(set, id)
   },
 
@@ -114,12 +113,14 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
     set((s) => ({ loadingPaths: new Set(s.loadingPaths).add(path) }))
     try {
       const res = await api.listProjectSymbols(projectId, { path, limit: 500 })
+      if (get().currentProjectId !== projectId) return
       set((s) => {
         const next = new Map(s.symbolsByPath)
         next.set(path, res.items)
         return { symbolsByPath: next }
       })
     } catch {
+      if (get().currentProjectId !== projectId) return
       // 拉不到就记成空列表：不重试，也不让左栏整块崩掉。
       set((s) => {
         const next = new Map(s.symbolsByPath)
@@ -127,7 +128,7 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
         return { symbolsByPath: next }
       })
     } finally {
-      set((s) => {
+      if (get().currentProjectId === projectId) set((s) => {
         const next = new Set(s.loadingPaths)
         next.delete(path)
         return { loadingPaths: next }
@@ -145,9 +146,8 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
         ...(ref ? { ref } : {}),
       })
       // 列表刷新 + 立即切到新项目（此时 status=indexing，状态行开始转圈）。
-      set({ currentProjectId: created.id, currentDetail: null })
-      chatStore.getState().switchProject(created.id)
-      workbenchStore.getState().resetProject()
+      set({ currentProjectId: created.id, currentDetail: null, files: [], symbolsByPath: new Map(), loadingPaths: new Set(), loading: true })
+      await chatStore.getState().switchProject(created.id)
       storeProjectId(created.id)
       try {
         set({ projects: await api.listProjects() })

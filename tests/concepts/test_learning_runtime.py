@@ -101,6 +101,78 @@ async def test_pure_knowledge_without_project_citations_is_supported(bridge):
     assert events[0].type == "meta" and events[-1].type == "done"
 
 
+async def test_exact_selected_knowledge_uses_original_and_rejects_invalid_ranges(bridge):
+    topic = bridge.library.get("sql-database")
+    section = topic.sections[0]
+    raw = {
+        "kind": "knowledge",
+        "topic_id": topic.id,
+        "section_id": section.id,
+        "version": topic.version,
+        "preview": "伪造客户端资料，不能注入",
+        "selection": {"ranges": [{"section_id": section.id, "start_offset": 0, "end_offset": 30}]},
+    }
+    provider = FakeProvider()
+    result = await AgentRuntime(provider=provider, registry=ToolRegistry(), learning=bridge).run(
+        project_id=1, question="SQL 这里是什么意思", reading_context=raw
+    )
+    assert result.reading_status == "ok"
+    from codeinsight.agent.selection import utf16_slice
+
+    assert result.knowledge_sources[0]["snippet"] == utf16_slice(section.content, 0, 30)
+    assert "伪造客户端资料" not in str(provider.messages)
+    for changed in (
+        {**raw, "version": "old-version"},
+        {
+            **raw,
+            "selection": {
+                "ranges": [{"section_id": section.id, "start_offset": 0, "end_offset": 999999}]
+            },
+        },
+    ):
+        invalid_provider = FakeProvider()
+        invalid = await AgentRuntime(
+            provider=invalid_provider, registry=ToolRegistry(), learning=bridge
+        ).run(project_id=1, question="这里是什么意思", reading_context=changed)
+        assert invalid.error["code"] == "reading_invalid" and not invalid_provider.messages
+    limited_provider = FakeProvider()
+    limited = await AgentRuntime(
+        provider=limited_provider,
+        registry=ToolRegistry(),
+        learning=bridge,
+        budget=ContextBudget(max_message_bytes=100, max_turn_bytes=100, max_tool_result_bytes=10),
+    ).run(project_id=1, question="这里是什么意思", reading_context=raw)
+    assert limited.reading_status == "outside_budget" and not limited_provider.messages
+
+
+def test_code_selection_validates_hash_columns_and_project_snapshot(indexed_repo, data_dir):
+    from codeinsight.agent.selection import SelectionError, code_selection
+
+    _, pid = indexed_repo
+    with open_sqlite(db_path(data_dir), row_factory=True) as conn:
+        row = conn.execute(
+            "SELECT f.content_sha256,r.head_commit FROM file f JOIN repo_state r ON r.project_id=f.project_id WHERE f.project_id=? AND f.path='store.py'",
+            (pid,),
+        ).fetchone()
+        raw = {
+            "kind": "code",
+            "project_id": pid,
+            "path": "store.py",
+            "lineno": 1,
+            "end_lineno": 1,
+            "head_commit": row["head_commit"],
+            "content_sha256": row["content_sha256"],
+            "selection": {"start_column": 2, "end_column": 5},
+        }
+        assert code_selection(conn, pid, raw, 100) == "mpo"
+        with pytest.raises(SelectionError, match="版本"):
+            code_selection(conn, pid, {**raw, "content_sha256": "forged"}, 100)
+        with pytest.raises(SelectionError, match="列号"):
+            code_selection(
+                conn, pid, {**raw, "selection": {"start_column": 2, "end_column": 999}}, 100
+            )
+
+
 async def test_textbook_does_not_ground_project_questions_or_fabricated_code(bridge):
     runtime = AgentRuntime(provider=FakeProvider(), registry=ToolRegistry(), learning=bridge)
     answer = await runtime.run(project_id=1, question="这个项目哪里用了 SQL")

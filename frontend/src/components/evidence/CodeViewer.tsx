@@ -3,6 +3,7 @@
  * 违背"用户不需要逐个打开文件阅读"的初衷）。fallback 是带行号的 pre。
  */
 import { lazy, Suspense } from 'react'
+export type CodeSelection = { startLine: number; endLine: number; startColumn: number; endColumn: number; text: string }
 const MonacoViewer = lazy(() => import('./MonacoViewer'))
 
 export default function CodeViewer({
@@ -11,8 +12,10 @@ export default function CodeViewer({
   startLine = 1,
   highlightLines,
   viewKey,
+  onSelection,
 }: {
   viewKey?: string
+  onSelection?: (selection: CodeSelection | null) => void
   code: string
   language: string
   startLine?: number
@@ -37,6 +40,7 @@ export default function CodeViewer({
       >
         <MonacoViewer
           viewKey={viewKey}
+          onSelection={onSelection}
           code={code}
           language={language}
           startLine={startLine}

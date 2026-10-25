@@ -6,8 +6,12 @@ import type { ConceptInstance, KnowledgeTopic, LearningTarget } from '../../api/
 import { projectStore } from '../../store/projectStore'
 import { panelKey, workbenchStore } from '../../store/workbenchStore'
 import LearningMarkdown from './LearningMarkdown'
+import { selectedKnowledge } from './selection'
+import { layoutStore } from '../../store/layoutStore'
 
 export default function KnowledgeArticle({ target }: { target: LearningTarget }) {
+  const readingMode = useStore(workbenchStore, s => s.readingMode)
+  const [selectionError, setSelectionError] = useState('')
   const [state, setState] = useState<{ topic: KnowledgeTopic } | null>(null)
   const [error, setError] = useState('')
   const projectId = useStore(projectStore, (s) => s.currentProjectId)
@@ -50,18 +54,20 @@ export default function KnowledgeArticle({ target }: { target: LearningTarget })
     topic && (projectId === null || isMockMode || instanceResult !== null || instancesError),
   )
   useLayoutEffect(() => {
-    if (!topic) return
+    if (!topic || topic.version !== target.version) return
     const section =
       target.section_id && topic.sections.some((s) => s.id === target.section_id)
         ? target.section_id
-        : 'overview'
+        : topic.sections[0]?.id
     workbenchStore.getState().setReading({
       kind: 'knowledge',
       topic_id: topic.id,
       section_id: section,
       version: topic.version,
+      title: topic.title,
+      section_title: topic.sections.find(s => s.id === section)?.title,
     })
-  }, [topic, target.section_id])
+  }, [topic, target.section_id, target.version, readingMode])
   useLayoutEffect(() => {
     if (!topic || !contentReady) return
     const container = articleRef.current?.closest('[data-reading-scroll]') as HTMLElement | null
@@ -88,13 +94,26 @@ export default function KnowledgeArticle({ target }: { target: LearningTarget })
       </p>
     )
   if (!topic) return <p className="text-xs text-slate-400">读取完整章节…</p>
+  if (topic.version !== target.version) return <div role="alert" className="text-xs leading-6 text-amber-700">这个教材页签引用的版本已更新，原来的提问关联没有被替换。<button className="wb-button ml-2" onClick={() => workbenchStore.getState().openKnowledge({ ...target, version: topic.version, title: topic.title })}>打开当前版本</button></div>
   const open = (t: LearningTarget) => workbenchStore.getState().openKnowledge(t)
   return (
     <article
       ref={articleRef}
       data-reading-ready={contentReady || undefined}
-      className="space-y-7 pb-8"
+      className="learning-article space-y-7 pb-8"
     >
+        <div className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-2 bg-white/95 py-2">
+          <button className="wb-primary" type="button" onPointerDown={e => e.preventDefault()} onClick={() => {
+            try {
+              workbenchStore.getState().fixReading(selectedKnowledge(articleRef.current!, topic))
+              setSelectionError('')
+              layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) })
+              requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.wb-center textarea')?.focus())
+            } catch (error) { setSelectionError(String(error)) }
+          }}>问选中段落</button>
+          <span className="text-[10px] text-slate-400">先选择正文，再补充问题</span>
+          {selectionError && <p role="alert" className="w-full text-xs text-danger">{selectionError}</p>}
+        </div>
       <header className="border-b border-slate-200 pb-4">
         <p className="text-[10px] font-semibold tracking-widest text-accent">{topic.group}</p>
         <h2 className="mt-2 text-lg font-semibold leading-8 tracking-tight text-slate-800">
@@ -169,7 +188,7 @@ export default function KnowledgeArticle({ target }: { target: LearningTarget })
               {section.title}
             </h3>
             <div className="text-sm text-slate-600">
-              <LearningMarkdown text={section.content} targets={topic.learning_targets} />
+              <LearningMarkdown text={section.content} targets={topic.learning_targets} selectable />
             </div>
           </section>
         ))}

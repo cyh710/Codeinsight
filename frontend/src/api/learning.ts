@@ -14,6 +14,6 @@ export const getTopicInstances = (projectId: number, topicId: string) =>
     `/projects/${projectId}/knowledge/topics/${encodeURIComponent(topicId)}/instances`,
   )
 export const readProjectCode = (projectId: number, path: string, line = 1) =>
-  jsonRequest<{ path: string; start_line: number; end_line: number; content: string }>(
+  jsonRequest<{ path: string; start_line: number; end_line: number; content: string; total_lines: number; head_commit: string | null; content_sha256: string }>(
     `/projects/${projectId}/code?path=${encodeURIComponent(path)}&start_line=${line}`,
   )

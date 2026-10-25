@@ -38,8 +38,22 @@ class BrowserProvider:
             text = "这个位置开启事务，随后提交修改 [store.py:4]。"
         else:
             text = "[SQL](/learn/sql-database) 是查询和管理数据的语言。“表”组织数据，SELECT 读取需要的记录。以下为教学说明，项目实现需要另外核对代码。"
+        if "__fixture_long__" in question:
+            text = "\n\n".join(
+                [
+                    f"第 {number} 段：SQL 是查询数据库的语言。这段教学说明用于验证长回答的阅读位置，"
+                    + "读懂数据库需要逐步理解表、记录与查询。" * 6
+                    for number in range(24)
+                ]
+            )
         yield StreamChunk(text=text[:17])
-        await asyncio.sleep(0.35)
+        await asyncio.sleep(
+            20
+            if "__fixture_cancel__" in question
+            else 4
+            if "__fixture_slow__" in question
+            else 0.35
+        )
         yield StreamChunk(text=text[17:], finish_reason="stop")
 
     async def complete(self, *args, **kwargs):
@@ -59,6 +73,9 @@ def main() -> None:
             (root / "store.py").write_text(
                 'import sqlite3\n\ndef save(conn):\n    conn.execute("BEGIN")\n    conn.execute("INSERT INTO items VALUES (1)")\n    conn.commit()\n',
                 encoding="utf-8",
+            )
+            (root / "large.py").write_text(
+                "# 分页阅读夹具\n" * 450 + 'message = "中文😀"\n', encoding="utf-8"
             )
             subprocess.run(["git", "init", str(root)], check=True, capture_output=True)
             subprocess.run(["git", "-C", str(root), "add", "."], check=True, capture_output=True)

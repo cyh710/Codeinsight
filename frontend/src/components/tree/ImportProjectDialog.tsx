@@ -34,7 +34,7 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
     <Modal open={open} onClose={onClose} title="导入项目并建索引" widthClass="max-w-md" closeOnBackdrop={false}>
       <div className="space-y-3">
         <p className="text-[11px] leading-relaxed text-slate-500">
-          给一个本地 git 仓库的绝对路径。建索引在后台异步进行（契约 §3.3），
+          选择一个本地 Git 仓库的绝对路径。索引会在后台建立，
           提交后左栏会显示进度状态，完成后文件树自动刷新。
         </p>
         <label className="block">

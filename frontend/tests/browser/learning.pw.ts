@@ -1,14 +1,20 @@
 import { expect, test } from '@playwright/test'
 import { resolve } from 'node:path'
 
+test.beforeEach(async ({ page, request }) => {
+  const conversation = await (await request.post('/api/projects/1/conversations')).json()
+  await page.addInitScript(cid => localStorage.setItem('ci.activeConversation.1', cid), conversation.id)
+})
+
 test('真实 API 的知识阅读、续问、往返和项目隔离', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/')
+  await page.getByRole('navigation', { name: '左栏内容' }).getByRole('button', { name: '文件', exact: true }).click()
   const reader = page.locator('aside').last()
   await page.getByTestId('tree-file').filter({ hasText: 'store.py' }).click()
-  await expect(reader.getByText('当前窗口最多 200 行', { exact: false })).toBeVisible()
-  const input = page.getByRole('textbox').last()
+  await expect(reader.getByText('只读源码窗口', { exact: false })).toBeVisible()
+  const input = page.locator('.wb-center textarea').first()
   await input.fill('SQL 是什么')
   await page.getByRole('button', { name: '发送', exact: true }).click()
   await expect(page.getByRole('button', { name: '停止生成', exact: true })).toBeVisible()
@@ -59,7 +65,7 @@ test('真实 API 的知识阅读、续问、往返和项目隔离', async ({ pag
     fullPage: true,
   })
   await reader.getByRole('button', { name: '回到代码', exact: true }).click()
-  await expect(reader.getByText('当前窗口最多 200 行', { exact: false })).toBeVisible()
+  await expect(reader.getByText('只读源码窗口', { exact: false })).toBeVisible()
   const codeRequest = page.waitForRequest(
     (r) => r.url().endsWith('/query/stream') && r.method() === 'POST',
   )

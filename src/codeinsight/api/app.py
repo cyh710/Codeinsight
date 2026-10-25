@@ -6,10 +6,13 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from codeinsight import __version__
 from codeinsight.api.code import router as code_router
+from codeinsight.api.conversations import router as conversations_router
 from codeinsight.api.errors import install_error_handlers
 from codeinsight.api.health import router as health_router
 from codeinsight.api.insights import router as insights_router
@@ -20,10 +23,25 @@ from codeinsight.api.projects import router as projects_router
 from codeinsight.api.query import router as query_router
 from codeinsight.api.structure import router as structure_router
 from codeinsight.config import settings
+from codeinsight.storage.conversations import ConversationRepository
+from codeinsight.storage.sqlite import db_path, ensure_schema, open_sqlite
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    path = db_path(settings.data_dir)
+    if path.exists():
+        ensure_schema(path)
+        with open_sqlite(path, row_factory=True) as conn:
+            repository = ConversationRepository(conn)
+            repository.backfill()
+            repository.recover()
+    yield
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
+        lifespan=lifespan,
         title="CodeInsight",
         version=__version__,
         description="基于持续项目认知的智能代码理解与知识探索 Agent",
@@ -34,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(knowledge_router)
     app.include_router(learning_router)
     app.include_router(code_router)
+    app.include_router(conversations_router)
     app.include_router(insights_router)
     app.include_router(structure_router)
     app.include_router(query_router)

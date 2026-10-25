@@ -2,6 +2,11 @@
 import { expect, test } from '@playwright/test'
 import type { GraphNode, GraphResponse } from '../../src/api/types'
 
+test.beforeEach(async ({ page, request }) => {
+  const conversation = await (await request.post('/api/projects/1/conversations')).json()
+  await page.addInitScript(cid => localStorage.setItem('ci.activeConversation.1', cid), conversation.id)
+})
+
 function node(id: number, name: string, path = 'helpers.py'): GraphNode {
   return {
     id,
@@ -93,7 +98,7 @@ test('局部阅读分清方向、折叠测试、展开关系、验证调用位�
   await one.locator('summary').filter({ hasText: '调用依据' }).click()
   await one.getByRole('button', { name: 'store.py:4 · 待核对 60%', exact: true }).click()
   await expect(
-    page.locator('aside').last().getByText('当前窗口最多 200 行', { exact: false }),
+    page.locator('aside').last().getByText('只读源码窗口', { exact: false }),
   ).toBeVisible()
   await expect(page.getByRole('heading', { name: 'save 的调用关系', exact: true })).toBeVisible()
   await one.getByRole('button', { name: '以此为中心', exact: true }).click()
@@ -111,6 +116,7 @@ test('局部阅读分清方向、折叠测试、展开关系、验证调用位�
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     .toBe(true)
+  await page.getByRole('button', { name: '回到关系图', exact: true }).click()
   await expect(
     page
       .getByRole('region', { name: '当前代码', exact: true })

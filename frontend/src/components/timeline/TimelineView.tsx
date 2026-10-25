@@ -6,7 +6,7 @@
  *
  * 全量索引没有 diff，明细区如实说「没有可比的上一版」，不编造增删。
  */
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useStore } from 'zustand'
 import {
   AlertTriangle,
@@ -21,13 +21,16 @@ import {
 import { api } from '../../api/dataSource'
 import type { ChangesResponse, TimelineItem, TimelineResponse } from '../../api/types'
 import { projectStore } from '../../store/projectStore'
+import { viewStore } from '../../store/viewStore'
 import { workbenchStore } from '../../store/workbenchStore'
 import { fileCountsLabel, formatTimelineTime, modeLabel, shortCommit } from './timelineModel'
 
 export default function TimelineView() {
   const projectId = useStore(projectStore, (s) => s.currentProjectId)
   const [reload, setReload] = useState(0)
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const scroll = useRef<HTMLDivElement>(null)
+  const expanded = useStore(viewStore, s => s.timelineExpanded)
+  const setExpanded = viewStore.getState().setTimelineExpanded
   const requestKey = `${projectId ?? 'none'}|${reload}`
   // 结果带请求 key：key 不匹配就是载入中，effect 里不写同步 state。
   const [result, setResult] = useState<{
@@ -55,6 +58,9 @@ export default function TimelineView() {
   const data = result?.key === requestKey ? (result.data ?? null) : null
   const error = result?.key === requestKey ? (result.error ?? '') : ''
   const loading = projectId !== null && result?.key !== requestKey
+  useLayoutEffect(() => {
+    if (scroll.current) scroll.current.scrollTop = viewStore.getState().timelineScroll
+  }, [requestKey, result])
 
   if (projectId === null) {
     return <p className="py-10 text-center text-xs text-slate-400">先选择一个项目。</p>
@@ -84,7 +90,7 @@ export default function TimelineView() {
   }
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-4">
+    <div ref={scroll} onScroll={e => viewStore.setState({ timelineScroll: e.currentTarget.scrollTop })} className="h-full overflow-y-auto px-4 py-4">
       <div className="mx-auto max-w-3xl">
         <div className="mb-3 flex items-center gap-2">
           <h2 className="text-sm font-semibold text-slate-700">演进时间线</h2>

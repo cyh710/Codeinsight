@@ -40,6 +40,10 @@ export interface ChatMessage {
   text: string
   streaming?: boolean
   timestamp: string
+  readingContext?: ReadingContext | null
+  requestId?: string
+  legacy?: boolean
+  sourceHeadCommit?: string | null
   /** 出错时渲染错误卡而不是气泡（code 见契约 §0.3）。 */
   error?: { code: string; title: string; hint: string }
   /** 以下三项只在 assistant 落定后有值（ADR 0007：facts 与 inferences 分栏）。 */
@@ -61,6 +65,32 @@ export interface ChatMessage {
 }
 
 export interface ChatStore {
+  projectId: number | null
+  currentTitle: string
+  currentArchived: boolean
+  listLoading: boolean
+  draft: string
+  error: string
+  loading: boolean
+  conversations: import('../api/types').Conversation[]
+  nextCursor: number | null
+  turnsCursor: number | null
+  taskId: string | null
+  search: string
+  allProjects: boolean
+  archived: boolean
+  find: string
+  focusRequest: string | null
+  setDraft: (value: string) => void
+  setFind: (value: string) => void
+  refreshConversations: (more?: boolean) => Promise<void>
+  searchConversations: (query: string, all?: boolean, archived?: boolean) => void
+  openConversation: (pid: number, cid: string, focusRequest?: string) => Promise<void>
+  newConversation: (pid: number) => Promise<void>
+  updateConversation: (cid: string, patch: Record<string, unknown>, pid?: number) => Promise<void>
+  loadMore: () => Promise<void>
+  pollRunning: () => Promise<void>
+  restoreQuestion: (message: ChatMessage) => void
   messages: ChatMessage[]
   streaming: boolean
   /** 连续追问用；空串 = 新会话。 */
@@ -75,7 +105,7 @@ export interface ChatStore {
    * 切到另一个项目：**按项目分别保存会话**，切回来时恢复该项目的对话。
    * 后端会话键是 `project_id:conversation_id`，所以前端也不能串台。
    */
-  switchProject: (projectId: number) => void
+  switchProject: (projectId: number) => Promise<void>
 }
 
 // ─── 项目 ─────────────────────────────────────────────────────
@@ -112,14 +142,38 @@ export interface ProjectStore {
 
 /** 右栏形态：证据面板，或概念卡（**右栏替换**，已对齐 C-Q3）。 */
 export type RightPanel =
-  | { mode: 'evidence' }
-  | { mode: 'symbol'; qualname: string; lineno?: number }
+  | { mode: 'evidence'; messageId?: string }
+  | { mode: 'symbol'; qualname: string; lineno?: number; version?: string }
   | { mode: 'concept'; conceptId: string }
   | { mode: 'knowledge-tree' }
   | { mode: 'knowledge'; target: LearningTarget }
-  | { mode: 'file'; path: string; lineno: number }
+  | { mode: 'file'; path: string; lineno: number; version?: string }
 
 export interface WorkbenchStore {
+  tabs: Array<{ id: string; panel: RightPanel; title: string }>
+  activeTab: string
+  closedTabs: RightPanel[]
+  pinned: boolean
+  followEvidence: boolean
+  newEvidence: boolean
+  readingMode: 'follow' | 'fixed' | 'none'
+  indexVersion: string | null
+  chatScroll: number | null
+  codePositions: Record<string, { scrollTop: number; scrollLeft: number }>
+  setChatScroll: (value: number) => void
+  saveCodePosition: (key: string, value: { scrollTop: number; scrollLeft: number }) => void
+  setIndexVersion: (version: string | null) => void
+  activateTab: (id: string) => void
+  closeTab: (id: string) => void
+  closeOtherTabs: () => void
+  reopenTab: () => void
+  setPinned: (value: boolean) => void
+  setFollowEvidence: (value: boolean) => void
+  notifyEvidence: () => void
+  openEvidence: (messageId?: string) => void
+  openMaterial: (panel: RightPanel) => void
+  fixReading: (reading?: ReadingContext) => void
+  followReading: () => void
   selectedPath: string | null
   /** 展开的目录（path → true）。 */
   expandedDirs: Record<string, boolean>
@@ -134,9 +188,9 @@ export interface WorkbenchStore {
   directoryQuery: string
   setDirectoryQuery: (query: string) => void
 
-  selectFile: (path: string, lineno?: number) => void
+  selectFile: (path: string, lineno?: number, version?: string | null) => void
   /** `lineno` 定位到符号在文件里的确切行（教材/证据跳回代码时用）。 */
-  selectSymbol: (qualname: string, path: string, lineno?: number) => void
+  selectSymbol: (qualname: string, path: string, lineno?: number, version?: string | null) => void
   openConcept: (conceptId: string) => void
   backToEvidence: () => void
   toggleDir: (path: string) => void

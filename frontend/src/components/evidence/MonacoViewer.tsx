@@ -3,6 +3,8 @@
  * 只读；`startLine` 让行号对齐符号在文件里的真实位置。
  */
 import Editor, { loader } from '@monaco-editor/react'
+import { workbenchStore } from '../../store/workbenchStore'
+import type { CodeSelection } from './CodeViewer'
 import type { Monaco } from '@monaco-editor/react'
 // 默认行为是从 jsDelivr 拉 Monaco 的 loader —— 内网/离线环境会永远停在
 // 「编辑器加载中…」。这里改用 npm 包里自带的 monaco，随懒加载 chunk 一起发。
@@ -19,7 +21,7 @@ import 'monaco-editor/languages/definitions/sql/register'
 // 代码阅读不依赖外部 CDN；整个编辑器模块仍由 CodeViewer 延迟加载。
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() }
 loader.config({ monaco })
-const positions = new Map<string, { scrollTop: number; scrollLeft: number }>()
+
 
 export default function MonacoViewer({
   code,
@@ -27,8 +29,10 @@ export default function MonacoViewer({
   startLine,
   highlightRanges,
   viewKey,
+  onSelection,
 }: {
   viewKey?: string
+  onSelection?: (selection: CodeSelection | null) => void
   code: string
   language: string
   startLine: number
@@ -56,22 +60,28 @@ export default function MonacoViewer({
 
   return (
     <Editor
-      height="280px"
+      height="clamp(320px, calc(100dvh - 330px), 900px)"
       theme="ci-light"
       language={language}
       value={code}
       beforeMount={beforeMount}
       onMount={(editor) => {
         if (viewKey) {
-          const saved = positions.get(viewKey)
+          const saved = workbenchStore.getState().codePositions[viewKey]
           if (saved) editor.setScrollPosition(saved)
           editor.onDidScrollChange(() =>
-            positions.set(viewKey, {
+            workbenchStore.getState().saveCodePosition(viewKey, {
               scrollTop: editor.getScrollTop(),
               scrollLeft: editor.getScrollLeft(),
             }),
           )
         }
+        editor.onDidChangeCursorSelection(({ selection }) => {
+          const text = editor.getModel()?.getValueInRange(selection) ?? ''
+          onSelection?.(text ? { startLine: startLine + selection.startLineNumber - 1,
+            endLine: startLine + selection.endLineNumber - 1, startColumn: selection.startColumn,
+            endColumn: selection.endColumn, text } : null)
+        })
         editor.createDecorationsCollection(
           decorations.map((d) => ({
             range: d.range,
@@ -82,7 +92,7 @@ export default function MonacoViewer({
       options={{
         readOnly: true,
         minimap: { enabled: false },
-        fontSize: 11,
+        fontSize: 13,
         lineNumbersMinChars: 4,
         scrollBeyondLastLine: false,
         renderLineHighlight: 'none',

@@ -1052,3 +1052,46 @@ Markdown `{#section_id}` 是内部锚点标记，前端按 sections 渲染，不
 "SQL 是什么"有教材时不因无代码位置弃答；"这个项目哪里用了 SQL"仍须真实项目证据。
 quick/project 不访问 Provider；deep 无配置/失败时 200 返回已有教材与证据，
 `error` 写明降级原因、`llm_used=false`。概念详情的 `learning_targets` 指向相关教材。
+
+## 12. 工作台会话与精确选区（请求 0007）
+
+兼容原问答和 SSE 事件词汇。会话记录以服务端 SQLite 为准；浏览器工作区存储不冒充模型记忆。
+
+| 方法 | 路径 | 行为 |
+|---|---|---|
+| GET | `/conversations?project_id=&q=&archived=false&cursor=0&limit=30` | 标题/可见消息关键词匹配；project_id 缺省查全部项目；按置顶、更新时间排序；`{items,next_cursor}`，limit 1–100 |
+| POST | `/projects/{id}/conversations` | 201 创建空会话，无模型调用；标题初始“新对话” |
+| GET | `/projects/{id}/conversations/{cid}` | 会话详情与最新任务状态 |
+| PATCH | `/projects/{id}/conversations/{cid}` | 可选 title/pinned/archived/mark_read；title 非空且最多 120 字符 |
+| GET | `/projects/{id}/conversations/{cid}/turns?cursor=0&limit=50` | 回合分页，页内时间正序；cursor 为服务端给出的不透明整数，不能自行计算；新回合不改变已有游标边界 |
+| POST | `/projects/{id}/tasks/{task_id}/cancel` | 当前项目运行任务取消；已结束任务幂等返回 cancelled=false |
+
+会话项：`id,project_id,project_name,title,pinned,archived,unread,status,task_id,created_at,updated_at,last_read_at`；
+搜索结果补充 `snippet,match_request_id`。页签和草稿不放入此接口。
+
+回合项：`request_id,task_id,question,reading_context,answer,status,legacy,created_at,updated_at`。
+`answer` 保存实际最终投影，包含 text/facts/inferences/citations/knowledge_sources/learning_targets/
+learning_entries/reading_status/knowledge_error/tools/evidence/error 等；未生成的字段可缺省。
+`status` 为 running/completed/abstained/failed/interrupted；legacy=true 表示账本回填，缺少的来源不补造。
+
+问答请求增加可选 `request_id`（1–128 字符），缺省时服务端分配。
+同项目、同会话、同请求 ID 只能对应同一问题和阅读目标；已完成请求重放，不再次调用模型。
+问题或目标不同返回 400；同会话有运行回合返回 409 conversation_busy。
+非流式结果增加 conversation_id/request_id/source_head_commit；SSE meta 增加 request_id，
+最终 answer 可增加 source_head_commit/tools_used/evidence。原字段保留。
+增量与最终投影持久化后再发出；停止、断线、重启中断保留已保存文字，不自动重试。
+失败和中断回合不进入最近六轮模型问答历史；展示历史分页保留。
+
+知识目标可增加 `selection:{ranges:[{section_id,start_offset,end_offset}]}`；范围必须按文章章节顺序连续。
+offset 为章节 content 原文中零起点、右开的 UTF-16 代码单元偏移，不是渲染后字符串偏移。
+代码目标可增加 `head_commit,content_sha256,selection:{start_column,end_column}`；原 lineno/end_lineno
+是选区的首尾行，列号为一基 UTF-16，结束列右开。服务端重读版本并拒绝切断字符的范围。
+两类目标均可附带 title/section_title/preview 供界面展示；这些说明不能成为事实来源。
+显式选区过期、损坏或预算不足时 error.code=reading_invalid、附 reading_status，且不调用 Provider。
+
+源码窗口仍最多 200 行，返回补充 `total_lines,head_commit,content_sha256`。
+项目详情补充 `source_available`（源码目录是否仍存在）；不因此禁止历史或教材阅读。
+
+客户端界面错误新增 conversation_busy/reading_invalid/aborted/not_found；错误仍使用 §0.3 形状。
+旧 `/learn/{id}#章节` 可继续访问；工作台位置附带 project/conversation/view/material 查询参数。
+布局偏好使用 `ci.layout.v1`；草稿/页签/来路使用 IndexedDB `codeinsight-workbench`，存储失败明确提示。

@@ -96,6 +96,10 @@ export interface ApiErrorBody {
 
 /** 错误码全集。未知 code 按 `internal_error` 兜底，不要白屏。 */
 export type ApiErrorCode =
+  | 'conversation_busy'
+  | 'reading_invalid'
+  | 'aborted'
+  | 'not_found'
   | 'bad_request'
   | 'project_not_found'
   | 'symbol_not_found'
@@ -114,6 +118,7 @@ export interface ListResponse<T> {
 
 /** 一条指向代码的引用。`path:lineno` 是本项目的核心承诺。 */
 export interface Citation {
+  head_commit?: string | null
   path: string
   lineno: number
   end_lineno: number
@@ -202,6 +207,7 @@ export interface CreateProjectResponse {
 
 /** `GET /projects/{id}` 响应（契约 §3.4）。 */
 export interface ProjectDetail extends ProjectSummary {
+  source_available?: boolean
   status: ProjectStatus
   edges: number
   concepts: number
@@ -533,6 +539,7 @@ export interface TimelineResponse {
 // ─────────────────────────────────────────────────────────────
 
 export interface QueryRequest {
+  request_id?: string
   project_id: number
   question: string
   /** 带同一个值 = 连续追问。 */
@@ -542,6 +549,9 @@ export interface QueryRequest {
 
 /** `POST /query` 响应（契约 §8.1）。 */
 export interface QueryResponse extends KnowledgeAnswerMetadata {
+  conversation_id?: string
+  request_id?: string
+  source_head_commit?: string | null
   text: string
   facts: Fact[]
   inferences: Inference[]
@@ -559,6 +569,7 @@ export interface QueryResponse extends KnowledgeAnswerMetadata {
 // ─────────────────────────────────────────────────────────────
 
 export interface SseMetaEvent {
+  request_id?: string
   task_id: string
   conversation_id: string
   model: string
@@ -586,6 +597,9 @@ export interface SseEvidenceEvent {
 }
 
 export interface SseAnswerEvent extends KnowledgeAnswerMetadata {
+  tools_used?: string[]
+  evidence?: Evidence[]
+  source_head_commit?: string | null
   text?: string
   facts: Fact[]
   inferences: Inference[]
@@ -638,6 +652,10 @@ export interface KnowledgeReadingContext {
   topic_id: string
   section_id?: string | null
   version: string
+  title?: string
+  section_title?: string | null
+  selection?: { ranges: Array<{ section_id: string; start_offset: number; end_offset: number }> }
+  preview?: string
 }
 export interface CodeReadingContext {
   kind: 'code'
@@ -645,7 +663,42 @@ export interface CodeReadingContext {
   path: string
   lineno: number
   end_lineno?: number
+  head_commit?: string | null
+  content_sha256?: string
+  selection?: { start_column: number; end_column: number }
+  preview?: string
 }
+
+export interface Conversation {
+  id: string
+  project_id: number
+  project_name: string
+  title: string
+  pinned: boolean
+  archived: boolean
+  unread: boolean
+  status: string | null
+  task_id: string | null
+  updated_at: string
+  snippet?: string
+  match_request_id?: string
+}
+export interface ConversationTurn {
+  request_id: string
+  task_id: string | null
+  question: string
+  reading_context: ReadingContext | null
+  status: string
+  legacy: boolean
+  created_at: string
+  answer: Omit<Partial<SseAnswerEvent>, 'evidence'> & {
+    text?: string
+    error?: { code: string; title: string; hint: string }
+    tools?: SseToolEvent[]
+    evidence?: Array<SseEvidenceEvent & { concept_ids?: string[] }>
+  }
+}
+export interface Page<T> { items: T[]; next_cursor: number | null }
 export type ReadingContext = KnowledgeReadingContext | CodeReadingContext
 export interface KnowledgeTopic {
   id: string

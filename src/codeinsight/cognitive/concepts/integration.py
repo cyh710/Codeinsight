@@ -10,6 +10,7 @@ from typing import Any
 from codeinsight.agent.tool import ToolResult
 from codeinsight.cognitive.concepts.learning_models import (
     KnowledgeContext,
+    KnowledgeHit,
     LearningTarget,
 )
 from codeinsight.cognitive.concepts.links import link_answer, validate_answer_links
@@ -123,6 +124,51 @@ class LearningBridge:
         elif is_reading_follow_up(question):
             status = "missing"
             error = "还没有可用的阅读目标；请先打开知识章节或明确要解释的内容。"
+        if reading_context is not None and reading_context.get("selection") is not None:
+            from codeinsight.agent.selection import SelectionError, utf16_slice
+
+            if reading is None:
+                return PreparedKnowledge(KnowledgeContext("", ()), (), status, error)
+            topic = self.library.get(reading.topic_id)
+            parts, references = [], []
+            try:
+                selection = reading_context["selection"]
+                ranges = selection.get("ranges") if isinstance(selection, dict) else None
+                if not isinstance(ranges, list) or not ranges:
+                    raise SelectionError("教材选区需要章节原文范围。")
+                indices = []
+                for item in ranges:
+                    section = next(
+                        (s for s in topic.sections if s.id == item.get("section_id")), None
+                    )
+                    if section is None:
+                        raise SelectionError("选区章节已不存在。", "not_found")
+                    indices.append(topic.sections.index(section))
+                    text = utf16_slice(
+                        section.content, item.get("start_offset"), item.get("end_offset")
+                    )
+                    target = self.library.target(topic.id, section.id)
+                    parts.append(
+                        f"[教材选区；非项目代码证据] {target.href} version={topic.version}\n{text}\n"
+                    )
+                    references.append(
+                        KnowledgeHit(
+                            target,
+                            text,
+                            1.0,
+                            tuple(self.library.sources[s] for s in topic.source_ids),
+                        )
+                    )
+                if indices != list(range(indices[0], indices[0] + len(indices))):
+                    raise SelectionError("只支持连续且顺序一致的教材选区。")
+                content = "".join(parts)
+                if len(content.encode("utf-8")) > max_bytes:
+                    raise SelectionError("选区超出上下文预算，请缩小范围。", "outside_budget")
+                return PreparedKnowledge(KnowledgeContext(content, tuple(references)), (), "ok")
+            except (SelectionError, TypeError, AttributeError) as exc:
+                return PreparedKnowledge(
+                    KnowledgeContext("", ()), (), getattr(exc, "status", "invalid"), str(exc)
+                )
         context, entries = self.service.prepare_turn(question, reading=reading, max_bytes=max_bytes)
         if reading is not None and not any(
             hit.target.topic_id == reading.topic_id

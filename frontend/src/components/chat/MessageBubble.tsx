@@ -3,7 +3,8 @@
  * 正文（markdown）→ 工具时间线 → **事实**（每条带 file:line）→ **推断**
  * （带置信度）。弃答时渲染弃答卡，不冒充有答案。
  */
-import { memo } from 'react'
+import { memo, useState } from 'react'
+import { chatStore } from '../../store/chatStore'
 import LearningMarkdown from '../learning/LearningMarkdown'
 import { workbenchStore } from '../../store/workbenchStore'
 import { AlertTriangle, Ban, CheckCircle2, Hourglass, Loader2, Wrench } from 'lucide-react'
@@ -86,7 +87,8 @@ function ToolTimeline({ tools }: { tools: NonNullable<ChatMessage['tools']> }) {
             <AlertTriangle size={11} strokeWidth={1.8} className="shrink-0 text-danger" />
           )}
           <Wrench size={10} strokeWidth={1.8} className="shrink-0 text-slate-400" />
-          <span className="font-mono">{t.name}</span>
+          <span>{({ search_code: '查找代码', read_file: '读取源码', find_symbol: '定位函数', search_knowledge: '查找教材', read_knowledge: '读取教材', get_callers: '查找调用者', get_callees: '查找被调用者' } as Record<string, string>)[t.name] ?? '核对项目资料'}</span>
+          <details><summary className="cursor-pointer text-[10px]">细节</summary><span className="font-mono">{t.name}</span></details>
           <span className="truncate text-slate-400">{t.summary}</span>
         </div>
       ))}
@@ -99,12 +101,24 @@ export interface MessageBubbleProps {
   onOpenCitation: (citation: Citation) => void
 }
 
-const MessageBubble = memo(function MessageBubble({ message, onOpenCitation }: MessageBubbleProps) {
+function MessageActions({ message }: { message: ChatMessage }) {
+  const [copied, setCopied] = useState('复制回答')
+  return <div className="mt-3 flex flex-wrap gap-3 border-t border-slate-100 pt-2 text-[11px] text-slate-400">
+    <button type="button" onClick={() => { void navigator.clipboard.writeText(message.text).then(() => setCopied('已复制'), () => setCopied('复制失败，请手动选择文字')) }}>{copied}</button>
+    <button type="button" onClick={() => workbenchStore.getState().openEvidence(message.id)}>查看来源</button>
+    {message.requestId && <button type="button" onClick={() => chatStore.getState().restoreQuestion(message)}>恢复问题到草稿</button>}
+    {message.legacy && <span>旧记录：未保存的来源和版本无法恢复</span>}
+  </div>
+}
+
+const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: originalOpen }: MessageBubbleProps) {
+  const onOpenCitation = (citation: Citation) => originalOpen({ ...citation, head_commit: message.sourceHeadCommit ?? citation.head_commit })
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
         <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-[var(--chat-bubble-user-background)] px-3.5 py-2 text-sm leading-relaxed text-white shadow-sm">
           {message.text}
+          {message.readingContext && <details className="mt-2 text-[10px] opacity-80"><summary className="cursor-pointer">本次提问的关联材料</summary><p>{message.readingContext.kind === 'code' ? `${message.readingContext.path}:${message.readingContext.lineno}` : `${message.readingContext.title ?? message.readingContext.topic_id} · ${message.readingContext.section_title ?? message.readingContext.section_id ?? ''}`}</p>{message.readingContext.preview && <p className="mt-1 whitespace-pre-wrap">{message.readingContext.preview}</p>}</details>}
         </div>
       </div>
     )
@@ -122,6 +136,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation }: M
             {message.error.title}
           </div>
           <p className="mt-1 text-[11px] leading-relaxed text-slate-600">{message.error.hint}</p>
+          <MessageActions message={message} />
         </div>
       </div>
     )
@@ -152,6 +167,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation }: M
               学习：{t.title}
             </button>
           ))}
+          <MessageActions message={message} />
         </div>
       </div>
     )
@@ -229,6 +245,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation }: M
         {message.inferences && message.inferences.length > 0 && (
           <InferenceList inferences={message.inferences} />
         )}
+        {settled && <MessageActions message={message} />}
         {settled && message.incomplete && (
           // 未完成≠没找到（契约 §8.3 新增字段）：内容照常显示，追加提示条，
           // 不能和上面的 abstained 弃答卡合并成同一种提示。

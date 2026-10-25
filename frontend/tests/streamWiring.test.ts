@@ -55,7 +55,7 @@ describe('streamQuery 接线', () => {
     )
     const result = await streamQuery({ project_id: 1, question: 'q' }, () => {})
     expect(result.aborted).toBe(true)
-    expect(result.error?.title).toContain('500')
+    expect(result.error?.title).toBe('服务异常')
   })
 
   it('网络异常：归一为连接错误，不抛异常', async () => {
@@ -63,6 +63,15 @@ describe('streamQuery 接线', () => {
     const result = await streamQuery({ project_id: 1, question: 'q' }, () => {})
     expect(result.aborted).toBe(true)
     expect(result.error?.code).toBe('network')
+  })
+
+  it('半途 EOF 保留片段但明确标记未完成', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(sseResponse(['event: delta\ndata: {"text":"半句"}\n\n'])))
+    const seen: string[] = []
+    const result = await streamQuery({ project_id: 1, question: 'q' }, e => seen.push(e.event))
+    expect(seen).toEqual(['delta'])
+    expect(result.aborted).toBe(true)
+    expect(result.error?.title).toBe('连接提前结束')
   })
 
   it('用户预中止：aborted=true 且不算错误', async () => {

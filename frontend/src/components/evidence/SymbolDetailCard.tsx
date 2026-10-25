@@ -8,7 +8,7 @@ import { api } from '../../api/dataSource'
 import type { RelationRef, SymbolDetail } from '../../api/types'
 import { projectStore } from '../../store/projectStore'
 import { viewStore } from '../../store/viewStore'
-import CodeViewer from './CodeViewer'
+import FilePanel from './FilePanel'
 import { panelKey, workbenchStore } from '../../store/workbenchStore'
 
 function RelationList({ title, items }: { title: string; items: RelationRef[] }) {
@@ -52,9 +52,11 @@ function RelationList({ title, items }: { title: string; items: RelationRef[] })
 export default function SymbolDetailCard({
   qualname,
   focusLine,
+  version,
 }: {
   qualname: string
   focusLine?: number
+  version?: string
 }) {
   const root = useRef<HTMLElement>(null)
   const projectId = projectStore.getState().currentProjectId
@@ -83,15 +85,6 @@ export default function SymbolDetailCard({
   const detail = state?.for === qualname ? state.detail : null
   useLayoutEffect(() => {
     if (!detail || projectId === null) return
-    workbenchStore
-      .getState()
-      .setReading({
-        kind: 'code',
-        project_id: projectId,
-        path: detail.path,
-        lineno: focusLine ?? detail.lineno,
-        end_lineno: Math.max(focusLine ?? detail.lineno, detail.end_lineno),
-      })
     const scroll = root.current?.closest('[data-reading-scroll]') as HTMLElement | null
     if (scroll)
       scroll.scrollTop =
@@ -141,22 +134,7 @@ export default function SymbolDetailCard({
         </p>
       )}
 
-      <CodeViewer
-        viewKey={`${projectId}:${qualname}`}
-        code={detail.source}
-        language={detail.path.endsWith('.py') ? 'python' : 'text'}
-        startLine={detail.lineno}
-        highlightLines={
-          focusLine
-            ? [
-                [
-                  Math.max(1, focusLine - detail.lineno + 1),
-                  Math.max(1, focusLine - detail.lineno + 1),
-                ],
-              ]
-            : []
-        }
-      />
+      <FilePanel path={detail.path} lineno={focusLine ?? detail.lineno} version={version} />
       {detail.concept_ids.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {detail.concept_ids.map((id) => (

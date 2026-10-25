@@ -70,13 +70,21 @@ function EvidenceCard({ item }: { item: PanelEvidence }) {
   )
 }
 
-export default function EvidenceList() {
+export default function EvidenceList({ messageId }: { messageId?: string }) {
   const messages = useStore(chatStore, (s) => s.messages)
-  const last = [...messages].reverse().find((m) => m.role === 'assistant')
-  const items = last?.evidence ?? []
+  const last = messageId ? messages.find(m => m.id === messageId) : [...messages].reverse().find((m) => m.role === 'assistant')
+  const items = [...(last?.evidence ?? [])]
+  for (const citation of last?.citations ?? []) {
+    if (!items.some(item => item.path === citation.path && item.lineno === citation.lineno)) items.push({ ...citation, lanes: [], concepts: [] })
+  }
 
   return (
     <div className="space-y-2">
+      {last?.knowledgeSources?.map(hit => <article key={hit.target.href} className="rounded-xl border border-sky-100 bg-sky-50/40 p-3">
+        <button className="text-left text-xs font-medium text-accent" onClick={() => workbenchStore.getState().openKnowledge(hit.target)}>教材 · {hit.target.title}{hit.target.section_title ? ` · ${hit.target.section_title}` : ''}</button>
+        <p className="mt-1 line-clamp-3 text-xs leading-6 text-slate-500">{hit.summary || hit.snippet}</p>
+        <p className="mt-1 text-[10px] text-slate-400">本轮实际使用的知识来源 · 非项目代码证据</p>
+      </article>)}
       {items.length === 0 ? (
         <p className="px-1 py-6 text-center text-xs leading-relaxed text-slate-400">
           提问后，这里会显示找到的代码位置。

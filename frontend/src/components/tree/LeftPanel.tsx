@@ -22,6 +22,8 @@ import { api } from '../../api/dataSource'
 import { projectStore } from '../../store/projectStore'
 import { workbenchStore } from '../../store/workbenchStore'
 import Select from '../common/Select'
+import ConversationList from '../chat/ConversationList'
+import { layoutStore } from '../../store/layoutStore'
 import ImportProjectDialog from './ImportProjectDialog'
 import { projectStatusView } from './projectStatusView'
 import type { SymbolListItem } from '../../api/types'
@@ -74,6 +76,7 @@ function SymbolRow({ path, symbol, onPick }: {
 function StatusLine() {
   const detail = useStore(projectStore, (s) => s.currentDetail)
   if (!detail) return null
+  if (detail.source_available === false) return <p role="status" className="mt-2 text-[11px] leading-5 text-amber-700">源码目录不可用；历史和教材仍可阅读。请确认路径，或重新导入项目。</p>
   const view = projectStatusView(detail.status)
   if (view.tone === 'none') return null
   const cls =
@@ -149,6 +152,7 @@ function NodeRow({ node, depth, symbolsByPath, searching }: {
     return (
       <div>
         <div className="flex items-center" style={pad}>
+          {hasSymbols ? <button type="button" aria-label={`${isOpen ? '收起' : '展开'} ${node.name} 的函数`} aria-expanded={isOpen} onClick={() => workbench.toggleFile(node.path)} className="shrink-0 rounded p-1 text-slate-400 hover:bg-accent-soft">{isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</button> : <span className="w-5 shrink-0" />}
           <button
             type="button"
             onClick={() => workbench.selectFile(node.path)}
@@ -156,25 +160,6 @@ function NodeRow({ node, depth, symbolsByPath, searching }: {
             title={node.path}
             data-testid="tree-file"
           >
-            {hasSymbols ? (
-              <span
-                role="button"
-                tabIndex={-1}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  workbench.toggleFile(node.path)
-                }}
-                className="shrink-0"
-              >
-                {isOpen ? (
-                  <ChevronDown size={12} strokeWidth={1.8} className="text-slate-400" />
-                ) : (
-                  <ChevronRight size={12} strokeWidth={1.8} className="text-slate-400" />
-                )}
-              </span>
-            ) : (
-              <span className="w-3 shrink-0" />
-            )}
             {f.language === 'python' ? (
               <FileCode2
                 size={13}
@@ -266,6 +251,7 @@ function NodeRow({ node, depth, symbolsByPath, searching }: {
 }
 
 export default function LeftPanel() {
+  const sidebar = useStore(layoutStore, s => s.sidebar)
   const projectsState = useStore(projectStore)
   const treeFilter = useStore(workbenchStore, (s) => s.treeFilter)
   const [importOpen, setImportOpen] = useState(false)
@@ -278,7 +264,9 @@ export default function LeftPanel() {
   // 符号名搜索走后端：契约 §0.4 的 limit 上限 500，前端手上永远只有
   // 已展开的那几个文件的符号，拿它过滤等于搜不到别的文件里的符号。
   // 结果按 path 归组，让命中符号所在的文件在树里露出来。
-  const [symbolHits, setSymbolHits] = useState<{ query: string; byPath: Map<string, SymbolListItem[]> }>({
+  const [searchRetry, setSearchRetry] = useState(0)
+  const [symbolHits, setSymbolHits] = useState<{ projectId: number | null; query: string; byPath: Map<string, SymbolListItem[]>; error?: string }>({
+    projectId: null,
     query: '',
     byPath: new Map(),
   })
@@ -298,22 +286,23 @@ export default function LeftPanel() {
             list.push(s)
             byPath.set(s.path, list)
           }
-          setSymbolHits({ query: q, byPath })
+          setSymbolHits({ projectId, query: q, byPath })
         })
-        .catch(() => alive && setSymbolHits({ query: q, byPath: new Map() }))
+        .catch(error => alive && setSymbolHits({ projectId, query: q, byPath: new Map(), error: String(error) }))
     }, 220)
     return () => {
       alive = false
       window.clearTimeout(timer)
     }
-  }, [q, projectsState.currentProjectId])
+  }, [q, projectsState.currentProjectId, searchRetry])
 
   // 路径过滤立刻生效（1 个字符就能筛路径）；符号搜索要 ≥2 字符才发请求，
   // 所以"符号结果是否已到"要单独判断，不能拿 query 字符串当同一个东西用。
-  const symbolQuery = symbolHits.query === q ? q : ''
+  const currentHits = symbolHits.projectId === projectsState.currentProjectId && symbolHits.query === q
+  const symbolQuery = currentHits ? q : ''
   const hitPaths = useMemo(
-    () => new Set(symbolHits.byPath.keys()),
-    [symbolHits.byPath],
+    () => new Set(currentHits ? symbolHits.byPath.keys() : []),
+    [symbolHits.byPath, currentHits],
   )
   const treeWithSymbols = useMemo(
     () => filterTree(buildFileTree(files), treeFilter, hitPaths),
@@ -340,7 +329,7 @@ export default function LeftPanel() {
     files.reduce((sum, f) => sum + f.symbol_count, 0)
 
   return (
-    <aside className="flex h-full min-h-0 w-72 shrink-0 flex-col border-r border-slate-200/80 bg-bg-elevated">
+    <aside className="flex h-full min-h-0 w-full shrink-0 flex-col border-r border-slate-200/80 bg-bg-elevated">
       {/* 项目切换器：左栏顶部（C-Q6 已对齐）。 */}
       <div className="border-b border-slate-200/70 px-3 py-2.5">
         <div className="flex items-center justify-between">
@@ -380,6 +369,12 @@ export default function LeftPanel() {
       </div>
       <ImportProjectDialog open={importOpen} onClose={() => setImportOpen(false)} />
 
+      <nav aria-label="左栏内容" className="flex gap-1 border-b border-slate-200/70 p-2">
+        <button type="button" aria-pressed={sidebar === 'conversations'} onClick={() => layoutStore.getState().setSidebar('conversations')} className="wb-button flex-1">对话</button>
+        <button type="button" aria-pressed={sidebar === 'files'} onClick={() => layoutStore.getState().setSidebar('files')} className="wb-button flex-1">文件</button>
+      </nav>
+      {sidebar === 'conversations' ? <ConversationList /> : <>
+
       {/* 搜索：同时作用于文件路径与符号名。 */}
       <div className="border-b border-slate-200/70 px-3 py-2">
         <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1.5 focus-within:border-accent">
@@ -394,6 +389,8 @@ export default function LeftPanel() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
+        {q.length >= 2 && !currentHits && <p role="status" className="p-2 text-xs text-slate-400">正在查找文件和函数…</p>}
+        {currentHits && symbolHits.error && <p role="alert" className="p-2 text-xs text-danger">函数搜索失败：{symbolHits.error} <button onClick={() => setSearchRetry(value => value + 1)}>重试</button></p>}
         {projectsState.loading && <p className="px-2 py-4 text-xs text-slate-400">加载索引中…</p>}
         {projectsState.error && (
           <p className="px-2 py-4 text-xs text-danger" role="alert">
@@ -417,6 +414,7 @@ export default function LeftPanel() {
       <div className="border-t border-slate-200/70 px-3 py-1.5 text-[10px] text-slate-400">
         {projectsState.files.length} 文件 · {totalSymbols} 符号
       </div>
+      </>}
     </aside>
   )
 }

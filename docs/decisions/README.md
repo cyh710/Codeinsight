@@ -57,3 +57,4 @@ NNNN-简短英文短语.md
 | [0017](0017-graph-projection-and-layout.md) | 关系图只画可定位的边，布局确定性分列 | 已接受 |
 | [0018](0018-timeline-read-only.md) | 时间线只读索引当时写下的数字 | 已接受 |
 | [0019](0019-learning-sources-and-reading-context.md) | 教材来源独立于代码证据，阅读目标由服务端重读 | 已接受 |
+| [0020](0020-workbench-conversations-and-selection.md) | 会话持久化与可恢复的阅读工作区 | 用户确认，已实施并通过离线验收 |

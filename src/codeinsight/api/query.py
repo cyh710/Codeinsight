@@ -12,18 +12,22 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sqlite3
+import uuid
 from collections.abc import Callable
 from contextlib import suppress
 from typing import Any
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from codeinsight.agent.runtime import RuntimeEvent
 from codeinsight.agent.service import AgentSession, ProjectNotFound, open_agent
+from codeinsight.api.conversations import RUNNING
 from codeinsight.api.errors import ApiFailure, bad_request, not_found_project
 from codeinsight.config import settings
+from codeinsight.storage.conversations import ConversationRepository, PersistentConversationStore
 from codeinsight.storage.sqlite import db_path
 
 router = APIRouter(tags=["query"])
@@ -46,17 +50,20 @@ class QueryBody(BaseModel):
     question: str
     conversation_id: str | None = None
     reading_context: dict[str, Any] | None = None
+    request_id: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 def _open_session(project_id: int) -> AgentSession:
     if not db_path(settings.data_dir).exists():
         raise not_found_project(project_id)
     try:
-        return open_agent(
+        session = open_agent(
             db_path(settings.data_dir),
             project_id,
             provider=_PROVIDER_FACTORY() if _PROVIDER_FACTORY else None,
         )
+        session.runtime.store = PersistentConversationStore(session.conn)
+        return session
     except ProjectNotFound:
         raise not_found_project(project_id) from None
 
@@ -68,26 +75,97 @@ def _sse(event: RuntimeEvent) -> str:
 
 
 def _http_status(code: str) -> int:
-    return {"upstream_error": 502, "timeout": 504}.get(code, 500)
+    return {"upstream_error": 502, "timeout": 504, "reading_invalid": 400, "aborted": 409}.get(
+        code, 500
+    )
 
 
-@router.post("/query")
-async def query(body: QueryBody) -> dict[str, Any]:
-    """非流式问答。形状见契约 §8.1。"""
+def _reserve(body: QueryBody):
     if not body.question.strip():
         raise bad_request("question 不能为空", hint="问点什么，例如「对话流在哪实现」")
     session = _open_session(body.project_id)
+    cid = body.conversation_id or f"conv-{uuid.uuid4().hex}"
+    rid = body.request_id or uuid.uuid4().hex
     try:
-        answer = await session.runtime.run(
+        turn, created = ConversationRepository(session.conn).reserve(
+            body.project_id, cid, rid, body.question, body.reading_context
+        )
+        if not created and turn["status"] == "running":
+            raise sqlite3.IntegrityError("这次请求仍在生成")
+        return session, cid, rid, turn, created
+    except sqlite3.IntegrityError as exc:
+        session.close()
+        raise ApiFailure(
+            status_code=409,
+            code="conversation_busy",
+            title="这个对话正在生成回答",
+            hint="等待当前回答结束，或先停止它。",
+        ) from exc
+    except ValueError as exc:
+        session.close()
+        raise bad_request(str(exc)) from exc
+    except BaseException:
+        session.close()
+        raise
+
+
+async def _run_persisted(session, body, cid, rid, emit=None):
+    repository = ConversationRepository(session.conn)
+    task_ids = []
+
+    async def persist(event: RuntimeEvent) -> None:
+        if event.type == "answer":
+            event.data["source_head_commit"] = getattr(session, "head_commit", None)
+        if event.type == "meta":
+            event.data["request_id"] = rid
+            task_ids.append(event.data["task_id"])
+            RUNNING[event.data["task_id"]] = (body.project_id, asyncio.current_task())
+        repository.event(body.project_id, cid, rid, event.type, event.data)
+        if emit:
+            await emit(event)
+
+    try:
+        return await session.runtime.run(
             project_id=session.project_id,
             question=body.question,
-            conversation_id=body.conversation_id or "",
+            conversation_id=cid,
             **(
                 {"reading_context": body.reading_context}
                 if body.reading_context is not None
                 else {}
             ),
+            emit=persist,
         )
+    finally:
+        for task_id in task_ids:
+            RUNNING.pop(task_id, None)
+
+
+@router.post("/query")
+async def query(body: QueryBody) -> dict[str, Any]:
+    """非流式问答。形状见契约 §8.1。"""
+    session, cid, rid, previous, created = _reserve(body)
+    try:
+        if not created:
+            saved = previous["answer"]
+            if saved.get("error"):
+                error = saved["error"]
+                raise ApiFailure(
+                    status_code=_http_status(error["code"]),
+                    code=error["code"],
+                    title=error["title"],
+                    hint=error["hint"],
+                )
+            return {
+                **saved,
+                "conversation_id": cid,
+                "request_id": rid,
+                "tools_used": saved.get("tools_used", []),
+                "evidence": saved.get("evidence", []),
+                "abstention_reason": saved.get("reason", ""),
+                "incomplete": saved.get("incomplete", False),
+            }
+        answer = await _run_persisted(session, body, cid, rid)
     finally:
         session.close()
 
@@ -101,6 +179,9 @@ async def query(body: QueryBody) -> dict[str, Any]:
         )
 
     return {
+        "conversation_id": cid,
+        "request_id": rid,
+        "source_head_commit": getattr(session, "head_commit", None),
         "text": answer.text,
         "facts": answer.facts,
         "inferences": answer.inferences,
@@ -134,9 +215,41 @@ async def query_stream(body: QueryBody) -> StreamingResponse:
     运行时装进一个后台任务，事件经队列交给生成器——这样**客户端断开时**
     我们能取消任务并关连接，而不是让它在后台悄悄跑完。
     """
-    if not body.question.strip():
-        raise bad_request("question 不能为空", hint="问点什么，例如「对话流在哪实现」")
-    session = _open_session(body.project_id)
+    session, cid, rid, previous, created = _reserve(body)
+    if not created:
+        session.close()
+
+        async def replay():
+            yield _sse(
+                RuntimeEvent(
+                    "meta",
+                    {
+                        "task_id": previous["task_id"],
+                        "conversation_id": cid,
+                        "request_id": rid,
+                        "model": "",
+                        "tools": [],
+                    },
+                )
+            )
+            result = previous["answer"]
+            if result.get("error"):
+                if result.get("text"):
+                    yield _sse(RuntimeEvent("delta", {"text": result["text"]}))
+                yield _sse(RuntimeEvent("error", result["error"]))
+            else:
+                yield _sse(RuntimeEvent("answer", result))
+            yield _sse(
+                RuntimeEvent(
+                    "done",
+                    {
+                        "abstained": result.get("abstained", False),
+                        "reason": result.get("reason", ""),
+                    },
+                )
+            )
+
+        return StreamingResponse(replay(), media_type="text/event-stream; charset=utf-8")
     queue: asyncio.Queue[RuntimeEvent | None] = asyncio.Queue()
 
     async def emit(event: RuntimeEvent) -> None:
@@ -144,17 +257,7 @@ async def query_stream(body: QueryBody) -> StreamingResponse:
 
     async def run() -> None:
         try:
-            await session.runtime.run(
-                project_id=session.project_id,
-                question=body.question,
-                conversation_id=body.conversation_id or "",
-                **(
-                    {"reading_context": body.reading_context}
-                    if body.reading_context is not None
-                    else {}
-                ),
-                emit=emit,
-            )
+            await _run_persisted(session, body, cid, rid, emit)
         finally:
             # 哨兵：即使运行时在发 meta 之前就崩了，生成器也不会永远等下去。
             await queue.put(None)

@@ -12,6 +12,8 @@ import { viewStore, type CenterTab } from '../../store/viewStore'
 import ChatWindow from '../chat/ChatWindow'
 import GraphView from '../graph/GraphView'
 import TimelineView from '../timeline/TimelineView'
+import { chatStore } from '../../store/chatStore'
+import { layoutStore } from '../../store/layoutStore'
 
 const TABS: Array<{ id: CenterTab; label: string; icon: typeof MessageSquare }> = [
   { id: 'chat', label: '对话', icon: MessageSquare },
@@ -20,6 +22,7 @@ const TABS: Array<{ id: CenterTab; label: string; icon: typeof MessageSquare }> 
 ]
 
 export function CenterNavigation() {
+  const loading = useStore(chatStore, s => s.loading)
   const centerTab = useStore(viewStore, (s) => s.centerTab)
 
   return (
@@ -30,7 +33,8 @@ export function CenterNavigation() {
           <button
             key={id}
             type="button"
-            onClick={() => viewStore.getState().setCenterTab(id)}
+            disabled={loading}
+            onClick={() => { viewStore.getState().setCenterTab(id); if (layoutStore.getState().viewport < 1100) layoutStore.setState({ right: false, full: false }); else layoutStore.setState({ full: false }) }}
             aria-current={active ? 'page' : undefined}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-colors ${
               active
@@ -52,7 +56,7 @@ export default function CenterPanel({ onOpenCitation }: { onOpenCitation: (c: Ci
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-bg">
       <div className="min-h-0 flex-1">
-        {centerTab === 'chat' && <ChatWindow onOpenCitation={onOpenCitation} />}
+        <div className={centerTab === 'chat' ? 'h-full' : 'hidden'}><ChatWindow onOpenCitation={onOpenCitation} /></div>
         {centerTab === 'graph' && <GraphView />}
         {centerTab === 'timeline' && <TimelineView />}
       </div>

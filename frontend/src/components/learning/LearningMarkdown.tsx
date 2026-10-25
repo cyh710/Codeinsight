@@ -5,20 +5,23 @@ import type { LearningTarget } from '../../api/types'
 import { workbenchStore } from '../../store/workbenchStore'
 import { resolveLearningLink } from './links'
 import './reading.css'
+import { sourcePositions } from './selection'
 
 export default function LearningMarkdown({
   text,
   targets = [],
   streaming = false,
+  selectable = false,
 }: {
   text: string
   targets?: LearningTarget[]
   streaming?: boolean
+  selectable?: boolean
 }) {
   return (
     <div className="learning-prose">
       <Markdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={selectable ? [remarkGfm, sourcePositions] : [remarkGfm]}
         components={{
           a: ({ href, children }) => {
             if (href?.startsWith('/learn/')) {

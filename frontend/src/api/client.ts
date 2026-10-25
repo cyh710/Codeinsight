@@ -12,6 +12,7 @@ import type { ApiErrorBody, ApiErrorCode } from './types'
 export const BASE = '/api'
 
 const KNOWN_CODES: readonly ApiErrorCode[] = [
+  'conversation_busy', 'reading_invalid', 'aborted', 'not_found',
   'bad_request',
   'project_not_found',
   'symbol_not_found',

@@ -57,6 +57,8 @@ def read_code(
             "end_line": max(start_line, end),
             "content": "\n".join(lines[start_line - 1 : end]),
             "head_commit": row["head_commit"],
+            "content_sha256": row["content_sha256"],
+            "total_lines": len(lines),
         }
     finally:
         conn.close()

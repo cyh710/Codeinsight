@@ -22,6 +22,7 @@ from codeinsight.agent.service import ProjectNotFound
 from codeinsight.api import query as query_module
 from codeinsight.api.app import create_app
 from codeinsight.models import Answer, Citation
+from codeinsight.storage.sqlite import db_path, open_sqlite
 
 
 class FakeRuntime:
@@ -129,7 +130,15 @@ def client() -> TestClient:
 @pytest.fixture
 def fake(monkeypatch: pytest.MonkeyPatch, data_dir) -> FakeSession:
     session = FakeSession(FakeRuntime(_events(), _answer()))
-    monkeypatch.setattr(query_module, "open_agent", lambda *args, **kwargs: session)
+    with open_sqlite(db_path(data_dir)) as conn:
+        conn.execute("INSERT INTO project(id,name,root_path) VALUES(1,'fixture','fixture')")
+        conn.commit()
+
+    def open_fake(*args, **kwargs):
+        session.conn = open_sqlite(db_path(data_dir), row_factory=True)
+        return session
+
+    monkeypatch.setattr(query_module, "open_agent", open_fake)
     return session
 
 

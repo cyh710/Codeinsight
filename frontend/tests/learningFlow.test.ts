@@ -37,7 +37,7 @@ it('教材代码原样呈现，不把指数运算符或代码内学习地址改�
   )
   expect(html).toContain('x ** 2')
   expect(html).not.toContain('\u200b')
-  expect(html).not.toContain('<button')
+  expect(html).not.toContain('href="/learn/')
 })
 
 describe('知识与代码往返', () => {
@@ -145,6 +145,6 @@ it('切换项目保留原对话，旧流的后续事件不能写入新项目', a
   expect(store.getState().messages).toEqual([])
   store.getState().switchProject(1)
   expect(store.getState().messages[0].text).toBe('这里是什么意思')
-  expect(store.getState().messages.some((m) => m.text.includes('旧项目后续内容'))).toBe(false)
+  expect(store.getState().messages.some((m) => m.text.includes('旧项目后续内容'))).toBe(true)
   expect(store.getState().streaming).toBe(false)
 })

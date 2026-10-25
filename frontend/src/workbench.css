@@ -1,17 +1,29 @@
-/* 视图切换与三栏共用一条顶栏，让对话区域恢复连续的阅读空间。 */
-.workbench-header {
-  display: grid;
-  grid-template-columns: 18rem minmax(0, 1fr) 26rem;
-  align-items: center;
-  min-height: 44px;
-}
-
-.workbench-header > nav {
-  padding-inline: 1rem;
-}
-
-@media (max-width: 1100px) {
-  .workbench-header {
-    grid-template-columns: 18rem minmax(0, 1fr) auto;
-  }
-}
+/* 同一布局状态控制顶栏、正文与阅读模式，关闭辅助区后空间回到主任务。 */
+.workbench-header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:0 16px}
+.wb-main{display:flex;position:relative;flex:1;min-height:0;overflow:hidden}
+.wb-left{width:var(--left-width);flex:none;min-height:0;z-index:3}
+.wb-center{flex:1;min-width:0;min-height:0}
+.wb-materials{width:var(--right-width);flex:none;min-height:0;min-width:0}
+.wb-single .wb-materials{width:100%;flex:1}
+.wb-full .learning-article{max-width:900px;margin-inline:auto}
+.wb-hidden{display:none!important}
+.wb-overlay{position:absolute;inset:0 auto 0 0;box-shadow:10px 0 35px #213a5522}
+.wb-scrim{position:absolute;inset:0;z-index:2;background:#20364c18;border:0}
+.wb-split{width:6px;flex:none;cursor:col-resize;background:#e2e8f0;touch-action:none;transition:background .1s}
+.wb-split:hover,.wb-split:focus-visible{background:#7bc7e7;outline:2px solid #0284c7;outline-offset:-2px}
+.wb-button,.wb-primary{border:1px solid #dce5ed;border-radius:7px;padding:6px 9px;font-size:11px;white-space:nowrap;transition:background .12s}
+.wb-button:hover{background:#edf7fc;color:#087fac}
+.wb-button[aria-pressed=true],.wb-primary{background:#e7f4fb;border-color:#b2daeb;color:#087fac}
+.wb-button:disabled,.wb-primary:disabled{opacity:.4;cursor:not-allowed}
+.wb-input{border:1px solid #dce5ed;border-radius:7px;padding:6px 8px;font-size:12px;background:white}
+.wb-status{display:flex;justify-content:space-between;gap:10px;border-top:1px solid #e2e8f0;background:#fafcfe;padding:5px 14px;font-size:10px;color:#8594a5}
+.conversation-row{border:1px solid transparent;border-radius:9px;padding:10px 9px;color:#54657a}
+.conversation-row:hover{background:#f3f7fa}.conversation-row.active{background:#eaf4fa;border-color:#d4e8f2}
+.material-tabs{display:flex;gap:3px;min-width:0;border-bottom:1px solid #e2e8f0;padding:7px 9px;background:#f8fafc}
+.material-tab{display:flex;flex:none;max-width:220px;align-items:center;border:1px solid transparent;border-radius:7px;font-size:11px;color:#6d8096}
+.material-tab.active{background:white;border-color:#c9e2ee;color:#087fac;box-shadow:0 1px 2px #23415a09}
+.material-tab>button{padding:6px}.material-tab>button:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wb-materials pre{tab-size:4}.wb-full [data-reading-scroll]{padding:24px 40px}.wb-app :focus-visible{outline:2px solid #1992c6;outline-offset:2px}
+@media(max-width:1190px){.wb-conversation-title{display:none}.workbench-header{gap:6px;padding-inline:10px}.workbench-header nav button{padding-inline:8px}}
+@media(max-width:700px){.workbench-header{flex-wrap:wrap;padding-block:7px}.workbench-header nav{order:3;justify-content:center;width:100%}.wb-status span:last-child{display:none}.wb-full [data-reading-scroll]{padding:16px}}
+@media(prefers-reduced-motion:reduce){.wb-app *{transition:none!important}}

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks
@@ -143,6 +144,7 @@ def get_project(project_id: int) -> dict[str, Any]:
         counts = project_counts(conn, project_id)
         return {
             **dict(row),
+            "source_available": Path(row["root_path"]).is_dir(),
             "status": _project_status(conn, project_id, dict(row)),
             **counts,
         }

@@ -478,7 +478,7 @@ export function SymbolSearch({
   const [query, setQuery] = useState('')
   // 结果带着它对应的查询词：查询变了而新结果还没到，旧结果自然不显示，
   // 不需要在 effect 里同步清空。
-  const [results, setResults] = useState<{ query: string; items: SymbolListItem[] }>({
+  const [results, setResults] = useState<{ query: string; items: SymbolListItem[]; error?: string }>({
     query: '',
     items: [],
   })
@@ -497,7 +497,7 @@ export function SymbolSearch({
           setResults({ query: text, items: res.items })
           setOpen(true)
         })
-        .catch(() => alive && setResults({ query: text, items: [] }))
+        .catch(error => { if (alive) { setResults({ query: text, items: [], error: String(error) }); setOpen(true) } })
     }, 220)
     return () => {
       alive = false
@@ -518,8 +518,8 @@ export function SymbolSearch({
         <Search size={12} strokeWidth={1.8} className="text-slate-400" />
         <input
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onFocus={() => hits.length > 0 && setOpen(true)}
+          onChange={(event) => { setQuery(event.target.value); setOpen(true) }}
+          onFocus={() => text.length >= 2 && setOpen(true)}
           onBlur={() => window.setTimeout(() => setOpen(false), 120)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && hits[0]) pick(hits[0].qualname)
@@ -530,8 +530,9 @@ export function SymbolSearch({
           aria-label="搜索关系图中心符号"
         />
       </div>
-      {open && hits.length > 0 && (
+      {open && text.length >= 2 && (
         <ul className="absolute left-0 top-full z-20 mt-1 w-72 overflow-hidden rounded-xl border border-slate-200 bg-bg-elevated py-1 shadow-2">
+          {results.query !== text ? <li role="status" className="p-2 text-xs text-slate-400">搜索中…</li> : results.error ? <li role="alert" className="p-2 text-xs text-danger">搜索失败，请重新输入或稍后重试：{results.error}</li> : !hits.length ? <li className="p-2 text-xs text-slate-400">没有找到这个函数或类。</li> : null}
           {hits.map((hit) => (
             <li key={`${hit.qualname}:${hit.path}:${hit.lineno}`}>
               <button

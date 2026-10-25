@@ -7,7 +7,7 @@
  * watchdog 两档与织忆同：首字节 120s / 流中静默 30s。没有它，一次挂死的流
  * 会把 `streaming=true` 永远留在 store 里，之后的每次发送都被静默拒绝。
  */
-import { BASE } from './client'
+import { BASE, toApiError } from './client'
 import type {
   ApiErrorCode,
   QueryRequest,
@@ -108,15 +108,17 @@ export async function streamQuery(
     })
     if (!res.ok || !res.body) {
       // 非 2xx：body 是 §0.3 的错误形状，交给统一的解析；这里只负责归一成 StreamResult。
-      const text = await res.text().catch(() => '')
-      return { aborted: true, error: { code: 'internal_error', title: `请求失败（HTTP ${res.status}）`, hint: text.slice(0, 300) } }
+      const error = await toApiError(res)
+      return { aborted: true, error: { code: error.code, title: error.title, hint: error.hint } }
     }
     touch()
+    let completed = false
     await readSseBody(res.body.getReader(), (event) => {
       touch()
+      if (event.event === 'done') completed = true
       onEvent(event)
     })
-    return { aborted: false }
+    return completed ? { aborted: false } : { aborted: true, error: { code: 'network', title: '连接提前结束', hint: '这次回答未完成；已收到的内容保留，可以恢复问题后重试。' } }
   } catch (e) {
     const err = e as Error
     if (err.name === 'AbortError') {
