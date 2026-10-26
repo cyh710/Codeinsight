@@ -18,7 +18,7 @@ BUSY_TIMEOUT_MS = 5_000
 
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 """schema 版本号，写进 `PRAGMA user_version`。
 
 改 `schema.sql` 的表结构时**必须**把这里 +1 并补一条迁移，
@@ -30,6 +30,7 @@ SCHEMA_VERSION = 3
 # 键是**旧版本号**，值是升级到该键+1 的步骤序列。
 # 迁移是**原地**的，不删库、不重建——用户的索引数据不能因为 schema 演进而丢。
 MIGRATIONS: dict[int, tuple[str, ...]] = {
+    3: (),  # execution_task 新表由 apply_schema 原地创建（请求 0015），无需 ALTER。
     2: (),  # 新会话表由 apply_schema 原地创建，账本回填由会话仓储幂等执行。
     1: (
         "CREATE TABLE IF NOT EXISTS concept_rule_version ("

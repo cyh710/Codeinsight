@@ -163,6 +163,14 @@ class ClaudeCodeDriver:
             timed_out = True
             proc.kill()
             await proc.wait()
+        except BaseException:
+            # 用户中止（CancelledError）等一切异常：先杀子进程不留孤儿，再向上抛。
+            proc.kill()
+            try:
+                await proc.wait()
+            except BaseException:
+                pass
+            raise
         finally:
             stderr_bytes = await stderr_task
 

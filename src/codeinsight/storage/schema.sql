@@ -482,3 +482,26 @@ CREATE TABLE IF NOT EXISTS eval_result (
     raw_json     TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_eval_result_run ON eval_result(run_id, arm);
+
+-- ─────────────────────────────────────────────────────────────
+-- 编排执行（请求 0015 / ADR 0032）
+-- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS execution_task (
+    id             TEXT PRIMARY KEY,           -- 'exec-<短id>'
+    project_id     INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+    conversation_id TEXT,
+    question       TEXT NOT NULL,
+    plan_json      TEXT NOT NULL,              -- {intent, files, approach, risks}
+    status         TEXT NOT NULL,              -- planned|executing|review|merged|rejected|aborted|failed
+    driver         TEXT NOT NULL DEFAULT 'claude-code',
+    branch         TEXT,                       -- ci-exec/<task_id>
+    worktree_path  TEXT,                       -- 隔离检出目录（清理后仍留痕便于排查）
+    commit_before  TEXT,
+    commit_after   TEXT,
+    result_json    TEXT,                       -- 进度/diff_summary/change_card/summary 的累积
+    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    finished_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_execution_project ON execution_task(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_execution_status ON execution_task(project_id, status);
