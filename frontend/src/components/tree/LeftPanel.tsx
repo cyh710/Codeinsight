@@ -339,21 +339,9 @@ export default function LeftPanel() {
     files.reduce((sum, f) => sum + f.symbol_count, 0)
 
   return (
-    <aside className="agent-sidebar flex h-full min-h-0 w-full shrink-0 flex-col bg-bg-elevated" aria-label="项目与对话导航">
+    <aside className="agent-sidebar flex h-full min-h-0 w-full shrink-0 flex-col bg-bg-elevated" aria-label="项目与对话导航" aria-busy={projectsState.loading || (projectsState.currentProjectId !== null && !projectsState.currentDetail)}>
       {/* 项目切换器：左栏顶部（C-Q6 已对齐）。 */}
       <div className="sidebar-project-header">
-        <div className="sidebar-project-caption">
-          <span>工作区</span>
-          <button
-            type="button"
-            onClick={() => setImportOpen(true)}
-            className="wb-icon-button"
-            title="导入项目并建索引"
-            aria-label="导入项目并建索引"
-          >
-            <FolderInput size={17} strokeWidth={1.7} />
-          </button>
-        </div>
         {/* 自绘 Select（通用件）：API 与原生下拉兼容，但走统一的
             listbox 语义与动效——随基建复制的契约测试要求原生下拉
             元素全局退场。 */}
@@ -374,8 +362,9 @@ export default function LeftPanel() {
           ))}
         </Select>{projectsState.currentProjectId !== null && projectsState.projects.find(p => p.id === projectsState.currentProjectId) && <ProjectActions
           key={projectsState.currentProjectId} project={projectsState.currentDetail ?? projectsState.projects.find(p => p.id === projectsState.currentProjectId)!}
-          onRelocate={() => setRelocateProject(projectsState.currentDetail ?? projectsState.projects.find(p => p.id === projectsState.currentProjectId)!)} />}</div>
-        {projectsState.currentDetail && <p className="sidebar-project-path" title={projectsState.currentDetail.root_path}>{projectsState.currentDetail.root_path}</p>}
+          onRelocate={() => setRelocateProject(projectsState.currentDetail ?? projectsState.projects.find(p => p.id === projectsState.currentProjectId)!)} />}
+          <button type="button" onClick={() => setImportOpen(true)} className="wb-icon-button sidebar-import" title="导入项目并建索引" aria-label="导入项目并建索引"><FolderInput size={17} strokeWidth={1.7} /></button>
+        </div>
         <StatusLine onRelocate={() => { if (projectsState.currentDetail) setRelocateProject(projectsState.currentDetail) }} />
       </div>
       <ImportProjectDialog open={importOpen} onClose={() => setImportOpen(false)} />

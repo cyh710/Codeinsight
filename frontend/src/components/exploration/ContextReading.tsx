@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useStore } from 'zustand'
 import type { ConversationTurn, KnowledgeTopic, LearningTarget } from '../../api/types'
 import { getTurn } from '../../api/conversations'
 import { getKnowledgeTopic } from '../../api/learning'
@@ -18,6 +19,7 @@ export default function ContextReading({ projectId, conversationId, requestId, t
   const [state, setState] = useState<{ key: string; turn?: ConversationTurn; topic?: KnowledgeTopic; error?: string }>()
   const [selectionError, setSelectionError] = useState('')
   const [retry, setRetry] = useState(0)
+  const readingMode = useStore(workbenchStore, s => s.readingMode)
   const root = useRef<HTMLElement>(null)
   const key = `${projectId}:${conversationId}:${requestId}:${target.topic_id}:${target.version}`
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function ContextReading({ projectId, conversationId, requestId, t
       section_id: sectionId, title: topic.title, section_title: topic.sections.find(s => s.id === sectionId)?.title })
     const scroll = root.current?.closest('[data-reading-scroll]')
     if (scroll) scroll.scrollTop = workbenchStore.getState().scrollPositions[panelKey(workbenchStore.getState().rightPanel)] ?? 0
-  }, [topic, target.version, sectionId])
+  }, [topic, target.version, sectionId, readingMode])
   if (!current) return <p role="status">恢复这次问题的解读与资料…</p>
   if (current.error) return <div role="alert">无法恢复来源回答：{current.error}<button className="wb-button" onClick={() => setRetry(n => n + 1)}>重试</button><button className="wb-button" onClick={() => workbenchStore.getState().openKnowledge(target)}>打开教材</button></div>
   if (!topic || !turn) return null
@@ -49,10 +51,14 @@ export default function ContextReading({ projectId, conversationId, requestId, t
   if (!associated.some(t => t.topic_id === target.topic_id && t.version === target.version)) return <div role="alert">原回答没有关联这个知识目标。<button className="wb-button" onClick={full}>打开教材全文</button></div>
   const takeaways = turn.answer.exploration?.takeaways ?? []
   return <article ref={root} className="context-reading" data-reading-ready="true">
-    <header><p className="exploration-section-label">围绕这次问题理解</p><h2>{topic.title}</h2><p>{turn.question}</p></header>
+    <header><h2>{topic.title}</h2></header>
     <div className="context-reading-tools context-reading-actions"><button className="context-reading-primary" type="button" onClick={full}><BookOpen size={18} aria-hidden="true" />阅读全文</button><button className="context-reading-return" type="button" onClick={() => { void chatStore.getState().openConversation(projectId, conversationId, requestId).then(() => { viewStore.getState().setCenterTab('chat'); layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) }) }) }}><ChevronLeft size={16} aria-hidden="true" />回到来源回答</button></div>
-    {citations.length > 0 && takeaways.length > 0 && <section><h3 className="exploration-section-label">本回合已解释的要点</h3><div className="context-excerpt"><LearningMarkdown text={takeaways.slice(0, 2).join('\n\n')} citations={citations} onCitation={c => openCode({ kind: 'code', project_id: projectId, path: c.path, lineno: c.lineno, head_commit: turn.answer.source_head_commit })} /></div></section>}
-    {citations.length > 0 && <section><h3 className="exploration-section-label">对应的项目位置</h3>{citations.slice(0, 3).map(c => <button className="block text-left text-sm text-accent" key={`${c.path}:${c.lineno}`} onClick={() => openCode({ kind: 'code', project_id: projectId, path: c.path, lineno: c.lineno, head_commit: turn.answer.source_head_commit })}>{c.path}:{c.lineno}</button>)}</section>}
+    {citations.length > 0 && <div className="context-project-link">
+      {takeaways.length > 0 && <div className="context-excerpt"><LearningMarkdown text={takeaways.slice(0, 1).join('\n\n')} citations={citations} onCitation={c => openCode({ kind: 'code', project_id: projectId, path: c.path, lineno: c.lineno, head_commit: turn.answer.source_head_commit })} /></div>}
+      <div className="context-project-sources"><button type="button" title={citations[0].path} onClick={() => openCode({ kind: 'code', project_id: projectId, path: citations[0].path, lineno: citations[0].lineno, head_commit: turn.answer.source_head_commit })}>{citations[0].path}:{citations[0].lineno}</button>
+        {citations.length > 1 && <details><summary>另 {citations.length - 1} 处来源</summary>{citations.slice(1).map(c => <button type="button" className="block text-left" key={`${c.path}:${c.lineno}`} onClick={() => openCode({ kind: 'code', project_id: projectId, path: c.path, lineno: c.lineno, head_commit: turn.answer.source_head_commit })}>{c.path}:{c.lineno}</button>)}</details>}
+      </div>
+    </div>}
     {!citations.length && <p className="exploration-muted">这次回答没有项目代码依据，下面展示相关教材章节。</p>}
     <div className="context-reading-tools"><button type="button" onPointerDown={e => e.preventDefault()} onClick={() => {
       try { workbenchStore.getState().fixReading(selectedKnowledge(root.current!, topic)); setSelectionError(''); viewStore.getState().setCenterTab('chat'); layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) }); requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.wb-center textarea')?.focus()) } catch (e) { setSelectionError(String(e)) }

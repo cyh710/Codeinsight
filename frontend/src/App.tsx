@@ -6,6 +6,7 @@
  */
 import { useEffect, type CSSProperties } from 'react'
 import { useStore } from 'zustand'
+import { Loader2 } from 'lucide-react'
 import { projectStore } from './store/projectStore'
 import { workbenchStore } from './store/workbenchStore'
 import { isMockMode } from './api/dataSource'
@@ -64,7 +65,8 @@ export default function App() {
         </div>
         <CenterNavigation />
         <div className="flex min-w-0 items-center justify-end gap-2">
-          <button data-material-toggle type="button" className="wb-button" aria-expanded={layout.right} aria-controls="workspace-materials" onClick={layout.toggleRight}>{layout.right ? '隐藏材料' : '打开材料'}{newEvidence ? ' · 有新来源' : ''}</button>
+          <span className="workspace-save-slot">{saving.pending > 0 && !saving.error && <span role="status" aria-label="正在保存工作区…" title="正在保存工作区…"><Loader2 size={14} className="animate-spin" /></span>}</span>
+          <button data-material-toggle type="button" className="wb-button" aria-expanded={layout.right} aria-controls="workspace-materials" onClick={layout.toggleRight}>{layout.right ? '隐藏材料' : '打开材料'}{newEvidence && !layout.right ? ' · 有新来源' : ''}</button>
           <button type="button" className="wb-button" onClick={layout.reset}>恢复布局</button>
           {isMockMode && (
             <span
@@ -98,7 +100,6 @@ export default function App() {
           <RightPanel />
         </WorkspacePanel>
       </main>
-      <footer className="wb-status"><span>{saving.pending ? '正在保存工作区…' : saving.error ? '本地保存异常' : '已自动保存'}</span></footer>
     </div>
   )
 }

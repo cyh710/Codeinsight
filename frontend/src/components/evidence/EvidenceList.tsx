@@ -1,7 +1,7 @@
 /**
  * 证据列表：取**最后一条 assistant 消息**的证据（含正在流的那条——
  * 边流边渲染是契约 §8.3 对 evidence 事件的设计意图）。
- * 每格：file:line（点击看符号/文件）+ 片段 + 命中通道 chips + 概念 chips。
+ * 每格保留位置、片段和概念入口；检索通道与分数按需展开。
  */
 import { useStore } from 'zustand'
 import { FileCode2 } from 'lucide-react'
@@ -34,11 +34,6 @@ function EvidenceCard({ item, version }: { item: PanelEvidence; version?: string
         <span className="truncate font-mono text-[11px] font-medium text-accent">
           {item.path}:{item.lineno}
         </span>
-        {item.score !== undefined && (
-          <span className="ml-auto shrink-0 font-mono text-[10px] text-slate-400">
-            {item.score.toFixed(2)}
-          </span>
-        )}
       </button>
       {item.qualname && (
         <p className="mt-1 truncate font-mono text-[10px] text-slate-400">{item.qualname}</p>
@@ -47,13 +42,8 @@ function EvidenceCard({ item, version }: { item: PanelEvidence; version?: string
       <pre className="mt-1.5 max-h-28 overflow-auto rounded-md bg-slate-50 px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-slate-600">
         {item.snippet}
       </pre>
-      {(item.lanes.length > 0 || item.concepts.length > 0) && (
+      {item.concepts.length > 0 && (
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          {item.lanes.map((lane) => (
-            <span key={lane} className="rounded bg-accent-soft/70 px-1.5 py-px text-[10px] text-accent">
-              {LANE_LABEL[lane] ?? lane}
-            </span>
-          ))}
           {item.concepts.map((c) => (
             <button
               key={c}
@@ -67,6 +57,11 @@ function EvidenceCard({ item, version }: { item: PanelEvidence; version?: string
           ))}
         </div>
       )}
+      {(item.lanes.length > 0 || item.score !== undefined) && <details className="evidence-technical">
+        <summary>检索详情</summary>
+        {item.score !== undefined && <p>检索分数 {item.score.toFixed(2)}</p>}
+        <p>{item.lanes.map(lane => LANE_LABEL[lane] ?? lane).join(' · ')}</p>
+      </details>}
     </article>
   )
 }
@@ -84,9 +79,8 @@ export default function EvidenceList({ messageId }: { messageId?: string }) {
       {last?.knowledgeSources?.map(hit => <article key={hit.target.href} className="rounded-xl border border-sky-100 bg-sky-50/40 p-3">
         <button className="text-left text-xs font-medium text-accent" onClick={() => workbenchStore.getState().openKnowledge(hit.target)}>教材 · {hit.target.title}{hit.target.section_title ? ` · ${hit.target.section_title}` : ''}</button>
         <p className="mt-1 line-clamp-3 text-xs leading-6 text-slate-500">{hit.summary || hit.snippet}</p>
-        <p className="mt-1 text-[10px] text-slate-400">本轮实际使用的知识来源 · 非项目代码证据</p>
       </article>)}
-      {items.length === 0 ? (
+      {items.length === 0 ? !last?.knowledgeSources?.length && (
         <p className="px-1 py-6 text-center text-xs leading-relaxed text-slate-400">
           提问后，这里会显示找到的代码位置。
         </p>

@@ -23,7 +23,6 @@ export default function ProjectGuide() {
   const state = result?.pid === pid && result.epoch === epoch ? result : undefined
   const data = state?.data
   return <section className="project-guide" aria-label="项目导览">
-    <p className="exploration-section-label">探索当前项目</p>
     <h2>{detail?.name ?? '从一个问题开始'}</h2>
     {pid === null ? <p>先在左侧选择或导入项目，也可以打开教材了解基础知识。</p> : !state ? <p role="status">读取已索引的项目入口…</p> : state.error ? <p role="alert">项目导览读取失败。<button type="button" onClick={() => setRetry(n => n + 1)}>重新读取</button></p> : <>
       {data?.project_intro ? <div className="project-guide-intro"><p>{data.project_intro.text}</p><button type="button" onClick={() => openCode(data.project_intro!.source)}>项目说明摘录 · {data.project_intro.source.path}:{data.project_intro.source.lineno}</button></div> : <p className="exploration-muted">尚未从索引中找到可引用的项目说明，可以从下面的实际对象开始。</p>}
@@ -32,6 +31,6 @@ export default function ProjectGuide() {
       {data?.exploration_entries?.length ? <ExplorationActions actions={data.exploration_entries}
         version={{ project_id: pid, head_commit: data.head_commit ?? null, index_epoch: data.index_epoch ?? 0 }} overview /> : <p className="exploration-muted">当前没有足够证据生成探索入口。可以先查看文件或直接提问；尚未索引时请等待索引完成。</p>}
     </>}
-    <div className="project-guide-footer"><span>入口依据已有索引，不额外调用模型</span><button type="button" onClick={() => workbenchStore.getState().openKnowledgeTree()}>浏览完整教材</button></div>
+    <div className="project-guide-footer"><button type="button" onClick={() => workbenchStore.getState().openKnowledgeTree()}>浏览完整教材</button></div>
   </section>
 }

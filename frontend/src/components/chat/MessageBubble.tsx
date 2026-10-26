@@ -1,16 +1,17 @@
 /**
  * 消息气泡。用户消息是普通气泡；assistant 消息按 ADR 0007 分栏：
  * 正文（markdown）→ 工具时间线 → **事实**（每条带 file:line）→ **推断**
- * （带置信度）。弃答时渲染弃答卡，不冒充有答案。
+ * （带置信度）。核查信息按需展开，正文始终可读。
  */
 import { memo, useState } from 'react'
 import { chatStore } from '../../store/chatStore'
 import LearningMarkdown from '../learning/LearningMarkdown'
 import { workbenchStore } from '../../store/workbenchStore'
-import { AlertTriangle, CheckCircle2, Hourglass, Loader2, Wrench } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Copy, Hourglass, Loader2, MoreHorizontal, Wrench } from 'lucide-react'
 import type { ChatMessage } from '../../store/types'
 import type { Citation, Inference } from '../../api/types'
 import ConfirmDialog from '../common/ConfirmDialog'
+import ActionMenu from '../common/ActionMenu'
 import { useStore } from 'zustand'
 import { projectStore } from '../../store/projectStore'
 import ExplorationActions from '../exploration/ExplorationActions'
@@ -121,9 +122,11 @@ function MessageActions({ message }: { message: ChatMessage }) {
     else state.restoreQuestion(message)
   }
   return <><div className="message-actions">
-    <button type="button" onClick={() => { void navigator.clipboard.writeText(message.text).then(() => setCopied('已复制'), () => setCopied('复制失败，请手动选择文字')) }}>{copied}</button>
-    <button type="button" onClick={() => workbenchStore.getState().openEvidence(message.id)}>查看来源</button>
-    {message.requestId && <button type="button" onClick={restore}>恢复问题到草稿</button>}
+    <button type="button" className="wb-icon-button" aria-label="复制回答" title={copied} onClick={() => { void navigator.clipboard.writeText(message.text).then(() => setCopied('已复制'), () => setCopied('复制失败，请手动选择文字')) }}><Copy size={15} /></button>
+    {copied !== '复制回答' && <span role="status">{copied}</span>}
+    {message.requestId && <ActionMenu label="回答操作" trigger={<MoreHorizontal size={17} />}>
+      {close => <button role="menuitem" onClick={() => { close(); restore() }}>恢复问题到草稿</button>}
+    </ActionMenu>}
     {message.legacy && <span title="这份旧记录未保存完整的来源和版本">旧记录</span>}
   </div><ConfirmDialog open={confirmRestore} title="替换当前草稿？" message="恢复这个问题会替换你正在写的内容。"
     confirmLabel="替换草稿" cancelLabel="保留草稿" onCancel={() => setConfirmRestore(false)}
@@ -218,34 +221,42 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
             </div>
           </nav>
         )}
-        {!message.streaming && message.knowledgeSources && message.knowledgeSources.length > 0 && (
-          <details className="mt-2 text-[10px] leading-6 text-slate-400">
-            <summary className="cursor-pointer">
-              来自内置教材 · {new Set(message.knowledgeSources.map((s) => s.target.topic_id)).size}{' '}
-              个主题
-            </summary>
-            {message.knowledgeSources.map((s) => (
-              <button
-                type="button"
-                key={s.target.href}
-                onClick={() => message.exploration && message.citations?.length && pid !== null && message.requestId ? openRelated(s.target, pid, cid, message.requestId) : workbenchStore.getState().openKnowledge(s.target)}
-                className="block text-left text-accent hover:underline"
-              >
-                {s.target.title}
-                {s.target.section_title ? ` · ${s.target.section_title}` : ''}
-              </button>
-            ))}
+        {message.streaming && message.tools && message.tools.length > 0 && <ToolTimeline tools={message.tools} />}
+        {settled && <div className="answer-footer">
+          <details className="answer-details">
+            <summary>来源与核查</summary>
+            <div className="answer-metadata">
+              <button type="button" className="wb-button" onClick={() => workbenchStore.getState().openEvidence(message.id)}>查看来源</button>
+              {message.knowledgeSources && message.knowledgeSources.length > 0 && (
+                <details className="mt-2 text-[10px] leading-6 text-slate-400">
+                  <summary className="cursor-pointer">
+                    来自内置教材 · {new Set(message.knowledgeSources.map(s => s.target.topic_id)).size} 个主题
+                  </summary>
+                  {message.knowledgeSources.map(s => (
+                    <button
+                      type="button"
+                      key={s.target.href}
+                      onClick={() => message.exploration && message.citations?.length && pid !== null && message.requestId ? openRelated(s.target, pid, cid, message.requestId) : workbenchStore.getState().openKnowledge(s.target)}
+                      className="block text-left text-accent hover:underline"
+                    >
+                      {s.target.title}
+                      {s.target.section_title ? ` · ${s.target.section_title}` : ''}
+                    </button>
+                  ))}
+                </details>
+              )}
+              {message.tools && message.tools.length > 0 && <ToolTimeline tools={message.tools} />}
+              {message.facts && message.facts.length > 0 && (
+                <FactList facts={message.facts} onOpenCitation={onOpenCitation} />
+              )}
+              {message.inferences && message.inferences.length > 0 && (
+                <InferenceList inferences={message.inferences} />
+              )}
+              <AnswerReviewDetails message={message} />
+            </div>
           </details>
-        )}
-        {message.tools && message.tools.length > 0 && <ToolTimeline tools={message.tools} />}
-        {message.facts && message.facts.length > 0 && (
-          <FactList facts={message.facts} onOpenCitation={onOpenCitation} />
-        )}
-        {message.inferences && message.inferences.length > 0 && (
-          <InferenceList inferences={message.inferences} />
-        )}
-        {settled && <AnswerReviewDetails message={message} />}
-        {settled && <MessageActions message={message} />}
+          <MessageActions message={message} />
+        </div>}
         {settled && message.incomplete && (
           // 未完成≠没找到（契约 §8.3 新增字段）：内容照常显示，追加提示条，
           // 不能和上面的 abstained 弃答卡合并成同一种提示。

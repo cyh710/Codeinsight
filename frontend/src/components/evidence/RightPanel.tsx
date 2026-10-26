@@ -87,7 +87,7 @@ export default function RightPanel() {
         >
           <ArrowRight size={14} />
         </button>
-        <h2 className="ml-1 text-sm font-medium text-slate-600">{titles[panel.mode]}</h2>
+        <h2 className="sr-only">{titles[panel.mode]}</h2>
         <div className="ml-auto flex items-center gap-1">
           <button type="button" className="wb-button" onClick={() => { if (layoutStore.getState().viewport < 1100) layoutStore.setState({ right: false, full: false }); else layoutStore.getState().toggleFull() }}>{full || layoutStore.getState().viewport < 1100 ? `回到${centerView === 'graph' ? '关系图' : centerView === 'timeline' ? '时间线' : '对话'}` : '展开阅读'}</button>
           <button type="button" aria-label="隐藏材料区域" title="隐藏材料" className="wb-icon-button" onClick={() => { layoutStore.setState({ right: false, full: false }); requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[data-material-toggle]')?.focus()) }}><X size={17} /></button>

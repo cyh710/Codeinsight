@@ -18,6 +18,7 @@ export default function ProjectActions({ project, onRelocate }: { project: Proje
     <ActionMenu label="项目操作" menuClassName="sidebar-project-menu" trigger={<MoreHorizontal size={18} />}>
       {dismiss => <>
         <div className="wb-menu-caption">{project.name}</div>
+        <p className="sidebar-menu-path">{project.root_path}</p>
         <button role="menuitem" onClick={() => { setError(''); void navigator.clipboard.writeText(project.root_path).then(() => setCopied(true), () => { setCopied(false); setError('复制失败，请重试') }) }}><Copy size={15} />{copied ? '已复制路径' : error && !open ? error : '复制项目路径'}</button>
         <button role="menuitem" onClick={() => { dismiss(); onRelocate() }}><FolderSearch size={15} />重新定位源码</button>
         <div className="sidebar-menu-separator" />

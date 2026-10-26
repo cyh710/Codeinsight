@@ -1,15 +1,13 @@
 /* 项目与对话共享清晰层级；正文空间留给中栏，左栏负责快速导航。 */
 .wb-app .agent-sidebar{background:#f7f9fb;color:#314558;border:0;font-size:14px}
 .agent-sidebar .sidebar-project-header{padding:12px 12px 10px;border:0}
-.sidebar-project-caption{display:flex;align-items:center;justify-content:space-between;min-height:24px;color:#81909f;font-size:11px;letter-spacing:.07em}
-.sidebar-project-caption .wb-icon-button{width:26px;height:26px;color:#6c7f90}
-.sidebar-project-row{display:flex;align-items:center;gap:7px;min-width:0;margin-top:4px}
+.sidebar-project-row{display:flex;align-items:center;gap:4px;min-width:0}
 .sidebar-project-icon{flex:none;color:#6c94a8}
 .sidebar-project-select{min-width:0;flex:1}
 .agent-sidebar .sidebar-project-select>button{height:34px;border:0;background:transparent;border-radius:6px;padding:0 3px;font-size:15px;font-weight:600;color:#2b445a;box-shadow:none}
 .agent-sidebar .sidebar-project-select>button:hover{background:#eaf0f5}
 .sidebar-project-row>.wb-icon-button{width:27px;height:28px;flex:none;color:#7e8d9a}
-.sidebar-project-path{margin:1px 27px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;line-height:19px;color:#8a98a5}
+.sidebar-menu-path{padding:3px 10px 8px;margin:0;color:#7a8d9f;font-size:12px;line-height:1.7;overflow-wrap:anywhere}
 .wb-app .agent-sidebar .sidebar-view-tabs{display:flex;gap:5px;padding:0 12px;margin:5px 0 0;border:0}
 .sidebar-view-tabs>button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;min-height:34px;border:0;border-radius:6px;background:transparent;color:#778999;font-size:13px;cursor:pointer}
 .wb-app .agent-sidebar .sidebar-view-tabs>button[aria-pressed=true]{background:#e8f1f7;color:#087fac;font-weight:550}
@@ -38,6 +36,10 @@
 .agent-sidebar .sidebar-conversation-row.active{background:#e5f0f7}
 .sidebar-conversation-main{display:flex;align-items:center;gap:3px;min-width:0}
 .sidebar-chat-open{min-width:0;flex:1;padding:8px 0 7px;text-align:left;color:#435d72;cursor:pointer}
+.sidebar-chat-heading{display:flex;align-items:center;gap:5px;min-width:0}
+.sidebar-chat-heading .sidebar-chat-title{min-width:0;flex:1}
+.sidebar-chat-status{display:inline-flex;align-items:center;flex:none;font-size:11px;color:#8b7a61}
+.sidebar-conversation-row[data-status=running] .sidebar-chat-status{color:#1485b1}
 .sidebar-chat-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:450;line-height:21px}
 .active .sidebar-chat-title{color:#1e5e81;font-weight:550}
 .sidebar-pin{font-size:9px;margin-right:5px;color:#7d9baf}

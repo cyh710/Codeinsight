@@ -46,9 +46,12 @@ export default function ConversationList() {
       {groups.map(group => <section key={group.title} className="sidebar-conversation-group" aria-label={group.title}><h3>{state.archived && <Archive size={12} aria-hidden="true" />}{group.title}</h3>
       {group.items.map(c => <article key={`${c.project_id}:${c.id}`} data-conversation-id={c.id} data-status={c.status} className={`conversation-row sidebar-conversation-row ${c.id === state.conversationId && c.project_id === state.projectId ? 'active' : ''}`}>
         <div className="sidebar-conversation-main">
-          <button className="sidebar-chat-open" title={c.title} type="button" onClick={() => void open(c.project_id, c.id, state.search ? c.match_request_id : undefined)}>
-            <span className="sidebar-chat-title">{c.pinned && <span className="sidebar-pin" aria-label="已置顶">◆</span>}{c.title}</span>
-            <span className="sidebar-chat-meta" title={updatedLabel(c.updated_at)}>{c.status === 'running' ? <><Loader2 size={11} className="animate-spin" />生成中</> : c.status === 'interrupted' ? '回答中断' : c.status === 'failed' ? '回答失败' : c.status === 'abstained' ? '待核实' : state.allProjects ? c.project_name : updatedLabel(c.updated_at)}{c.unread && c.status !== 'running' && <span className="sidebar-unread" aria-label="有新结果" />}</span>
+          <button className="sidebar-chat-open" title={`${c.title}\n${updatedLabel(c.updated_at)}`} type="button" onClick={() => void open(c.project_id, c.id, state.search ? c.match_request_id : undefined)}>
+            <span className="sidebar-chat-heading"><span className="sidebar-chat-title">{c.pinned && <span className="sidebar-pin" aria-label="已置顶">◆</span>}{c.title}</span>
+              {c.status === 'running' ? <span className="sidebar-chat-status" title="生成中" aria-label="生成中"><Loader2 size={12} className="animate-spin" /></span> : c.status === 'interrupted' || c.status === 'failed' || c.status === 'abstained' ? <span className="sidebar-chat-status">{c.status === 'interrupted' ? '中断' : c.status === 'failed' ? '失败' : '待核实'}</span> : null}
+              {c.unread && c.status !== 'running' && <span className="sidebar-unread" aria-label="有新结果" />}
+            </span>
+            {state.allProjects && <span className="sidebar-chat-meta">{c.project_name}</span>}
             {state.search && c.snippet && <span className="conversation-preview">{preview(c.snippet)}</span>}
           </button>
           <ActionMenu label={`对话操作 ${c.title}`} trigger={<MoreHorizontal size={17} />}>

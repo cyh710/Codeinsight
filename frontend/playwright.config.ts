@@ -5,6 +5,9 @@ export default defineConfig({
   testDir: './tests/browser',
   testMatch: '*.pw.ts',
   workers: 1,
+  // 本地真实 API 包含冷启动与 2.5 秒跨标签页轮询，避免用单元测试级等待误判。
+  timeout: 60000,
+  expect: { timeout: 15000 },
   outputDir: '../.ci/browser-results',
   use: {
     baseURL: 'http://127.0.0.1:15174',

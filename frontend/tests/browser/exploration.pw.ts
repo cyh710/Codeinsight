@@ -40,7 +40,7 @@ test('真实项目导览、编号来源、流程与直接追问保留草稿和�
   const pending = page.waitForRequest(r => r.url().endsWith('/query/stream') && r.method() === 'POST')
   await next.getByRole('button', { name: /如果不提交会怎样/ }).click()
   expect((await pending).postDataJSON().action_origin.kind).toBe('answer')
-  await expect(page.getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0, { timeout: 15000 })
   await expect(page.locator('.wb-center textarea')).toHaveValue('我的草稿还没有写完😀')
   expect(await page.locator('.reading-context').innerText()).toBe(original)
   await page.getByRole('button', { name: '[1]', exact: true }).last().click()
@@ -54,7 +54,7 @@ test('局部知识解读、全文、来源回合与刷新恢复', async ({ page 
   await page.getByRole('navigation', { name: '接着探索' }).last().getByRole('button', { name: /理解事务的提交与回滚/ }).click()
   const contextual = page.locator('.context-reading')
   await expect(contextual.getByRole('button', { name: '阅读全文', exact: true })).toBeVisible()
-  await expect(contextual).toContainText('本回合已解释的要点')
+  await expect(contextual.locator('.context-excerpt')).toContainText('写入先开启事务')
   // 有效的新知识动作可以指向尚未注入正文的章节，仍应从已保存动作恢复。
   await page.route('**/api/projects/1/conversations/*/turns/*', async route => {
     const response = await route.fetch()
@@ -63,7 +63,7 @@ test('局部知识解读、全文、来源回合与刷新恢复', async ({ page 
   })
   await page.reload()
   await expect(page.locator('.context-reading')).toBeVisible()
-  await expect(page.locator('.context-reading')).toContainText('对应的项目位置')
+  await expect(page.locator('.context-project-sources').getByRole('button').first()).toContainText('store.py:4')
   await page.screenshot({ path: resolve('..', '.ci/browser/exploration-context.png') })
   await page.locator('.context-reading').getByRole('button', { name: '阅读全文', exact: true }).click()
   await expect(page.locator('.learning-article')).toBeVisible()
@@ -84,7 +84,8 @@ test('旧索引动作禁用，导览失败可重试，窄窗口仍可探索', as
   await page.route('**/api/projects/1/overview', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'internal_error', title: '离线失败', hint: '重试', detail: '' } }) }))
   await page.goto('/')
   // 等项目详情加载完成，避免把初始化期间的临时失败当成稳定的重试状态。
-  await expect(page.locator('.sidebar-project-path')).toBeVisible()
+  await expect(page.locator('.project-guide')).toContainText('项目导览读取失败')
+  await expect(page.locator('.agent-sidebar')).toHaveAttribute('aria-busy', 'false')
   await expect(page.locator('.project-guide')).toContainText('项目导览读取失败')
   await page.unroute('**/api/projects/1/overview')
   await page.locator('.project-guide').getByRole('button', { name: '重新读取' }).click()

@@ -4,7 +4,7 @@
  */
 import { useLayoutEffect, useRef } from 'react'
 import { useStore } from 'zustand'
-import { Send, Square, X } from 'lucide-react'
+import { BookOpen, Code2, Pin, RotateCcw, Send, Square, X } from 'lucide-react'
 import { chatStore } from '../../store/chatStore'
 import { projectStore } from '../../store/projectStore'
 import { workbenchStore } from '../../store/workbenchStore'
@@ -16,6 +16,9 @@ export default function InputBox() {
   const mode = useStore(workbenchStore, (s) => s.readingMode)
   const value = useStore(chatStore, (s) => s.draft)
   const loading = useStore(chatStore, (s) => s.loading)
+  const readingTitle = reading ? reading.kind === 'knowledge'
+    ? `${reading.title ?? reading.topic_id}${reading.section_title ? ` · ${reading.section_title}` : ''}`
+    : `${reading.path}:${reading.lineno}${reading.end_lineno ? `–${reading.end_lineno}` : ''}` : ''
   const setValue = chatStore.getState().setDraft
   const taRef = useRef<HTMLTextAreaElement>(null)
   useLayoutEffect(() => {
@@ -33,27 +36,16 @@ export default function InputBox() {
 
   return (
     <div className="chat-composer">
-        <div className="reading-context mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-          <span className="min-w-0 truncate" title={reading?.preview}>
-            {reading ? (reading.kind === 'knowledge'
-              ? `${reading.title ?? reading.topic_id}${reading.section_title ? ` · ${reading.section_title}` : ''}`
-              : `${reading.path.split('/').at(-1)}:${reading.lineno}${reading.end_lineno ? `–${reading.end_lineno}` : ''}`) : '未关联材料'}
-            {reading?.selection ? ' · 已选择具体段落' : ''}
-            {reading ? ` · ${mode === 'fixed' ? '已固定' : '跟随阅读'}` : ''}
-          </span>
-          {reading && mode === 'follow' && <button type="button" onClick={() => workbenchStore.getState().fixReading()} className="text-accent" title="切换阅读时保留这个提问目标">固定提问目标</button>}
-          {mode !== 'follow' && <button type="button" onClick={() => workbenchStore.getState().followReading()} className="text-accent">跟随阅读</button>}
-          {reading?.preview && <details className="w-full"><summary className="cursor-pointer">查看选区</summary><pre className="max-h-28 overflow-auto whitespace-pre-wrap rounded bg-slate-100 p-2">{reading.preview}</pre></details>}
-          {reading &&
-          <button
-            aria-label="取消关联"
-            title="取消关联"
-            className="wb-icon-button ml-auto text-slate-400 hover:text-accent"
-            onClick={() => workbenchStore.getState().setReading(null)}
-          >
-            <X size={15} />
-          </button>}
-        </div>
+      {(reading || mode !== 'follow') && <div className="reading-context" role="group" aria-label="提问关联">
+        {reading ? <>
+          <details className="reading-target"><summary title={readingTitle} aria-label={reading.preview ? '查看选区' : '查看关联材料'}>
+            {reading.kind === 'knowledge' ? <BookOpen size={14} aria-hidden="true" /> : <Code2 size={14} aria-hidden="true" />}
+            <span>{reading.kind === 'knowledge' ? reading.section_title ?? reading.title ?? reading.topic_id : `${reading.path.split('/').at(-1)}:${reading.lineno}${reading.end_lineno ? `–${reading.end_lineno}` : ''}`}</span>
+          </summary><div className="reading-target-preview"><p>{readingTitle}</p>{reading.preview && <pre>{reading.preview}</pre>}</div></details>
+          <button type="button" aria-label="固定提问目标" aria-pressed={mode === 'fixed'} title={mode === 'fixed' ? '已固定；点击恢复跟随阅读' : '固定提问目标'} className="wb-icon-button" onClick={() => mode === 'fixed' ? workbenchStore.getState().followReading() : workbenchStore.getState().fixReading()}><Pin size={14} /></button>
+          <button type="button" aria-label="取消关联" title="取消关联" className="wb-icon-button" onClick={() => workbenchStore.getState().setReading(null)}><X size={15} /></button>
+        </> : <button type="button" className="wb-button" title="重新关联当前阅读的材料" onClick={() => workbenchStore.getState().followReading()}><RotateCcw size={14} />跟随阅读</button>}
+      </div>}
       <div className="flex items-end gap-2 rounded-2xl border border-[var(--chat-input-border)] bg-[var(--chat-input-background)] px-3 py-2 shadow-[var(--chat-input-shadow)]">
         <textarea
           ref={taRef}

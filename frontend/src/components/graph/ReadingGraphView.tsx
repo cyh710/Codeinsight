@@ -109,13 +109,9 @@ export default function ReadingGraphView({
   return (
     <div className="reading-graph h-full overflow-y-auto" key={key}>
       <header className="reading-graph-heading">
-        <p className="text-[11px] font-medium text-accent">围绕一处代码，逐步往外看</p>
         <h2 className="mt-2 break-words text-base font-semibold text-slate-800">
           {center.name} 的调用关系
         </h2>
-        <p className="mt-2 text-xs leading-6 text-slate-500">
-          看谁调用它、它又调用什么。点卡片看详情，点“以此为中心”继续探索。
-        </p>
       </header>
       {data.truncated && (
         <p
@@ -394,9 +390,6 @@ function FocusChooser({
           <Search size={19} />
         </div>
         <h2 className="text-lg font-semibold leading-8 text-slate-800">先选一处你想读懂的代码</h2>
-        <p className="mt-2 max-w-lg text-sm leading-7 text-slate-500">
-          搜索一个函数或类，或从下面的入口开始。每次只看它与周围代码的直接关系。
-        </p>
         <div className="my-6 flex flex-wrap items-center gap-2 text-xs text-slate-400">
           <span>谁调用它</span>
           <ArrowRight size={14} />
@@ -437,7 +430,7 @@ function FocusChooser({
         {candidates.length > 0 && (
           <section aria-label="可探索的代码">
             <h3 className="mb-3 text-xs font-medium text-slate-500">
-              索引中连接较多的代码 · 可从这里开始
+              可探索的代码
             </h3>
             <div className="grid gap-2 sm:grid-cols-2">
               {candidates.map((node) => (
@@ -462,9 +455,6 @@ function FocusChooser({
             还没有可推荐的入口。可以在上方搜索，或从左侧打开函数，再点击右栏的“关系图”。
           </p>
         )}
-        <p className="mt-6 text-[11px] leading-6 text-slate-400">
-          需要浏览更多层关系时，可切换到上方的“高级全图”。
-        </p>
       </div>
     </div>
   )
