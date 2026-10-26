@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     max_tool_calls_per_turn: int = 16
     max_model_turns: int = 10
 
+    # ── 编排执行（请求 0015 / ADR 0032）────────────────────
+    executor: str = "claude-code"
+    """执行驱动器：`claude-code` 或 `off`（关闭后对话识别退回普通问答）。"""
+    executor_command: str = "claude"
+    executor_timeout_s: int = 1800
+
     # ── 评测（源文档 §6）───────────────────────────────────
     eval_seed: int = 7
     eval_max_usd: float = 2.0
