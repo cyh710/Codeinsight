@@ -413,7 +413,8 @@ test('材料菜单不被正文遮挡，选段从关系图回到输入框', async
   await expect(reader(page).locator('[data-source-map]').first()).toBeVisible()
   const section = reader(page).locator('[data-section-id]').filter({ has: page.locator('[data-source-map]') }).nth(2)
   const title = await section.locator('h3').innerText()
-  await section.scrollIntoViewIfNeeded()
+  // 当前阅读按顶部章节判断；仅保证整节可见不等于把章首滚到阅读起点。
+  await section.evaluate(el => el.scrollIntoView({ block: 'start' }))
   await expect(page.locator('.reading-context')).toContainText(title)
   const menu = reader(page).getByRole('button', { name: '材料操作', exact: true })
   await menu.click()

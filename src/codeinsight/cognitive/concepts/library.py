@@ -23,6 +23,7 @@ from codeinsight.cognitive.concepts.learning_models import (
     Topic,
 )
 from codeinsight.cognitive.concepts.ontology import ID_PATTERN, _strings
+from codeinsight.cognitive.concepts.visual_assets import IMAGE_LINK, VisualAssets
 from codeinsight.cognitive.retrieval.tokenizer import split_identifiers
 
 _HEADING = re.compile(r"^## (.+?) \{#([a-z][a-z0-9-]*)\}\s*$", re.MULTILINE)
@@ -60,6 +61,7 @@ def _plain_snippet(content: str, limit: int = 160) -> str:
     `**第一步**` 和 `` `CREATE TABLE` `` 原样显示出来是噪音。
     """
     text = content
+    text = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", text)
     # 围栏代码块整段去掉：它是代码，不是摘要。
     text = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
     # 行内代码保留内容，去掉反引号。
@@ -90,6 +92,7 @@ class LearningLibrary:
         self.directory = Path(directory).resolve()
         self.tokenizer = tokenizer
         self.sources = MappingProxyType(self._load_sources())
+        self.visuals = VisualAssets(self.directory)
         self.topics = MappingProxyType(self._load_topics())
         self._aliases: dict[str, set[str]] = {}
         for topic in self.topics.values():
@@ -103,7 +106,8 @@ class LearningLibrary:
                 section.id,
                 " ".join(
                     tokenizer(
-                        f"{topic.title} {' '.join(topic.aliases)} {section.title} {section.content}"
+                        f"{topic.title} {' '.join(topic.aliases)} {section.title} "
+                        f"{self.visuals.describe(section.content)}"
                     )
                 ),
             )
@@ -201,6 +205,11 @@ class LearningLibrary:
                             "metadata": item,
                             "body": body,
                             "sources": [asdict(self.sources[s]) for s in sequences["source_ids"]],
+                            **(
+                                {"assets": self.visuals.version_data(tid)}
+                                if self.visuals.for_topic(tid)
+                                else {}
+                            ),
                         }
                     ),
                     dialect=dialect,
@@ -212,6 +221,12 @@ class LearningLibrary:
         return topics
 
     def _validate_links(self) -> None:
+        for asset in self.visuals.records.values():
+            topic = self.topics.get(asset.topic_id)
+            if topic is None or asset.section_id not in {s.id for s in topic.sections}:
+                raise KnowledgeError(f"图示 {asset.id}: 所属文章或章节不存在")
+            if any(s not in self.sources for s in asset.source_ids):
+                raise KnowledgeError(f"图示 {asset.id}: 来源不存在")
         for topic in self.topics.values():
             for tid in (*topic.prerequisites, *topic.related):
                 if tid not in self.topics:
@@ -219,6 +234,12 @@ class LearningLibrary:
             for href in re.findall(r"\]\((/learn/[^)]+)\)", topic.body):
                 if self.resolve_href(href) is None:
                     raise KnowledgeError(f"{topic.id}: 悬空站内链接 {href}")
+            for section in topic.sections:
+                prose = re.sub(r"```.*?```", "", section.content, flags=re.DOTALL)
+                for _, aid in IMAGE_LINK.findall(prose):
+                    asset = self.visuals.records.get(aid)
+                    if not asset or (asset.topic_id, asset.section_id) != (topic.id, section.id):
+                        raise KnowledgeError(f"{topic.id}: 图示 {aid} 未解析或归属不符")
 
     def tree(self) -> list[dict]:
         """返回稳定顺序的目录；全局知识不要求 project_id。"""
@@ -353,7 +374,8 @@ class LearningLibrary:
                 truncated = True
                 continue
             section = next(s for s in topic.sections if s.id == target.section_id)
-            block = f"[教材；非项目代码证据] {target.href} version={target.version}\n{section.content}\n"
+            content = self.visuals.describe(section.content)
+            block = f"[教材；非项目代码证据] {target.href} version={target.version}\n{content}\n"
             n_bytes = len(block.encode("utf-8"))
             if size + n_bytes > max(0, max_bytes):
                 truncated = True
@@ -363,7 +385,7 @@ class LearningLibrary:
             refs.append(
                 KnowledgeHit(
                     target,
-                    section.content,
+                    content,
                     hit.score,
                     tuple(self.sources[s] for s in topic.source_ids),
                 )

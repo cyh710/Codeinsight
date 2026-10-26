@@ -29,6 +29,7 @@ def test_all_topics_have_substantive_content_and_sources(library):
         "React": 8,
         "SQL": 8,
         "工程概念": 20,
+        "工程实践": 1,
     }
     for topic in library.topics.values():
         sections = {s.id: s.content for s in topic.sections}

@@ -1,8 +1,26 @@
 # 内置代码学习知识库 · B 线交付
 
-这里包含 46 篇基础文章和 20 篇工程概念讲解。Markdown 是可维护的正文，
+这里包含 46 篇基础文章、20 篇工程概念讲解与 1 篇工程实践样章。Markdown 是可维护的正文，
 `index.json` 提供目录/术语/前置知识/工程概念关联；`sources.json` 锁定来源网页快照哈希。
 它不是第三方教材的完整镜像。本文与示例不表示任何被分析项目真的具有相应实现。
+
+## 图文样章与本地验证
+
+Python 函数、SQL 入门、状态生命周期三篇已接入原创 SVG、图注与长文。
+`assets.json` 记录图片归属、尺寸、图意、作者、许可与哈希；`assets/` 随知识包分发。
+SVG 是原创内容，许可单独列明，不能据此改变正文参考资料的原许可。
+
+```powershell
+python scripts/build_learning_figures.py --check
+python knowledge/learning/examples/sql_basics.py
+python knowledge/learning/examples/state_lifetime.py
+```
+
+修改图时编辑生成脚本并运行 `python scripts/build_learning_figures.py`，不要手改哈希。
+生成器固定 UTF-8/LF 字节，避免 Windows 换行转换使资源校验失效。
+图示的实际字节与元数据参与所属文章版本；旧资源 URL 不会读取新图。
+缺图时 API 返回明确错误，章节正文及图意仍可阅读。图注可以选择提问，
+图内标签不伪装成 Markdown 原文选区，文字 Provider 通过教材图意理解关系。
 
 ## 运行与目录
 

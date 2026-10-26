@@ -3,6 +3,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Query
+from fastapi.responses import Response
 
 from codeinsight.api.errors import ApiFailure
 from codeinsight.api.knowledge import _prepare_project
@@ -13,6 +14,31 @@ from codeinsight.cognitive.concepts.library_loader import get_learning_library
 from codeinsight.cognitive.concepts.service import KnowledgeService
 
 router = APIRouter(tags=["learning"])
+
+
+@router.get("/knowledge/assets/{asset_id}/{sha256}")
+def knowledge_asset(asset_id: str, sha256: str) -> Response:
+    """版本化图片不依赖项目索引；损坏或旧版本不影响正文读取。"""
+    try:
+        asset, content = get_learning_library().visuals.read(asset_id, sha256)
+    except KnowledgeError as exc:
+        raise ApiFailure(
+            status_code=404,
+            code="not_found",
+            title="教学图暂不可用",
+            hint="章节文字仍可阅读；可重试或打开当前版本。",
+            detail=str(exc),
+        ) from exc
+    return Response(
+        content,
+        media_type=asset.media_type,
+        headers={
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "ETag": f'"{asset.sha256}"',
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'",
+        },
+    )
 
 
 def _bridge() -> LearningBridge:

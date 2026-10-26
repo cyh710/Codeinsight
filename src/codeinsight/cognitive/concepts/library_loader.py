@@ -18,6 +18,9 @@ def _fingerprint(directory: Path) -> str:
     paths = [directory / "index.json", directory / "sources.json"]
     paths.extend(sorted((directory / "articles").rglob("*.md")))
     paths.extend(sorted((directory / "licenses").rglob("*.txt")))
+    if (directory / "assets.json").exists():
+        paths.append(directory / "assets.json")
+    paths.extend(sorted(p for p in (directory / "assets").rglob("*") if p.is_file()))
     digest = hashlib.sha256()
     try:
         for path in paths:

@@ -75,6 +75,7 @@ class LearningBridge:
             topic.summary,
             data={
                 **asdict(topic),
+                "assets": [a.public() for a in self.library.visuals.for_topic(topic.id)],
                 "href": self.library.target(topic_id).href,
                 "sources": [asdict(self.library.sources[s]) for s in topic.source_ids],
                 "prerequisite_targets": [

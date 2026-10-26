@@ -96,3 +96,22 @@
   border-top: 1px solid #e2e8f0;
   margin-block: 1.5em;
 }
+
+.knowledge-figure{margin:1.3em 0;min-width:0}
+.knowledge-figure-open{position:relative;display:block;width:100%;padding:0;overflow:hidden;border:0;border-radius:6px;background:#f6f9fb;cursor:zoom-in;text-align:left}
+.knowledge-figure-open img{display:block;width:100%;height:auto}
+.knowledge-figure-open:focus-visible{outline:2px solid #087fac;outline-offset:3px}
+.knowledge-figure-zoom{position:absolute;right:8px;bottom:8px;padding:3px 8px;background:#fffffff0;border-radius:4px;color:#087fac;font-size:12px;line-height:1.6}
+.knowledge-figure figcaption{margin-top:8px;color:#64748b;font-size:13px;line-height:1.75}
+.knowledge-figure-fallback{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:6px;padding:18px;background:#f6f9fb;color:#64748b;font-size:13px;overflow:auto}
+.knowledge-figure-fallback p{margin:0}.knowledge-figure-fallback button{color:#087fac;text-decoration:underline;text-underline-offset:3px}
+.knowledge-figure-dialog{position:fixed;inset:0;z-index:200;width:min(1000px,calc(100vw - 32px));max-height:90dvh;margin:auto;padding:20px;border:0;border-radius:10px;background:#fff;color:#334155;box-shadow:0 20px 80px #10243433}
+.knowledge-figure-dialog::backdrop{background:#182e4666}
+.knowledge-figure-dialog-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:15px}
+.knowledge-figure-dialog-header button{padding:5px 10px;border-radius:5px;color:#087fac;background:#edf7fb;font-size:13px}
+.knowledge-figure-scroll{overflow:auto;max-height:65dvh;overscroll-behavior:contain}
+.knowledge-figure-scroll img{display:block;width:100%;min-width:560px;height:auto}
+.knowledge-figure-dialog p{font-size:14px;line-height:1.8;margin:12px 0 6px}
+.knowledge-figure-dialog small{color:#64748b;font-size:12px}
+.knowledge-image-unavailable{color:#64748b;font-size:13px}
+@media(prefers-reduced-motion:no-preference){.knowledge-figure-open{transition:background-color .15s ease}.knowledge-figure-dialog[open]{animation:figure-enter .14s ease-out}@keyframes figure-enter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}}

@@ -1,7 +1,7 @@
 /** 用现有 Markdown AST 映射回原文位置，DOM 文字只作预览。 */
 import type { KnowledgeTopic, KnowledgeReadingContext } from '../../api/types'
 interface SourceNode {
-  type: string; value?: string; children?: SourceNode[]
+  type: string; value?: string; alt?: string; children?: SourceNode[]
   position?: { start: { offset?: number }; end: { offset?: number } }
   data?: Record<string, unknown>
 }
@@ -30,6 +30,11 @@ export function sourcePositions() {
     const source = String(file.value)
     const visit = (node: SourceNode) => {
       const from = node.position?.start.offset, to = node.position?.end.offset
+      if (node.type === 'image' && node.alt && from !== undefined && to !== undefined) {
+        const raw = source.slice(from, to)
+        const offsets = textOffsets(raw.slice(2), node.alt, from + 2)
+        if (offsets) node.data = { ...node.data, hProperties: { 'data-source-map': JSON.stringify(offsets) } }
+      }
       if (node.value !== undefined && from !== undefined && to !== undefined) {
         let raw = source.slice(from, to), base = from, value = node.value
         if (node.type === 'inlineCode') {

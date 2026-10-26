@@ -262,7 +262,7 @@ def test_real_http_browsing_query_sse_and_project_examples(indexed_repo, monkeyp
     monkeypatch.setattr(query, "_PROVIDER_FACTORY", FakeProvider)
     with TestClient(create_app()) as client:
         directory = client.get("/knowledge/tree").json()
-        assert sum(len(g["topics"]) for g in directory["groups"]) == 66
+        assert sum(len(g["topics"]) for g in directory["groups"]) == 67
         topic = client.get("/knowledge/topics/sql-database").json()
         searched = client.get("/knowledge/search", params={"q": "SQL 是什么"}).json()
         assert searched["items"][0]["target"]["version"] == topic["version"]

@@ -189,7 +189,7 @@ export default function KnowledgeArticle({ target }: { target: LearningTarget })
               {section.title}
             </h3>
             <div className="text-sm text-slate-600">
-              <LearningMarkdown text={section.content} targets={topic.learning_targets} selectable />
+              <LearningMarkdown text={section.content} targets={topic.learning_targets} assets={topic.assets} selectable />
             </div>
           </section>
         ))}

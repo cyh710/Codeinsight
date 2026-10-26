@@ -711,6 +711,21 @@ export interface ConversationTurn {
 }
 export interface Page<T> { items: T[]; next_cursor: number | null }
 export type ReadingContext = KnowledgeReadingContext | CodeReadingContext
+export interface KnowledgeAsset {
+  id: string
+  topic_id: string
+  section_id: string
+  title: string
+  description: string
+  width: number
+  height: number
+  author: string
+  license: string
+  source_ids: string[]
+  sha256: string
+  href: string
+  media_type: string
+}
 export interface KnowledgeTopic {
   id: string
   title: string
@@ -725,6 +740,7 @@ export interface KnowledgeTopic {
   related_targets: LearningTarget[]
   learning_targets: LearningTarget[]
   dialect: string | null
+  assets?: KnowledgeAsset[]
 }
 export interface KnowledgeTree {
   version: string

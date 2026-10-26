@@ -29,7 +29,7 @@ def test_concurrent_requests_share_one_immutable_snapshot(assets):
             )
     assert build.call_count == 1
     assert all(result is results[0] for result in results)
-    assert len(results[0].topics) == 66
+    assert len(results[0].topics) == 67
 
 
 def test_body_update_invalidates_even_when_size_and_mtime_are_preserved(assets):

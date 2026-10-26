@@ -85,7 +85,7 @@
       "参数",
       "返回值"
     ],
-    "summary": "学完这一篇，你能写出一个能反复调用的函数，知道它收什么、交回什么，并且能看出调用方拿到的是不是它以为的那个东西。",
+    "summary": "函数算出了数，屏幕也显示了数，调用者却拿到了 None。这篇从这个现象出发，分清参数、返回值与屏幕输出，并学会沿调用处读懂一个函数。",
     "prerequisites": [
       "python-values"
     ],
@@ -508,7 +508,8 @@
     ],
     "related": [
       "python-modules",
-      "react-components"
+      "react-components",
+      "state-lifecycle"
     ],
     "concept_ids": [],
     "source_ids": [
@@ -838,7 +839,8 @@
     "related": [
       "react-events",
       "react-lifting",
-      "js-events-loop"
+      "js-events-loop",
+      "state-lifecycle"
     ],
     "concept_ids": [],
     "source_ids": [
@@ -985,7 +987,7 @@
       "表",
       "关系型数据库"
     ],
-    "summary": "学完这一篇，你能建一张自己的表，插进几条数据，然后问出你想要的那几行。",
+    "summary": "SQL 是向关系型数据库表达数据操作的语言。这篇从一张商品表出发，观察数据怎样写入、筛选，再用订单表看懂两张表如何关联。",
     "prerequisites": [],
     "related": [
       "sql-select",
@@ -998,9 +1000,10 @@
       "orm"
     ],
     "source_ids": [
+      "sqlite",
       "postgres"
     ],
-    "dialect": "PostgreSQL",
+    "dialect": "SQLite 3",
     "file": "articles/sql/sql-database.md"
   },
   {
@@ -1689,5 +1692,36 @@
     ],
     "dialect": null,
     "file": "articles/event/event-bus.md"
+  },
+  {
+    "id": "state-lifecycle",
+    "title": "列表刚才还在：状态与存储的生命周期",
+    "group": "工程实践",
+    "aliases": [
+      "HMR",
+      "状态丢失",
+      "刷新丢失",
+      "状态生命周期",
+      "持久化",
+      "浏览器存储"
+    ],
+    "summary": "列表突然变空，可能是数据真的丢了，也可能只是界面没有显示。这篇沿一次已经记录的事故，区分状态容器、界面可见性、刷新与持久化的边界。",
+    "prerequisites": [
+      "js-modules",
+      "react-state"
+    ],
+    "related": [
+      "react-effects",
+      "config-env",
+      "sql-database"
+    ],
+    "concept_ids": [],
+    "source_ids": [
+      "vite-hmr",
+      "react-identity",
+      "mdn-storage"
+    ],
+    "dialect": null,
+    "file": "articles/engineering/state-lifecycle.md"
   }
 ]

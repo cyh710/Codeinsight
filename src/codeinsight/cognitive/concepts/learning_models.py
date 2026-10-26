@@ -71,7 +71,10 @@ class LearningTarget:
 class KnowledgeHit:
     target: LearningTarget
     snippet: str
-    """章节原文——注入模型的上下文用它，Markdown 结构要保留。"""
+    """检索时为章节原文；注入引用保存实际文字，图片引用可投影为受维护图意。
+
+    精确选区仍保留原文片段，不把图片标签编造成原文偏移。
+    """
     score: float
     sources: tuple[KnowledgeSource, ...]
     summary: str = ""

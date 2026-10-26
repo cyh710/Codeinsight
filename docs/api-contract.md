@@ -1026,8 +1026,9 @@ done                                ← 恰好一次，最后
 `section_title` 是章节的可读标题（如「跟着例子理解」）——`section_id` 是内部锚点，
 直接显示给用户读不懂。`section_id` 为空时 `section_title` 也为空。
 站内地址固定 `/learn/{topic_id}#{section_id}`（章节可省略）；不可解析时保持普通文字。
-`KnowledgeHit` 为 `{target,snippet,summary,score,sources}`。`snippet` 是**章节原文**
-（注入模型的上下文用它，Markdown 结构保留）；`summary` 是给界面卡片显示的
+`KnowledgeHit` 为 `{target,snippet,summary,score,sources}`。搜索的 `snippet` 是**章节原文**；
+实际注入的 `knowledge_sources.snippet` 为纳入上下文的文字，图文章节将图片引用替换为
+受维护资源的图意（请求 0011）。精确选区仍保持原文片段。`summary` 是给界面卡片显示的
 **纯文本摘要**（无 Markdown 标记，长度截断）。source 包含作者、原始 URL、来源版本、
 许可/许可 URL、获取时间、快照 SHA256 和修改说明。知识引用不能转换成项目 Citation。
 
@@ -1117,3 +1118,18 @@ offset 为章节 content 原文中零起点、右开的 UTF-16 代码单元偏�
 选择框已打开返回 409 `bad_request`；五分钟未完成返回 504 `timeout`；
 桌面不可用或系统调用失败返回 503 `internal_error`，均遵循 §0.3 错误形状。
 Windows 使用系统 PowerShell/Windows Forms，其他桌面使用 Python tkinter；不增加依赖。
+
+## 12. 教材图文资源（请求 0011）
+
+`GET /knowledge/topics/{id}` 增加 `assets` 数组，兼容缺省为空。元素包含
+`id,topic_id,section_id,title,description,width,height,author,license,source_ids,sha256,href,media_type`。
+href 为 `/knowledge/assets/{id}/{sha256}`，浏览器通过既有 `/api` 前缀访问。
+不公开资源的服务器路径。正文用 `![图注](/knowledge/assets/{id})` 引用，只能解析为当前文章清单中的资源。
+
+`GET /knowledge/assets/{id}/{sha256}` 成功返回图片原始字节及正确 Content-Type，
+使用内容哈希 ETag 与 immutable 缓存。未知、旧哈希、缺失或损坏资源返回 404 `not_found`；
+章节文字仍可读取。资源本身的错误不把文章判为空。
+
+图示及图意参与所属文章版本，正文与图示必须匹配。教材选区仍以 UTF-16 原文为准；
+可选择图片 Markdown 中的图注，图内 SVG 标签不作为正文选区。模型依据正文及受维护图意，
+不假定具有图片识别能力，不将图示视为项目代码证据。

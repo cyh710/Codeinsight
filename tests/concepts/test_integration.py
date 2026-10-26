@@ -18,7 +18,7 @@ def bridge(library):
 def test_directory_detail_and_search_use_identical_asset_version(bridge):
     tree = bridge.tree().data
     topics = [t for group in tree["groups"] for t in group["topics"]]
-    assert len(topics) == 66
+    assert len(topics) == 67
     for item in topics:
         detail = bridge.topic(item["id"]).data
         assert detail["version"] == item["version"]

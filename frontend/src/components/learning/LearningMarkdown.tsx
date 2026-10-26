@@ -1,28 +1,43 @@
 /** 站内学习链接仅接受服务端解析目标；流式未落定时保持普通文字。 */
 import Markdown from 'react-markdown'
+import { memo } from 'react'
 import remarkGfm from 'remark-gfm'
-import type { LearningTarget } from '../../api/types'
+import type { KnowledgeAsset, LearningTarget } from '../../api/types'
 import { workbenchStore } from '../../store/workbenchStore'
 import { resolveLearningLink } from './links'
 import './reading.css'
 import { sourcePositions } from './selection'
+import KnowledgeFigure from './KnowledgeFigure'
+import { resolveVisualAsset } from './visualAssets'
 
-export default function LearningMarkdown({
+// 滚动保存会更新工作台状态；未变正文不应因此重建图片与其阅读状态。
+const LearningMarkdown = memo(function LearningMarkdown({
   text,
   targets = [],
   streaming = false,
   selectable = false,
+  assets = [],
 }: {
   text: string
   targets?: LearningTarget[]
   streaming?: boolean
   selectable?: boolean
+  assets?: KnowledgeAsset[]
 }) {
   return (
     <div className="learning-prose">
       <Markdown
         remarkPlugins={selectable ? [remarkGfm, sourcePositions] : [remarkGfm]}
         components={{
+          p: ({ node, children }) => node?.children.some(child => child.type === 'element' && child.tagName === 'img')
+            ? <div className="knowledge-figure-paragraph">{children}</div>
+            : <p>{children}</p>,
+          img: ({ src, alt, node }) => {
+            const asset = resolveVisualAsset(src, assets)
+            return asset ? <KnowledgeFigure key={asset.href} asset={asset} caption={alt ?? asset.title}
+              sourceMap={typeof node?.properties['data-source-map'] === 'string' ? node.properties['data-source-map'] : undefined} />
+              : <span className="knowledge-image-unavailable">{alt || '图片未关联到当前教材，文字仍可阅读。'}</span>
+          },
           a: ({ href, children }) => {
             if (href?.startsWith('/learn/')) {
               const target = resolveLearningLink(href, targets, streaming)
@@ -73,4 +88,6 @@ export default function LearningMarkdown({
       </Markdown>
     </div>
   )
-}
+})
+
+export default LearningMarkdown

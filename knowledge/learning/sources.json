@@ -154,5 +154,53 @@
     "retrieved_at": "2026-10-23T18:58:10.410336+00:00",
     "sha256": "81d9be85b56afe212e24ad798f084e9a3ff6192a44aeecc95a2dce1be32fafa5",
     "modifications": "中文重新组织、教学示例与工程关联；不是原站全文镜像。各篇正文保留对应许可与来源。"
+  },
+  {
+    "id": "sqlite",
+    "title": "SQLite ALTER TABLE",
+    "author": "SQLite authors",
+    "url": "https://www.sqlite.org/lang_altertable.html",
+    "version": "2026-10-26 snapshot; sha256:540366b0fa89257467497780e78538a992b5865a70d23180dac2aa7d2ef4e03d",
+    "license": "Public-Domain",
+    "license_url": "https://www.sqlite.org/copyright.html",
+    "retrieved_at": "2026-10-26T09:34:23.085207+00:00",
+    "sha256": "540366b0fa89257467497780e78538a992b5865a70d23180dac2aa7d2ef4e03d",
+    "modifications": "中文独立解释与原创教学图；参考机制说明，不镜像完整原文。"
+  },
+  {
+    "id": "vite-hmr",
+    "title": "Vite HMR API: hot.data",
+    "author": "Vite contributors",
+    "url": "https://vite.dev/guide/api-hmr",
+    "version": "2026-10-26 snapshot; sha256:233b02b07ffdce64fe492750205735bce362ecea35d29dad04263530e5c1debd",
+    "license": "MIT",
+    "license_url": "https://github.com/vitejs/vite/blob/main/LICENSE",
+    "retrieved_at": "2026-10-26T09:34:23.197165+00:00",
+    "sha256": "233b02b07ffdce64fe492750205735bce362ecea35d29dad04263530e5c1debd",
+    "modifications": "中文独立解释与原创教学图；参考机制说明，不镜像完整原文。"
+  },
+  {
+    "id": "react-identity",
+    "title": "React state identity",
+    "author": "Meta Platforms, Inc. and React contributors",
+    "url": "https://react.dev/learn/preserving-and-resetting-state",
+    "version": "2026-10-26 snapshot; sha256:5b73b92e8e2428b19db692fc38806680314227478c6947fddd90976464439b31",
+    "license": "CC-BY-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "retrieved_at": "2026-10-26T09:34:23.482275+00:00",
+    "sha256": "5b73b92e8e2428b19db692fc38806680314227478c6947fddd90976464439b31",
+    "modifications": "中文独立解释与原创教学图；参考机制说明，不镜像完整原文。"
+  },
+  {
+    "id": "mdn-storage",
+    "title": "MDN Web Storage API",
+    "author": "Mozilla Contributors",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API",
+    "version": "2026-10-26 snapshot; sha256:6cd7d4a0f6e1413053399edfd4f784d72de561648486bfc0483ec416ef899024",
+    "license": "CC-BY-SA-4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "retrieved_at": "2026-10-26T09:34:23.559695+00:00",
+    "sha256": "6cd7d4a0f6e1413053399edfd4f784d72de561648486bfc0483ec416ef899024",
+    "modifications": "中文独立解释与原创教学图；参考机制说明，不镜像完整原文。"
   }
 ]

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "python-return-path",
+    "topic_id": "python-functions",
+    "section_id": "example",
+    "file": "assets/python-functions/python-return-path.svg",
+    "title": "打印与返回值",
+    "description": "内部 print 显示 36；普通函数没有显式 return 且正常结束时返回 None，amount 因此是 None，外部 print 再显示 None。改用 return 可把 36 交给调用者。",
+    "width": 440,
+    "height": 560,
+    "author": "CodeInsight",
+    "license": "Apache-2.0",
+    "source_ids": [],
+    "sha256": "57aea556e7240eafa3342132e1fbee70f6f80f1173275119f68e435bdaf3d23b"
+  },
+  {
+    "id": "sql-table-relation",
+    "topic_id": "sql-database",
+    "section_id": "relationships",
+    "file": "assets/sql-database/sql-table-relation.svg",
+    "title": "商品与订单的引用关系",
+    "description": "orders.product_id 引用 products.id；101 和 102 都引用商品 1，103 引用商品 2。箭头表示外键引用，不是执行顺序。SQL 声明并启用约束，画线本身不创建约束。",
+    "width": 440,
+    "height": 590,
+    "author": "CodeInsight",
+    "license": "Apache-2.0",
+    "source_ids": [],
+    "sha256": "c7d8ce31c116b71649b367928fb4a945a66ae1ce0e883484b4fcc84d40bb9f17"
+  },
+  {
+    "id": "state-storage-boundaries",
+    "topic_id": "state-lifecycle",
+    "section_id": "ownership",
+    "file": "assets/state-lifecycle/state-storage-boundaries.svg",
+    "title": "状态与存储的层级",
+    "description": "按职责分为浏览器与后端。浏览器包含页面内存及 localStorage/IndexedDB；后端包含进程内存和 SQLite 等数据文件。刷新页面与重启后端影响不同对象。",
+    "width": 440,
+    "height": 602,
+    "author": "CodeInsight",
+    "license": "Apache-2.0",
+    "source_ids": [],
+    "sha256": "682d0c90219611747b3990548f761c7d272d178d38c3bdb460c3a63177aebfbb"
+  },
+  {
+    "id": "state-hmr-identity",
+    "topic_id": "state-lifecycle",
+    "section_id": "hmr",
+    "file": "assets/state-lifecycle/state-hmr-identity.svg",
+    "title": "HMR 中的容器身份",
+    "description": "事故中模块重新创建空 store，而启动初始化未重跑，项目从 4 变成 0。修复复用 hot.data 中的完整容器，保留状态及闭包；它不提供网页刷新后的持久化。",
+    "width": 440,
+    "height": 524,
+    "author": "CodeInsight",
+    "license": "Apache-2.0",
+    "source_ids": [],
+    "sha256": "d14ecafbe0c1e0063f387e9d1b2dd13a134d42586fb246c1b7b1cbed85792ce4"
+  }
+]
