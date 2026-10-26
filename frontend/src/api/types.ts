@@ -227,6 +227,10 @@ export interface ProjectDetail extends ProjectSummary {
 
 /** `GET /projects/{id}/overview` 响应（契约 §3.5）。 */
 export interface ProjectOverview {
+  head_commit?: string | null
+  index_epoch?: number
+  project_intro?: { text: string; source: CodeReadingContext; kind: string } | null
+  exploration_entries?: ExplorationAction[]
   project_id: number
   architecture_summary: string
   languages: Array<{ language: string; files: number; lines: number }>
@@ -550,6 +554,7 @@ export interface TimelineResponse {
 // ─────────────────────────────────────────────────────────────
 
 export interface QueryRequest {
+  action_origin?: ActionOrigin
   request_id?: string
   project_id: number
   question: string
@@ -681,6 +686,7 @@ export interface CodeReadingContext {
 }
 
 export interface Conversation {
+  exploration_state?: ExplorationState
   id: string
   project_id: number
   project_name: string
@@ -782,9 +788,42 @@ export interface KnowledgeHit {
   sources: KnowledgeSource[]
 }
 export interface KnowledgeAnswerMetadata {
+  exploration?: ExplorationResult | null
   knowledge_sources?: KnowledgeHit[]
   learning_entries?: LearningTarget[]
   learning_targets?: LearningTarget[]
   reading_status?: string
   knowledge_error?: string | null
+}
+
+export interface ActionOrigin {
+  kind: 'answer' | 'overview'
+  action_id: string
+  index_epoch: number
+  request_id?: string
+}
+export interface ExplorationAction {
+  id: string
+  kind: 'follow_up' | 'code' | 'knowledge' | 'graph' | 'timeline'
+  label: string
+  reason: string
+  question: string
+  target: (ReadingContext & { qualname?: string | null; href?: string }) | null
+}
+export interface ExplorationResult {
+  origin?: ActionOrigin
+  project_id: number
+  head_commit: string | null
+  index_epoch: number
+  takeaways: string[]
+  actions: ExplorationAction[]
+  flow: { title: string; nodes: Array<{ id: string; label: string; role: string; target: CodeReadingContext & { qualname?: string | null } }>; edges: Array<{ source: string; target: string; kind: string; uncertain: boolean }> } | null
+}
+export interface ExplorationState {
+  current_question?: string
+  target?: ReadingContext | null
+  head_commit?: string | null
+  index_epoch?: number
+  stale?: boolean
+  items?: Array<{ text: string; request_id: string; target?: ReadingContext | null }>
 }

@@ -10,8 +10,9 @@ import type { Citation } from '../../api/types'
 import MessageBubble from './MessageBubble'
 import InputBox from './InputBox'
 import { workbenchStore } from '../../store/workbenchStore'
-import { projectStore } from '../../store/projectStore'
 import { ArrowDown, ArrowUp, Search, X } from 'lucide-react'
+import ProjectGuide from '../exploration/ProjectGuide'
+import ExplorationTrail from '../exploration/ExplorationTrail'
 
 export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Citation) => void }) {
   const messages = useStore(chatStore, (s) => s.messages)
@@ -21,13 +22,13 @@ export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Cit
   const cursor = useStore(chatStore, (s) => s.turnsCursor)
   const loading = useStore(chatStore, (s) => s.loading)
   const error = useStore(chatStore, (s) => s.error)
-  const indexing = useStore(projectStore, state => state.currentDetail?.status === 'indexing')
   const archived = useStore(chatStore, s => s.currentArchived)
   const saved = useStore(workbenchStore, (s) => s.chatScroll)
   const scrollRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const wasAtBottomRef = useRef(true)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
   const [matchIndex, setMatchIndex] = useState(0)
   const title = useStore(chatStore, s => s.currentTitle)
   const matches = messages.filter(m => find && m.text.toLowerCase().includes(find.toLowerCase()))
@@ -79,7 +80,7 @@ export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Cit
           <button className="wb-icon-button" aria-label="上一条匹配消息" disabled={!matches.length} onClick={() => locate(-1)}><ArrowUp size={15} /></button>
           <button className="wb-icon-button" aria-label="下一条匹配消息" disabled={!matches.length} onClick={() => locate(1)}><ArrowDown size={15} /></button>
           <button className="wb-icon-button" aria-label="关闭对话查找" onClick={() => { setSearchOpen(false); chatStore.getState().setFind('') }}><X size={16} /></button>
-        </> : <><h2 className="min-w-0 flex-1 truncate text-sm font-medium text-slate-600">{title}</h2><button className="wb-icon-button" aria-label="查找当前对话" title="查找当前对话" onClick={() => setSearchOpen(true)}><Search size={17} /></button></>}
+        </> : <><h2 className="min-w-0 flex-1 truncate text-sm font-medium text-slate-600">{title}</h2><button className="wb-button" aria-expanded={guideOpen} onClick={() => setGuideOpen(v => !v)}>项目导览</button><button className="wb-icon-button" aria-label="查找当前对话" title="查找当前对话" onClick={() => setSearchOpen(true)}><Search size={17} /></button></>}
       </div>
       {searchOpen && cursor !== null && <p className="px-5 pb-2 text-xs text-slate-500">仅查找已加载消息。<button className="text-accent" onClick={() => void chatStore.getState().loadMore()}>加载更早记录</button></p>}
       {error && <p role="alert" className="px-4 py-2 text-xs text-danger">{error} <button type="button" onClick={() => void chatStore.getState().openConversation(chatStore.getState().projectId!, conversationId)}>重新读取</button></p>}
@@ -88,13 +89,8 @@ export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Cit
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
           {loading && <p role="status" className="text-xs text-slate-500">读取对话与阅读工作区…</p>}
           {cursor !== null && <button type="button" className="text-xs text-accent" onClick={() => void chatStore.getState().loadMore()}>加载更早的对话</button>}
-          {messages.length === 0 && (
-            <div className="mt-10 text-center">
-              <h2 className="text-xl font-semibold text-slate-700">{indexing ? '项目代码正在准备' : '从一个问题开始'}</h2>
-              <p className="mt-3 text-sm text-slate-500">{indexing ? '先写下问题，或直接询问基础知识。索引完成后可探索项目代码。' : '读懂项目，也弄懂代码背后的概念。'}</p>
-              {indexing && <button className="wb-button mt-4" onClick={() => workbenchStore.getState().openKnowledgeTree()}>浏览教材</button>}
-            </div>
-          )}
+          {!loading && (messages.length === 0 || guideOpen) && <ProjectGuide />}
+          {!loading && <ExplorationTrail />}
           {messages.map((m) => (
             <div key={m.id} id={`message-${m.id}`} data-match={Boolean(find && m.text.toLowerCase().includes(find.toLowerCase()))} className={find && m.text.toLowerCase().includes(find.toLowerCase()) ? 'rounded-xl ring-2 ring-amber-300' : ''}>
               <MessageBubble message={m} onOpenCitation={onOpenCitation} />

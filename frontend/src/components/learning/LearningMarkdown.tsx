@@ -2,13 +2,14 @@
 import Markdown from 'react-markdown'
 import { memo } from 'react'
 import remarkGfm from 'remark-gfm'
-import type { KnowledgeAsset, LearningTarget } from '../../api/types'
+import type { Citation, KnowledgeAsset, LearningTarget } from '../../api/types'
 import { workbenchStore } from '../../store/workbenchStore'
 import { resolveLearningLink } from './links'
 import './reading.css'
 import { sourcePositions } from './selection'
 import KnowledgeFigure from './KnowledgeFigure'
 import { resolveVisualAsset } from './visualAssets'
+import { citationMarkers } from './citationMarkers'
 
 // 滚动保存会更新工作台状态；未变正文不应因此重建图片与其阅读状态。
 const LearningMarkdown = memo(function LearningMarkdown({
@@ -17,17 +18,23 @@ const LearningMarkdown = memo(function LearningMarkdown({
   streaming = false,
   selectable = false,
   assets = [],
+  citations,
+  onCitation,
+  onKnowledge,
 }: {
   text: string
   targets?: LearningTarget[]
   streaming?: boolean
   selectable?: boolean
   assets?: KnowledgeAsset[]
+  citations?: Citation[]
+  onCitation?: (citation: Citation) => void
+  onKnowledge?: (target: LearningTarget) => void
 }) {
   return (
     <div className="learning-prose">
       <Markdown
-        remarkPlugins={selectable ? [remarkGfm, sourcePositions] : [remarkGfm]}
+        remarkPlugins={[remarkGfm, ...(selectable ? [sourcePositions] : []), ...(!streaming && citations?.length ? [[citationMarkers, { citations }] as [typeof citationMarkers, { citations: Citation[] }]] : [])]}
         components={{
           p: ({ node, children }) => node?.children.some(child => child.type === 'element' && child.tagName === 'img')
             ? <div className="knowledge-figure-paragraph">{children}</div>
@@ -39,6 +46,11 @@ const LearningMarkdown = memo(function LearningMarkdown({
               : <span className="knowledge-image-unavailable">{alt || '图片未关联到当前教材，文字仍可阅读。'}</span>
           },
           a: ({ href, children }) => {
+            const ref = /^\/__code_ref\/(\d+)$/.exec(href ?? '')
+            if (ref) {
+              const citation = citations?.[Number(ref[1])]
+              return citation && onCitation && !streaming ? <button className="exploration-citation" type="button" title={`${citation.path}:${citation.lineno}`} onClick={() => onCitation(citation)}>{children}</button> : <span>{children}</span>
+            }
             if (href?.startsWith('/learn/')) {
               const target = resolveLearningLink(href, targets, streaming)
               return target ? (
@@ -48,7 +60,8 @@ const LearningMarkdown = memo(function LearningMarkdown({
                   onClick={(event) => {
                     if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
                     event.preventDefault()
-                    workbenchStore.getState().openKnowledge(target)
+                    if (onKnowledge) onKnowledge(target)
+                    else workbenchStore.getState().openKnowledge(target)
                   }}
                 >
                   {children}

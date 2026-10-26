@@ -67,6 +67,9 @@ def test_real_process_restart_keeps_history_and_interrupts_partial_turn(data_dir
             "/query", {**common, "request_id": "first", "question": "SQL 是什么"}
         ) as response:
             assert json.load(response)["knowledge_sources"]
+        with request(f"/projects/1/conversations/{cid}") as response:
+            exploration = json.load(response)["exploration_state"]
+        assert exploration["items"] and exploration["current_question"] == "SQL 是什么"
         with request(
             "/query/stream",
             {**common, "request_id": "partial", "question": "SQL __wait_for_restart__"},
@@ -79,6 +82,10 @@ def test_real_process_restart_keeps_history_and_interrupts_partial_turn(data_dir
             process.kill()
             process.wait(timeout=10)
         process = start()
+        with request(f"/projects/1/conversations/{cid}") as response:
+            assert json.load(response)["exploration_state"] == exploration
+        with request(f"/projects/1/conversations/{cid}/turns/first") as response:
+            assert json.load(response)["answer"]["exploration"]["takeaways"]
         with request(f"/projects/1/conversations/{cid}/turns") as response:
             turns = json.load(response)["items"]
         assert turns[0]["status"] == "completed"

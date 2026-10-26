@@ -9,6 +9,7 @@ import { hotState } from './hotState'
 
 export function panelKey(panel: RightPanel): string { return JSON.stringify(panel) }
 export function materialKey(panel: RightPanel): string {
+  if (panel.mode === 'exploration') return `exploration:${panel.projectId}:${panel.conversationId}:${panel.requestId}:${panel.target.topic_id}:${panel.target.section_id}:${panel.target.version}`
   if (panel.mode === 'knowledge') return `knowledge:${panel.target.topic_id}:${panel.target.version}`
   if (panel.mode === 'file') return `file:${panel.path}:${panel.version ?? ''}`
   if (panel.mode === 'symbol') return `symbol:${panel.qualname}:${panel.version ?? ''}`
@@ -16,6 +17,7 @@ export function materialKey(panel: RightPanel): string {
   return panelKey(panel)
 }
 export function materialTitle(panel: RightPanel): string {
+  if (panel.mode === 'exploration') return `理解：${panel.target.section_title ?? panel.target.title}`
   if (panel.mode === 'knowledge') return panel.target.title
   if (panel.mode === 'file') return panel.path.split('/').at(-1) || panel.path
   if (panel.mode === 'symbol') return panel.qualname.split('.').at(-1) || panel.qualname

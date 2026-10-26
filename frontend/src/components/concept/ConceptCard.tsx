@@ -16,6 +16,10 @@ import type {
 } from '../../api/types'
 import { projectStore } from '../../store/projectStore'
 import { workbenchStore } from '../../store/workbenchStore'
+import { chatStore } from '../../store/chatStore'
+import { viewStore } from '../../store/viewStore'
+import { layoutStore } from '../../store/layoutStore'
+import { useStore } from 'zustand'
 import LearningMarkdown from '../learning/LearningMarkdown'
 
 const DEPTHS: Array<{ id: ConceptDepth; label: string; hint: string }> = [
@@ -25,7 +29,9 @@ const DEPTHS: Array<{ id: ConceptDepth; label: string; hint: string }> = [
 ]
 
 export default function ConceptCard({ conceptId }: { conceptId: string }) {
-  const projectId = projectStore.getState().currentProjectId
+  const projectId = useStore(projectStore, s => s.currentProjectId)
+  const streaming = useStore(chatStore, s => s.streaming)
+  const origin = useStore(workbenchStore, s => s.history.slice(0, s.historyIndex + 1).reverse().find(h => h.reading?.kind === 'code')?.reading)
   const [depth, setDepth] = useState<ConceptDepth>('quick')
   // 状态带键（属于哪个 concept/depth）：换目标或换深度时旧值自然失效，
   // 避免 effect 里同步清空的级联渲染。
@@ -112,7 +118,7 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
       workbenchStore.getState().setReading({
         kind: 'knowledge',
         topic_id: target.topic_id,
-        section_id: 'overview',
+        section_id: target.section_id,
         version: target.version,
       })
   }, [detail, conceptId])
@@ -136,6 +142,10 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
   const loadedExplanation = explanation?.for === `${conceptId}:${depth}` ? explanation.data : null
   const summaryText =
     depth === 'quick' ? detail.summary : (loadedExplanation?.summary ?? detail.summary)
+  const reliable = instances?.for === conceptId ? instances.items.filter(i => i.confidence >= 0.8 && i.evidence) : []
+  const exact = origin?.kind === 'code' ? reliable.find(i => i.path === origin.path && i.lineno >= origin.lineno && i.lineno <= (origin.end_lineno ?? origin.lineno)) : undefined
+  const nearby = origin?.kind === 'code' ? reliable.find(i => i.path === origin.path) : undefined
+  const primary = exact ?? nearby ?? reliable[0]
 
   return (
     <article className="space-y-2.5">
@@ -151,6 +161,12 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
         <p className="mt-0.5 text-[10.5px] text-slate-400">本项目实例 {detail.instance_count} 个</p>
       </header>
 
+      <section className="context-excerpt">
+        <p className="exploration-section-label">{exact ? '当前阅读范围中的实例' : nearby ? '同文件中的实例' : '先看项目中的可靠实例'}</p>
+        {primary ? <><button className="text-left text-sm text-accent" onClick={() => workbenchStore.getState().selectFile(primary.path, primary.lineno)}>{primary.path}:{primary.lineno}</button><p className="mt-2 text-sm leading-7">{primary.evidence}</p>
+          <button className="wb-button mt-2" disabled={streaming} onClick={() => { viewStore.getState().setCenterTab('chat'); layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) }); void chatStore.getState().sendMessage(projectId!, `请结合 ${primary.path} 第 ${primary.lineno} 行解释 ${detail.name} 在这里解决什么问题，核对实际实现后再讨论取舍。`, { preserveDraft: true, reading: { kind: 'code', project_id: projectId!, path: primary.path, lineno: primary.lineno } }) }}>追问：解释它在这里的作用</button>
+        </> : <p className="exploration-muted">{instances?.for === conceptId ? '未找到可靠的项目实例，下面仍可阅读通用说明。' : '正在核对项目实例…'}</p>}
+      </section>
       <div className="flex gap-1" role="tablist" aria-label="解释深度">
         {DEPTHS.map((d) => (
           <button

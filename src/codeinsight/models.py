@@ -186,6 +186,7 @@ class Answer:
     learning_targets: list[dict[str, Any]] = field(default_factory=list)
     reading_status: str = "none"
     knowledge_error: str | None = None
+    exploration: dict[str, Any] | None = None
 
     dropped_citations: list[str] = field(default_factory=list)
     """模型写过、但 grounded 校验没通过的位置。**给审计看，不给用户看**——

@@ -11,6 +11,11 @@ import { AlertTriangle, Ban, CheckCircle2, Hourglass, Loader2, Wrench } from 'lu
 import type { ChatMessage } from '../../store/types'
 import type { Citation, Inference } from '../../api/types'
 import ConfirmDialog from '../common/ConfirmDialog'
+import { useStore } from 'zustand'
+import { projectStore } from '../../store/projectStore'
+import ExplorationActions from '../exploration/ExplorationActions'
+import ExplorationFlow from '../exploration/ExplorationFlow'
+import { openRelated } from '../exploration/actions'
 
 function CitationLine({ citation, onOpen }: { citation: Citation; onOpen: (c: Citation) => void }) {
   return (
@@ -125,6 +130,9 @@ function MessageActions({ message }: { message: ChatMessage }) {
 }
 
 const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: originalOpen }: MessageBubbleProps) {
+  const detail = useStore(projectStore, s => s.currentDetail)
+  const pid = useStore(projectStore, s => s.currentProjectId)
+  const cid = useStore(chatStore, s => s.conversationId)
   const onOpenCitation = (citation: Citation) => originalOpen({ ...citation, head_commit: message.sourceHeadCommit ?? citation.head_commit })
   if (message.role === 'user') {
     return (
@@ -197,6 +205,9 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
             text={message.text}
             targets={message.learningTargets}
             streaming={message.streaming}
+            citations={message.exploration ? message.citations : undefined}
+            onCitation={onOpenCitation}
+            onKnowledge={message.exploration && message.citations?.length && pid !== null && message.requestId ? target => openRelated(target, pid, cid, message.requestId) : undefined}
           />
           {message.streaming && (
             <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-accent/60 align-middle" />
@@ -215,7 +226,11 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
             {message.error.title} · {message.error.hint}
           </p>
         )}
-        {!message.streaming && message.learningEntries && message.learningEntries.length > 0 && (
+        {!message.streaming && message.exploration && <>
+          <ExplorationFlow flow={message.exploration.flow} stale={Boolean(detail && (detail.head_commit !== message.exploration.head_commit || detail.index_epoch !== message.exploration.index_epoch))} />
+          <ExplorationActions actions={message.exploration.actions} version={message.exploration} requestId={message.requestId} />
+        </>}
+        {!message.streaming && !message.exploration && message.learningEntries && message.learningEntries.length > 0 && (
           <nav aria-label="继续学习" className="mt-3 border-t border-slate-200/60 pt-3">
             <p className="mb-2 text-[10px] font-semibold text-slate-400">继续学习</p>
             <div className="flex flex-wrap gap-2">
@@ -242,7 +257,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
               <button
                 type="button"
                 key={s.target.href}
-                onClick={() => workbenchStore.getState().openKnowledge(s.target)}
+                onClick={() => message.exploration && message.citations?.length && pid !== null && message.requestId ? openRelated(s.target, pid, cid, message.requestId) : workbenchStore.getState().openKnowledge(s.target)}
                 className="block text-left text-accent hover:underline"
               >
                 {s.target.title}

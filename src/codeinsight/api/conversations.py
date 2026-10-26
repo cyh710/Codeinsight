@@ -21,6 +21,7 @@ class ConversationPatch(BaseModel):
     pinned: bool | None = None
     archived: bool | None = None
     mark_read: bool = False
+    clear_exploration: bool = False
 
 
 def missing_conversation() -> ApiFailure:
@@ -86,6 +87,19 @@ def patch_conversation(
         raise missing_conversation() from None
     except ValueError as exc:
         raise bad_request(str(exc)) from exc
+    finally:
+        conn.close()
+
+
+@router.get("/projects/{project_id}/conversations/{conversation_id}/turns/{request_id}")
+def conversation_turn(project_id: int, conversation_id: str, request_id: str) -> dict[str, Any]:
+    """按来源请求精确恢复材料，不能越过会话或项目。"""
+    conn = connect_db(project_id)
+    try:
+        row = ConversationRepository(conn).turn(project_id, conversation_id, request_id)
+        if row is None:
+            raise missing_conversation()
+        return row
     finally:
         conn.close()
 

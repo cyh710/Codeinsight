@@ -22,6 +22,8 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from codeinsight.agent.discovery import discover
+from codeinsight.agent.exploration import target, version
 from codeinsight.agent.runtime import RuntimeEvent
 from codeinsight.agent.service import AgentSession, ProjectNotFound, open_agent
 from codeinsight.api.conversations import RUNNING
@@ -51,6 +53,7 @@ class QueryBody(BaseModel):
     conversation_id: str | None = None
     reading_context: dict[str, Any] | None = None
     request_id: str | None = Field(default=None, min_length=1, max_length=128)
+    action_origin: dict[str, Any] | None = None
 
 
 def _open_session(project_id: int) -> AgentSession:
@@ -87,6 +90,60 @@ def _reserve(body: QueryBody):
     cid = body.conversation_id or f"conv-{uuid.uuid4().hex}"
     rid = body.request_id or uuid.uuid4().hex
     try:
+        previous = ConversationRepository(session.conn).turn(body.project_id, cid, rid)
+        replaying = bool(
+            previous
+            and body.action_origin
+            and (previous["answer"].get("exploration") or {}).get("origin") == body.action_origin
+        )
+        if replaying:
+            body.question = previous["question"]
+            body.reading_context = previous["reading_context"]
+        if body.action_origin and not replaying:
+            origin = body.action_origin
+            if origin.get("kind") == "overview":
+                source = discover(session.conn, body.project_id)
+                actions = source["exploration_entries"]
+            elif origin.get("kind") == "answer":
+                saved = ConversationRepository(session.conn).turn(
+                    body.project_id, cid, str(origin.get("request_id", ""))
+                )
+                source = (saved or {}).get("answer", {}).get("exploration") or {}
+                actions = source.get("actions", [])
+            else:
+                source, actions = {}, []
+            if not source:
+                raise bad_request("探索动作来源不存在或不属于当前会话")
+            now = version(session.conn, body.project_id)
+            if (
+                any(source.get(k) != now[k] for k in ("project_id", "index_epoch", "head_commit"))
+                or origin.get("index_epoch") != now["index_epoch"]
+            ):
+                raise ApiFailure(
+                    status_code=409,
+                    code="reading_invalid",
+                    title="探索入口已过期",
+                    hint="请刷新项目导览或重新核对当前版本。",
+                )
+            action = next(
+                (
+                    a
+                    for a in actions
+                    if a["id"] == origin.get("action_id") and a["kind"] == "follow_up"
+                ),
+                None,
+            )
+            if action is None:
+                raise bad_request("探索动作不存在或不属于当前会话")
+            body.question = action["question"]
+            original = action.get("target")
+            body.reading_context = (
+                target(session.conn, body.project_id, original, session.runtime.learning)
+                if original
+                else None
+            )
+            if original and not body.reading_context:
+                raise bad_request("探索材料已失效，请重新打开来源")
         turn, created = ConversationRepository(session.conn).reserve(
             body.project_id, cid, rid, body.question, body.reading_context
         )
@@ -116,6 +173,8 @@ async def _run_persisted(session, body, cid, rid, emit=None):
     async def persist(event: RuntimeEvent) -> None:
         if event.type == "answer":
             event.data["source_head_commit"] = getattr(session, "head_commit", None)
+            if body.action_origin and event.data.get("exploration") is not None:
+                event.data["exploration"]["origin"] = body.action_origin
         if event.type == "meta":
             event.data["request_id"] = rid
             task_ids.append(event.data["task_id"])
@@ -205,6 +264,7 @@ async def query(body: QueryBody) -> dict[str, Any]:
         "learning_targets": answer.learning_targets,
         "reading_status": answer.reading_status,
         "knowledge_error": answer.knowledge_error,
+        "exploration": answer.exploration,
     }
 
 

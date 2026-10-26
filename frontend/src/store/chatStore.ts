@@ -91,6 +91,7 @@ export function applySseEvent(
         learningTargets: event.data.learning_targets ?? [],
         knowledgeError: event.data.knowledge_error,
         sourceHeadCommit: event.data.source_head_commit,
+        exploration: event.data.exploration,
       }))
     case 'error':
       // 只记录，不中断：契约保证 done 仍会来，由 done 统一收尾。
@@ -191,7 +192,7 @@ export function createChatActions(set: Set, get: Get) {
       await activateWorkbench(key(pid, cid))
       if (token !== generation) return
       const draft = await readLocal<string>(`draft:${key(pid, cid)}`)
-      const pending = await readLocal<{ rid: string; question: string; reading: ReadingContext | null }>(`pending:${key(pid, cid)}`)
+      const pending = await readLocal<{ rid: string; question: string; reading: ReadingContext | null; preserveDraft?: boolean }>(`pending:${key(pid, cid)}`)
       if (draft !== undefined && !client.draft) client.draft = draft
       sync(client)
       try {
@@ -205,8 +206,8 @@ export function createChatActions(set: Set, get: Get) {
           if (pending) {
             if (!client.messages.some(message => message.requestId === pending.rid)) {
               client.retry = pending
-              if (!client.draft) { client.draft = pending.question; void writeLocal(`draft:${key(pid, cid)}`, client.draft) }
-              if (active === client && client.draft === pending.question) { if (pending.reading) workbenchStore.getState().fixReading(pending.reading); else workbenchStore.getState().setReading(null) }
+              if (!client.draft && !pending.preserveDraft) { client.draft = pending.question; void writeLocal(`draft:${key(pid, cid)}`, client.draft) }
+              if (!pending.preserveDraft && active === client && client.draft === pending.question) { if (pending.reading) workbenchStore.getState().fixReading(pending.reading); else workbenchStore.getState().setReading(null) }
             }
             void writeLocal(`pending:${key(pid, cid)}`, null)
           }
@@ -274,27 +275,27 @@ export function createChatActions(set: Set, get: Get) {
         else await get().newConversation(pid)
       } catch (error) { if (token === generation) set({ loading: false, error: String(error) }) }
     },
-    sendMessage: async (pid: number, question: string) => {
+    sendMessage: async (pid: number, question: string, options?: { preserveDraft?: boolean; reading?: import('../api/types').ReadingContext | null; origin?: import('../api/types').ActionOrigin }) => {
       if (!active || active.pid !== pid) {
         active = clientFor(pid, get().conversationId || `project-${pid}-${crypto.randomUUID()}`)
         set({ projectId: pid }); sync(active)
       }
       const client = active
       if (client.streaming) return
-      const reading = workbenchStore.getState().reading
+      const reading = options && 'reading' in options ? options.reading ?? null : workbenchStore.getState().reading
       const requestId = client.retry?.question === question && JSON.stringify(client.retry.reading) === JSON.stringify(reading) ? client.retry.rid : crypto.randomUUID()
       const aid = `assistant-${requestId}`
       const controller = new AbortController()
-      client.controller = controller; client.streaming = true; client.draft = ''; client.taskId = null
-      void writeLocal(`draft:${key(pid, client.cid)}`, '')
+      client.controller = controller; client.streaming = true; client.taskId = null
+      if (!options?.preserveDraft) { client.draft = ''; void writeLocal(`draft:${key(pid, client.cid)}`, '') }
       client.messages = [...client.messages.filter(message => message.requestId !== requestId),
         { id: `user-${requestId}`, role: 'user', text: question, timestamp: new Date().toISOString(), requestId, readingContext: reading },
         { id: aid, role: 'assistant', text: '', streaming: true, timestamp: new Date().toISOString(), requestId, readingContext: reading }]
       sync(client)
-      if (browserApi()) await writeLocal(`pending:${key(pid, client.cid)}`, { rid: requestId, question, reading })
+      if (browserApi()) await writeLocal(`pending:${key(pid, client.cid)}`, { rid: requestId, question, reading, preserveDraft: options?.preserveDraft })
       let acknowledged = false
       const result = await api.streamQuery({ project_id: pid, question, conversation_id: client.cid,
-        request_id: requestId, ...(reading ? { reading_context: reading } : {}) }, event => {
+        request_id: requestId, ...(options?.origin ? { action_origin: options.origin } : {}), ...(reading ? { reading_context: reading } : {}) }, event => {
         if (client.controller !== controller) return
         if (event.event === 'meta') { acknowledged = true; client.taskId = event.data.task_id; client.retry = undefined; void writeLocal(`pending:${key(pid, client.cid)}`, null) }
         client.messages = applySseEvent(client.messages, aid, event)
@@ -308,7 +309,7 @@ export function createChatActions(set: Set, get: Get) {
       client.streaming = false; client.controller = null; sync(client)
       if (!acknowledged && result.error) {
         client.retry = { rid: requestId, question, reading }
-        if (!client.draft) { client.draft = question; void writeLocal(`draft:${key(pid, client.cid)}`, question); sync(client) }
+        if (!client.draft && !options?.preserveDraft) { client.draft = question; void writeLocal(`draft:${key(pid, client.cid)}`, question); sync(client) }
       }
       void get().refreshConversations()
     },

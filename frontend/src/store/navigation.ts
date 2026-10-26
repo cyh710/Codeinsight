@@ -26,6 +26,7 @@ export async function restoreLocation() {
         (panel.mode === 'symbol' && typeof panel.qualname === 'string') ||
         (panel.mode === 'knowledge' && typeof panel.target?.topic_id === 'string' && typeof panel.target?.version === 'string') ||
         (panel.mode === 'concept' && typeof panel.conceptId === 'string') || panel.mode === 'evidence' || panel.mode === 'knowledge-tree')
+        || (panel?.mode === 'exploration' && panel.projectId === pid && typeof panel.conversationId === 'string' && typeof panel.requestId === 'string' && typeof panel.target?.topic_id === 'string')
       if (valid) workbenchStore.getState().openMaterial(panel)
     } else {
       const match = /^\/learn\/([a-z][a-z0-9-]*)$/.exec(address.pathname)

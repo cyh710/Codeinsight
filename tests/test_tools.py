@@ -197,9 +197,9 @@ async def test_concept_uncertainty_is_in_model_text_not_only_metadata(conn, tmp_
     assert result.data["items"][0]["confidence"] == 0.4
 
 
-async def test_registry_has_twelve_readonly_tools(conn, tmp_path) -> None:
+async def test_registry_has_thirteen_readonly_tools(conn, tmp_path) -> None:
     registry = build_tools(_services(conn, tmp_path))
-    assert len(registry) == 12
+    assert len(registry) == 13
     assert all(tool.mutating is False for tool in registry)
     assert "search_code" in registry.names
-    assert len(registry.schemas()) == 12
+    assert len(registry.schemas()) == 13

@@ -17,7 +17,7 @@ from codeinsight.api.app import create_app
 from codeinsight.cognitive.concepts.assets import knowledge_directory
 from codeinsight.cognitive.indexing.indexer import index_project
 from codeinsight.config import settings
-from codeinsight.llm.provider import StreamChunk
+from codeinsight.llm.provider import StreamChunk, ToolCall
 from codeinsight.storage.sqlite import db_path
 
 
@@ -32,6 +32,86 @@ class BrowserProvider:
         ):
             raise RuntimeError("浏览器测试中的 Provider 故障")
         question = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+        exploring = "核对实现，再讨论取舍" in question or question.startswith("SQL 如果没有提交")
+        if exploring:
+            recent = messages[
+                next(i for i in range(len(messages) - 1, -1, -1) if messages[i]["role"] == "user") :
+            ]
+            proposed = any(
+                call.get("function", {}).get("name") == "propose_exploration"
+                for m in recent
+                for call in m.get("tool_calls", [])
+            )
+            if not proposed:
+                yield StreamChunk(
+                    tool_calls=[
+                        ToolCall(
+                            "explore-read",
+                            "read_file",
+                            {"path": "store.py", "start_line": 1, "end_line": 6},
+                        ),
+                        ToolCall(
+                            "explore-plan",
+                            "propose_exploration",
+                            {
+                                "takeaways": ["写入先开启事务，提交后修改才完成。"],
+                                "actions": [
+                                    {
+                                        "kind": "follow_up",
+                                        "label": "如果不提交会怎样",
+                                        "reason": "比较写入与持久化的边界",
+                                        "question": "SQL 如果没有提交事务，刷新后还能读到吗？",
+                                        "target": {"kind": "code", "path": "store.py", "lineno": 3},
+                                    },
+                                    {
+                                        "kind": "knowledge",
+                                        "label": "理解事务的提交与回滚",
+                                        "reason": "只阅读与当前问题相关的章节",
+                                        "target": {
+                                            "kind": "knowledge",
+                                            "topic_id": "sql-transactions",
+                                            "section_id": "two-writes",
+                                        },
+                                    },
+                                    {
+                                        "kind": "graph",
+                                        "label": "谁会调用这段保存逻辑",
+                                        "reason": "回到局部关系核对调用者",
+                                        "target": {
+                                            "kind": "code",
+                                            "path": "store.py",
+                                            "qualname": "store.save",
+                                        },
+                                    },
+                                ],
+                                "flow": {
+                                    "title": "保存逻辑所在的代码结构",
+                                    "nodes": [
+                                        {
+                                            "id": "module",
+                                            "label": "存储模块",
+                                            "role": "组织数据库写入",
+                                            "target": {"qualname": "store"},
+                                        },
+                                        {
+                                            "id": "save",
+                                            "label": "保存函数",
+                                            "role": "开启事务、写入并提交",
+                                            "target": {"qualname": "store.save"},
+                                        },
+                                    ],
+                                    "edges": [{"source": "module", "target": "save"}],
+                                },
+                            },
+                        ),
+                    ]
+                )
+                return
+            yield StreamChunk(
+                text="写入先开启事务，提交后修改才完成。[store.py:4] 这里的关键是把多步修改放在同一事务边界内，而不是每写一句就当作已经持久化。[store.py:6] 可以对照[事务](/learn/sql-transactions#two-writes)继续理解提交与回滚。",
+                finish_reason="stop",
+            )
+            return
         if not question.startswith("SQL 是什么") and any(
             m["role"] == "tool" and "store.py" in m.get("content", "") for m in messages
         ):
@@ -70,6 +150,10 @@ def main() -> None:
         for name in ("example-main", "example-other"):
             root = base / name
             root.mkdir()
+            (root / "README.md").write_text(
+                f"# {name}\n\n这是一个用于探索数据库保存过程的离线示例项目。它通过 SQLite 事务保存数据，帮助核对写入、提交与页面所见之间的区别。\n",
+                encoding="utf-8",
+            )
             (root / "store.py").write_text(
                 'import sqlite3\n\ndef save(conn):\n    conn.execute("BEGIN")\n    conn.execute("INSERT INTO items VALUES (1)")\n    conn.commit()\n',
                 encoding="utf-8",

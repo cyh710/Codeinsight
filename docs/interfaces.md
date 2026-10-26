@@ -156,6 +156,11 @@ class Tool(Protocol):
 `list_concepts` · `explain_concept` · `find_concept_instances` · `get_flow` ·
 `get_changes`（M6 前返回空壳） · `get_design_decisions` · `get_module_overview`。
 
+请求 0012 增加第十三个基础工具 `propose_exploration`（`agent/tools_exploration.py`）。
+它只整理可选流程、已展示要点和至多三项动作，不产生正文引用资格、不执行动作。
+`agent/exploration.py` 校验同版本对象和静态关系；`agent/discovery.py` 以已有索引生成首页入口。
+知识检索工具仍是独立可选来源，代码检索评测通道保持不变。
+
 ---
 
 ## 7. `LLMProvider` · 模型层
@@ -249,3 +254,10 @@ def db_path(data_dir, name="codeinsight.db") -> Path
 
 schema 2 增加 `concept_rule_version(id,fingerprint)`，repo_state.concept_version 保持 INTEGER。
 正文变化只更新本体文案；指纹变化才触发相应项目的概念重新检测，输入为冻结 Git 源码。
+
+## 12. 探索恢复（请求 0012）
+
+`PersistentConversationStore.exploration_context(key)` 返回最多 4KB 的会话探索脉络，
+加入既有历史预算，当前问题和工具证据仍具有优先权。只保存已展示内容，不推断用户掌握情况。
+schema 4 给 conversation 新增 exploration_json；历史、索引和最近六轮有效问答约定不变。
+前后端动作、回合读取和局部材料身份见 [`api-contract.md` §13](api-contract.md#13-项目探索请求-0012adr-0029)。

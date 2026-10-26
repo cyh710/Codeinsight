@@ -35,6 +35,7 @@ export interface PanelEvidence {
 }
 
 export interface ChatMessage {
+  exploration?: import('../api/types').ExplorationResult | null
   id: string
   role: 'user' | 'assistant'
   text: string
@@ -98,7 +99,7 @@ export interface ChatStore {
   /** 当前流的中止器（"停止"按钮用）。 */
   _abortController: AbortController | null
 
-  sendMessage: (projectId: number, question: string) => Promise<void>
+  sendMessage: (projectId: number, question: string, options?: { preserveDraft?: boolean; reading?: ReadingContext | null; origin?: import('../api/types').ActionOrigin }) => Promise<void>
   stopStreaming: () => void
   reset: () => void
   /**
@@ -157,6 +158,7 @@ export interface ProjectStore {
 
 /** 右栏形态：证据面板，或概念卡（**右栏替换**，已对齐 C-Q3）。 */
 export type RightPanel =
+  | { mode: 'exploration'; projectId: number; conversationId: string; requestId: string; target: LearningTarget }
   | { mode: 'evidence'; messageId?: string }
   | { mode: 'symbol'; qualname: string; lineno?: number; version?: string }
   | { mode: 'concept'; conceptId: string }

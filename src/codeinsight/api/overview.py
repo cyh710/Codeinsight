@@ -11,6 +11,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
+from codeinsight.agent.discovery import discover
 from codeinsight.api.projects import connect_db, project_counts, require_project
 
 router = APIRouter(tags=["overview"])
@@ -104,6 +105,7 @@ def get_overview(project_id: int) -> dict[str, Any]:
         )
 
         return {
+            **discover(conn, project_id),
             "project_id": project_id,
             "architecture_summary": summary,
             "languages": languages,

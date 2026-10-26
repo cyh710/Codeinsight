@@ -9,13 +9,16 @@ import SymbolDetailCard from './SymbolDetailCard'
 import ConceptCard from '../concept/ConceptCard'
 import KnowledgeDirectory from '../learning/KnowledgeDirectory'
 import KnowledgeArticle from '../learning/KnowledgeArticle'
+import ContextReading from '../exploration/ContextReading'
 import FilePanel from './FilePanel'
 import { layoutStore } from '../../store/layoutStore'
 import { viewStore } from '../../store/viewStore'
+import { projectStore } from '../../store/projectStore'
 
 // 右栏标题给用户看，不是给开发者看——「符号」「工程概念」这类内部术语
 // 用户读不懂，标题要说清楚这里是什么。
 const titles: Record<string, string> = {
+  exploration: '问题解读',
   evidence: '找到的代码',
   symbol: '代码位置',
   concept: '概念说明',
@@ -25,6 +28,7 @@ const titles: Record<string, string> = {
 }
 
 export default function RightPanel() {
+  const projectId = useStore(projectStore, s => s.currentProjectId)
   const state = useStore(workbenchStore)
   const full = useStore(layoutStore, s => s.full)
   const centerView = useStore(viewStore, s => s.centerTab)
@@ -35,7 +39,7 @@ export default function RightPanel() {
   const scroll = useRef<HTMLDivElement>(null)
   const key = panelKey(panel)
   useLayoutEffect(() => {
-    if (scroll.current && !['knowledge', 'file', 'symbol'].includes(panel.mode)) {
+    if (scroll.current && !['knowledge', 'exploration', 'file', 'symbol'].includes(panel.mode)) {
       scroll.current.scrollTop = workbenchStore.getState().scrollPositions[key] ?? 0
     }
   }, [key, panel.mode])
@@ -43,7 +47,7 @@ export default function RightPanel() {
     const element = scroll.current
     if (!element) return
     if (
-      ['knowledge', 'file', 'symbol', 'knowledge-tree'].includes(panel.mode) &&
+      ['knowledge', 'exploration', 'file', 'symbol', 'knowledge-tree'].includes(panel.mode) &&
       !element.querySelector('[data-reading-ready]')
     )
       return
@@ -87,7 +91,7 @@ export default function RightPanel() {
         <div className="ml-auto flex items-center gap-1">
           <button type="button" className="wb-button" onClick={() => { if (layoutStore.getState().viewport < 1100) layoutStore.setState({ right: false, full: false }); else layoutStore.getState().toggleFull() }}>{full || layoutStore.getState().viewport < 1100 ? `回到${centerView === 'graph' ? '关系图' : centerView === 'timeline' ? '时间线' : '对话'}` : '展开阅读'}</button>
           <button type="button" aria-label="隐藏材料区域" title="隐藏材料" className="wb-icon-button" onClick={() => { layoutStore.setState({ right: false, full: false }); requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[data-material-toggle]')?.focus()) }}><X size={17} /></button>
-          {['knowledge', 'knowledge-tree', 'concept'].includes(panel.mode) && path && (
+          {['knowledge', 'exploration', 'knowledge-tree', 'concept'].includes(panel.mode) && path && (
             <button
               onClick={() => workbenchStore.getState().returnToCode()}
               className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-accent"
@@ -144,9 +148,10 @@ export default function RightPanel() {
           {panel.mode === 'symbol' && (
             <SymbolDetailCard qualname={panel.qualname} focusLine={panel.lineno} version={panel.version} />
           )}
-          {panel.mode === 'concept' && <ConceptCard conceptId={panel.conceptId} />}
+          {panel.mode === 'concept' && <ConceptCard key={`${projectId}:${panel.conceptId}`} conceptId={panel.conceptId} />}
           {panel.mode === 'knowledge-tree' && <KnowledgeDirectory />}
           {panel.mode === 'knowledge' && <KnowledgeArticle target={panel.target} />}
+          {panel.mode === 'exploration' && <ContextReading {...panel} />}
           {panel.mode === 'file' && <FilePanel path={panel.path} lineno={panel.lineno} version={panel.version} />}
         </div>
       </div>

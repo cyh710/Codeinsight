@@ -491,7 +491,7 @@ test('索引已接受时关闭导入弹窗，后台轮询不阻塞工作台', as
   await dialog.getByRole('button', { name: '选择文件夹', exact: true }).click()
   await dialog.getByRole('button', { name: '导入并建索引', exact: true }).click()
   await expect(dialog).toHaveCount(0)
-  await expect(page.getByRole('status').filter({ hasText: /索引/ })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: `正在为 ${project.name} 建立索引` })).toBeVisible()
   await expect(input(page)).toBeEnabled()
   await input(page).fill('索引过程中也能写草稿')
 })

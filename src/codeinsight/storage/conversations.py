@@ -50,6 +50,19 @@ class ConversationRepository:
         result["pinned"] = bool(result["pinned"])
         result["archived"] = bool(result["archived"])
         result.pop("focus_json", None)
+        state = json.loads(result.pop("exploration_json", "{}"))
+        current = self.conn.execute(
+            "SELECT head_commit,index_epoch FROM repo_state WHERE project_id=?", (project_id,)
+        ).fetchone()
+        state["stale"] = bool(
+            state.get("index_epoch") is not None
+            and (
+                not current
+                or state.get("index_epoch") != current[1]
+                or state.get("head_commit") != current[0]
+            )
+        )
+        result["exploration_state"] = state
         result["unread"] = result["updated_at"] > result["last_read_at"]
         return result
 
@@ -116,6 +129,11 @@ class ConversationRepository:
         if updates.get("mark_read"):
             self.conn.execute(
                 f"UPDATE conversation SET last_read_at={NOW} WHERE project_id=? AND id=?",
+                (project_id, cid),
+            )
+        if updates.get("clear_exploration"):
+            self.conn.execute(
+                "UPDATE conversation SET exploration_json='{}' WHERE project_id=? AND id=?",
                 (project_id, cid),
             )
         self.conn.commit()
@@ -213,6 +231,31 @@ class ConversationRepository:
                 if data.get("abstained")
                 else "completed"
             )
+            if (
+                status == "completed"
+                and not answer.get("incomplete")
+                and isinstance(answer.get("exploration"), dict)
+            ):
+                proposal = answer["exploration"]
+                previous = self.get(project_id, cid).get("exploration_state", {})
+                items = [] if previous.get("stale") else previous.get("items", [])
+                items = [i for i in items if i.get("request_id") != rid]
+                items.extend(
+                    {"text": s, "request_id": rid, "target": turn.get("reading_context")}
+                    for s in proposal.get("takeaways", [])
+                    if isinstance(s, str)
+                )
+                state = {
+                    "current_question": turn["question"],
+                    "target": turn.get("reading_context"),
+                    "items": items[-12:],
+                    "head_commit": proposal.get("head_commit"),
+                    "index_epoch": proposal.get("index_epoch"),
+                }
+                self.conn.execute(
+                    "UPDATE conversation SET exploration_json=? WHERE project_id=? AND id=?",
+                    (encode(state), project_id, cid),
+                )
         self.conn.execute(
             f"UPDATE conversation_turn SET answer_json=?,status=?,updated_at={NOW} "
             "WHERE project_id=? AND conversation_id=? AND request_id=?",
@@ -295,14 +338,50 @@ class PersistentConversationStore:
             "AND status IN ('completed','abstained') ORDER BY created_at DESC,rowid DESC LIMIT 6",
             (int(pid), cid),
         ).fetchall()
+        current = self.conn.execute(
+            "SELECT head_commit,index_epoch FROM repo_state WHERE project_id=?", (int(pid),)
+        ).fetchone()
+
+        def historical(raw: str) -> str:
+            answer = json.loads(raw)
+            v = answer.get("exploration") or {}
+            stale = current and (
+                (v and v.get("index_epoch") != current[1])
+                or answer.get("source_head_commit") != current[0]
+            )
+            return (
+                "[历史解释来自旧索引，只作对话来路，当前代码须重新取证]\n" if stale else ""
+            ) + answer.get("text", "")
+
         return [
             message
             for row in reversed(rows)
             for message in (
                 {"role": "user", "content": row[0]},
-                {"role": "assistant", "content": json.loads(row[1]).get("text", "")},
+                {"role": "assistant", "content": historical(row[1])},
             )
         ]
+
+    def exploration_context(self, key: str) -> str:
+        """最多 4KB 的已展示记录，不推断用户能力；仍由 runtime 总预算裁剪。"""
+        from codeinsight.agent.context import truncate_bytes
+
+        pid, cid = key.split(":", 1)
+        state = ConversationRepository(self.conn).get(int(pid), cid)["exploration_state"]
+        if not state.get("current_question"):
+            return ""
+        payload = {
+            "current_question": state.get("current_question", "")[:800],
+            "target": state.get("target"),
+            "items": [] if state.get("stale") else list(state.get("items", [])),
+            "stale": state.get("stale", False),
+        }
+        prefix = (
+            "服务端探索脉络：以下仅为本会话已展示内容，不代表用户掌握；旧版本不得当作当前事实。\n"
+        )
+        while payload["items"] and len((prefix + encode(payload)).encode()) > 4096:
+            payload["items"].pop(0)
+        return truncate_bytes(prefix + encode(payload), 4096)[0]
 
     def focus(self, key: str) -> Focus:
         """焦点独立于消息保存，避免把检索提示冒充正文。"""

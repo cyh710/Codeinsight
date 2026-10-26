@@ -73,9 +73,15 @@ test('缺图时正文与图意可读，重试后恢复；返回材料恢复位�
   await figure.getByRole('button', { name: '重试图片' }).click()
   await expect.poll(() => figure.locator('.knowledge-figure-open img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(440)
   const scroll = page.locator('[data-reading-scroll]')
-  const position = await scroll.evaluate(el => el.scrollTop)
   await page.screenshot({ path: resolve('..', '.ci/browser/learning-sql-visuals.png') })
-  await article.getByRole('link', { name: '关联查询', exact: true }).first().click()
+  const link = article.getByRole('link', { name: '关联查询', exact: true }).first()
+  // 点击会先滚动到链接；返回应恢复离开时的位置，而非更早的图示位置。
+  await link.scrollIntoViewIfNeeded()
+  const position = await scroll.evaluate(async el => {
+    await new Promise(requestAnimationFrame)
+    return el.scrollTop
+  })
+  await link.click()
   await expect(page.locator('.learning-article h2')).toContainText('关联')
   await page.getByRole('button', { name: '返回上一处', exact: true }).click()
   await expect(page.locator('.learning-article h2')).toContainText('SQL 是什么')

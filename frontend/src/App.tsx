@@ -23,6 +23,7 @@ import ProjectIndexNotice from './components/tree/ProjectIndexNotice'
 import './workbench.css'
 import './workbench-density.css'
 import './workbench-motion.css'
+import './components/exploration/exploration.css'
 
 // 引用点击 → 右栏符号详情（无 qualname 时退回文件选中）。
 function openCitation(c: Citation) {

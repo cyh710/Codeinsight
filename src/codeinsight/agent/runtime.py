@@ -24,6 +24,7 @@ from typing import Any
 
 from codeinsight.agent.answer import GroundedFile, Grounding, split_answer
 from codeinsight.agent.context import ContextBudget, assemble, truncate_bytes
+from codeinsight.agent.exploration import normalize, plain, version
 from codeinsight.agent.ledger import EventLedger, new_task_id
 from codeinsight.agent.prompts import SYSTEM_PROMPT
 from codeinsight.agent.selection import SelectionError, code_selection
@@ -114,6 +115,11 @@ class AgentRuntime:
         prior = self.store.history(session_key) if conversation_id else []
         goal = {"role": "user", "content": question}
         current: list[dict[str, Any]] = []
+        initial_version = version(self.conn, project_id) if self.conn is not None else None
+        if conversation_id and hasattr(self.store, "exploration_context"):
+            context = self.store.exploration_context(session_key)
+            if context:
+                prior = [*prior, {"role": "user", "content": context}]
         grounding = Grounding()
         focus = self.store.focus(session_key) if conversation_id else Focus()
         final_text = ""
@@ -328,12 +334,37 @@ class AgentRuntime:
                 answer.knowledge_sources = projection["knowledge_sources"]
                 answer.learning_entries = projection["learning_entries"]
                 answer.learning_targets = projection["learning_targets"]
+            if self.conn is not None:
+                try:
+                    proposal = answer.exploration or {}
+                    if not proposal.get("actions"):
+                        proposal["actions"] = [
+                            {
+                                "kind": "knowledge",
+                                "label": f"理解：{t['title']}",
+                                "target": {"kind": "knowledge", **t},
+                            }
+                            for t in answer.learning_entries
+                        ]
+                    answer.exploration = normalize(self.conn, project_id, proposal, self.learning)
+                    visible = plain(answer.text)
+                    answer.exploration["takeaways"] = [
+                        s for s in answer.exploration["takeaways"] if plain(s) in visible
+                    ]
+                    if not answer.exploration["takeaways"] and not answer.abstained:
+                        answer.exploration["takeaways"] = [visible[:240]]
+                except (ValueError, TypeError, KeyError, sqlite3.Error):
+                    # 附加建议不能破坏已经完成且可核查的正文。
+                    answer.exploration = None
+                if initial_version != version(self.conn, project_id):
+                    answer.exploration = None
             await _emit(
                 emit,
                 RuntimeEvent(
                     "answer",
                     {
                         "text": answer.text,
+                        "exploration": answer.exploration,
                         "tools_used": answer.tools_used,
                         "evidence": answer.evidence,
                         "knowledge_sources": answer.knowledge_sources,
@@ -456,6 +487,8 @@ class AgentRuntime:
         _absorb_grounding(grounding, result.data)
         _collect_evidence(answer, call.name, result.data)
         _collect_knowledge(answer, result.data)
+        if call.name == "propose_exploration" and not result.error:
+            answer.exploration = result.data.get("exploration")
         await _emit_evidence(emit, call.name, result.data)
         await _emit(
             emit,

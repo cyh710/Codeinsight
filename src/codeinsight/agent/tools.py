@@ -84,7 +84,7 @@ class BaseTool:
 
 
 def build_tools(services: ToolServices) -> ToolRegistry:
-    """装配 12 个工具。顺序即 `meta` 事件里的展示顺序。"""
+    """装配 13 个基础工具。顺序即 meta 展示顺序，知识桥可追加教材工具。"""
     from codeinsight.agent.tools_code import (
         FindSymbolTool,
         GetCalleesTool,
@@ -93,6 +93,7 @@ def build_tools(services: ToolServices) -> ToolRegistry:
         ReadFileTool,
         SearchCodeTool,
     )
+    from codeinsight.agent.tools_exploration import ProposeExplorationTool
     from codeinsight.agent.tools_knowledge import (
         ExplainConceptTool,
         FindConceptInstancesTool,
@@ -117,6 +118,7 @@ def build_tools(services: ToolServices) -> ToolRegistry:
         GetChangesTool(services),
         GetDesignDecisionsTool(services),
         GetModuleOverviewTool(services),
+        ProposeExplorationTool(services),
     ]
     if services.learning is not None:
         # 教材工具与项目工具分开：它们返回的是教学资料，`data` 里**没有**

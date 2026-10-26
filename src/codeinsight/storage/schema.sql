@@ -425,6 +425,7 @@ CREATE TABLE IF NOT EXISTS conversation (
     archived INTEGER NOT NULL DEFAULT 0,
     last_read_at TEXT NOT NULL DEFAULT '',
     focus_json TEXT NOT NULL DEFAULT '{}',
+    exploration_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     PRIMARY KEY(project_id, id)

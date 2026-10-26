@@ -1133,3 +1133,93 @@ href 为 `/knowledge/assets/{id}/{sha256}`，浏览器通过既有 `/api` 前缀
 图示及图意参与所属文章版本，正文与图示必须匹配。教材选区仍以 UTF-16 原文为准；
 可选择图片 Markdown 中的图注，图内 SVG 标签不作为正文选区。模型依据正文及受维护图意，
 不假定具有图片识别能力，不将图示视为项目代码证据。
+
+## 13. 项目探索（请求 0012，ADR 0029）
+
+### 项目导览
+
+`GET /projects/{id}/overview` 保留原字段，增加：
+
+- `project_id,head_commit,index_epoch`：当前索引身份；无 Git 项目也通过 epoch 失效。
+- `project_intro`：`null` 或 `{text,source,kind:"indexed_document_excerpt"}`。摘录来自索引文档块，
+  或与索引哈希一致的文档原文；Git 项目按索引提交读取。`source` 为下述代码目标。
+- `exploration_entries`：最多四个已校验动作。依据程序入口、成功索引变更、可靠概念证据、
+  设计说明生成；证据不足的类别省略，没有自动模型任务。
+
+### 最终答案与内部工具
+
+非流式结果和 SSE 最终 `answer` 新增可选 `exploration`，同时保存进回合 `answer`：
+
+```json
+{
+  "project_id": 1,
+  "head_commit": "已索引提交或 null",
+  "index_epoch": 1,
+  "takeaways": ["实际已在本回合正文展示的要点"],
+  "flow": null,
+  "actions": [{
+    "id": "规范化内容的稳定标识",
+    "kind": "follow_up",
+    "label": "如果不提交会怎样",
+    "reason": "比较写入与持久化的边界",
+    "question": "如果不提交事务会怎样？",
+    "target": {"kind":"code","project_id":1,"path":"store.py","lineno":3,"end_lineno":3,
+               "qualname":"store.save","head_commit":"已索引提交","content_sha256":"源码哈希"}
+  }]
+}
+```
+
+`actions` 最多三项，`kind` 仅 `follow_up/code/knowledge/graph/timeline`。
+代码目标沿用阅读上下文，附可选 `qualname`；知识目标为 `kind:"knowledge"` 加 `LearningTarget`。
+追问必须有非空 question，可带已校验目标；code/graph 要求真实代码目标，graph 还需符号；
+knowledge 要求真实文章及版本；timeline 无目标。其余动作 question 为空。
+动作不能包含脚本或执行命令；前端只映射到对应阅读与提问操作。
+
+`flow` 为 `null` 或 `{title,nodes,edges}`：
+
+- nodes 最多八项，`{id,label,role,target}`，target 必须对应同项目、同版本的代码位置。
+- edges 为 `{source,target,kind,uncertain}`；仅核对已有索引 call/imports/inherits 边或真实 contains
+  包含关系，候选最多十六条。置信不足标 uncertain，不绘制无法核对的连接和孤立节点。
+- 这是静态关系，不代表运行时执行顺序；行号合法也不证明角色说明和设计解释正确。
+
+内部只读工具 `propose_exploration` 接收 takeaways/actions/flow，不将 JSON 放入正文。
+服务端逐项校验，最终答案发布前再次核对索引版本；非法附加项移除，保留可用正文。
+takeaways 仅保留实际显示文字，最多十二项；无建议时可从实际教材推荐派生知识动作。
+只有最终 answer 完成后动作可用；存在新动作时前端不重复显示旧 learning_entries。
+旧客户端可忽略 exploration；旧答案缺该字段时沿用原展示。
+
+正文引用仍保留真实 `[path:line]` 和独立 citations；前端只把普通正文中已解析引用显示为
+`[1]` 等按钮。代码块、行内代码、既有链接不自动改写；来源区和复制内容保留原位置。
+
+### 直接追问与恢复
+
+`POST /query` 和 `/query/stream` 可增加 `action_origin`：
+
+```json
+{"kind":"answer","request_id":"来源回答请求ID","action_id":"来源动作ID","index_epoch":1}
+```
+
+或 `{kind:"overview",action_id,index_epoch}`。answer 动作只允许来自本项目、本会话保存的回答；
+overview 从当前索引重建。服务端重读规范问题和目标，客户端 question/说明不能替换来源内容。
+无动作或跨会话返回 400 bad_request；旧索引返回 409 reading_invalid，要求刷新入口。
+同 request_id 已完成动作仍按已有幂等结果重放，不重新调用模型，即使之后索引更新。
+动作来源另存 `exploration.origin`。同会话互斥、其他会话独立生成的规则不变。
+
+前端直接追问绑定该动作的阅读快照，只影响该请求；成功、失败、中断、刷新恢复均不能覆盖
+已有草稿及其关联目标。同会话生成中禁用追问，不排队。
+
+新增 `GET /projects/{id}/conversations/{cid}/turns/{request_id}`，返回完整单回合（同分页元素），
+不存在或项目/会话不匹配返回 404。局部知识材料通过此接口恢复来源答案；文章正文仍从知识
+接口读取，校验版本和与来源回合的关联。材料身份绑定 project/cid/request_id/文章章节版本；
+完整教材继续按文章版本复用。旧 `/learn/{id}#章节` 仍直接打开全文。
+
+### 探索脉络与迁移
+
+会话详情增加 `exploration_state`：`{current_question?,target?,head_commit?,index_epoch?,stale,items?}`。
+items 最多十二条 `{text,request_id,target}`，仅表示已展示内容，不表示用户已掌握。
+`PATCH /projects/{id}/conversations/{cid}` 可传 `clear_exploration:true`，只清脉络，不清聊天。
+
+SQLite schema 3→4 原地增加 `conversation.exploration_json TEXT NOT NULL DEFAULT '{}'`，
+保留索引和全部回合。仅完整成功回合更新脉络；失败、中断和 incomplete 不加入。
+模型仍读取最近六个有效问答对；脉络最多 4096 UTF-8 字节并计入原上下文总预算。
+裁剪优先保留当前问题与目标。索引更新后旧脉络标 stale，旧要点不作为新版依据，继续提问须重新取证。

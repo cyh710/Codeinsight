@@ -2,6 +2,7 @@ import { jsonRequest } from './client'
 import type { Conversation, ConversationTurn, Page } from './types'
 
 const route = (pid: number, cid: string) => `/projects/${pid}/conversations/${encodeURIComponent(cid)}`
+export const getTurn = (pid: number, cid: string, requestId: string) => jsonRequest<ConversationTurn>(`${route(pid, cid)}/turns/${encodeURIComponent(requestId)}`)
 export const listConversations = (params: URLSearchParams) =>
   jsonRequest<Page<Conversation>>(`/conversations?${params}`)
 export const createConversation = (pid: number) =>

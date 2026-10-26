@@ -18,7 +18,7 @@ BUSY_TIMEOUT_MS = 5_000
 
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 """schema 版本号，写进 `PRAGMA user_version`。
 
 改 `schema.sql` 的表结构时**必须**把这里 +1 并补一条迁移，
@@ -30,6 +30,7 @@ SCHEMA_VERSION = 3
 # 键是**旧版本号**，值是升级到该键+1 的步骤序列。
 # 迁移是**原地**的，不删库、不重建——用户的索引数据不能因为 schema 演进而丢。
 MIGRATIONS: dict[int, tuple[str, ...]] = {
+    3: ("ALTER TABLE conversation ADD COLUMN exploration_json TEXT NOT NULL DEFAULT '{}'",),
     2: (),  # 新会话表由 apply_schema 原地创建，账本回填由会话仓储幂等执行。
     1: (
         "CREATE TABLE IF NOT EXISTS concept_rule_version ("
@@ -111,6 +112,13 @@ def ensure_schema(path: str | Path) -> str:
             )
 
         for old in range(version, SCHEMA_VERSION):
+            if old == 3:
+                # 更早版本还没有会话表；先幂等补表，再判断是否需要加列。
+                apply_schema(conn)
+                if "exploration_json" in {
+                    row[1] for row in conn.execute("PRAGMA table_info(conversation)")
+                }:
+                    continue
             steps = MIGRATIONS.get(old)
             if steps is None:
                 raise RuntimeError(f"缺少从 schema 版本 {old} 升级到 {old + 1} 的迁移")
