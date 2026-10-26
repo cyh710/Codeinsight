@@ -21,8 +21,8 @@ import json
 import secrets
 import sqlite3
 import threading
-from datetime import datetime, timezone
 from concurrent.futures import Future
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -224,7 +224,7 @@ def transition(project_id: int, task_id: str, action: str) -> dict[str, Any]:
 
 def sql_now() -> str:
     """与 sqlite datetime('now') 同口径的 UTC 时间串。"""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _cancel_running(task_id: str) -> None:

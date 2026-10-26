@@ -14,6 +14,7 @@ from codeinsight import __version__
 from codeinsight.api.code import router as code_router
 from codeinsight.api.conversations import router as conversations_router
 from codeinsight.api.errors import install_error_handlers
+from codeinsight.api.executions import router as executions_router
 from codeinsight.api.health import router as health_router
 from codeinsight.api.insights import router as insights_router
 from codeinsight.api.knowledge import router as knowledge_router
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(insights_router)
     app.include_router(structure_router)
     app.include_router(query_router)
+    app.include_router(executions_router)
 
     @app.get("/")
     def root() -> dict[str, str]:

@@ -20,6 +20,7 @@ import json
 import sqlite3
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from codeinsight.agent.answer import GroundedFile, Grounding, split_answer
@@ -106,6 +107,7 @@ class AgentRuntime:
                     "conversation_id": conversation_id,
                     "model": answer.model_id,
                     "tools": self.registry.names,
+                    "execution_enabled": self._execution_available(),
                 },
             ),
         )
@@ -120,6 +122,33 @@ class AgentRuntime:
         prepared = None
 
         try:
+            execution_meta = await self._maybe_execution(
+                project_id, question, conversation_id
+            )
+            if execution_meta is not None:
+                # 开发任务：正文只做引子，计划/进度/结果全在 execution 元数据里
+                #（契约 §16.2）。这里不进主循环——理解工作已由检索上下文完成。
+                answer.execution = execution_meta
+                answer.text = execution_meta.pop("intro_text", "")
+                await _emit(
+                    emit,
+                    RuntimeEvent(
+                        "answer",
+                        {
+                            "text": answer.text,
+                            "tools_used": [],
+                            "evidence": [],
+                            "facts": [],
+                            "inferences": [],
+                            "citations": [],
+                            "abstained": False,
+                            "reason": "",
+                            "incomplete": False,
+                            "execution": answer.execution,
+                        },
+                    ),
+                )
+                return answer
             if (
                 reading_context
                 and reading_context.get("kind") == "knowledge"
@@ -347,6 +376,7 @@ class AgentRuntime:
                         "abstained": answer.abstained,
                         "reason": answer.abstention_reason,
                         "incomplete": answer.incomplete,
+                        "execution": answer.execution,
                     },
                 ),
             )
@@ -483,6 +513,83 @@ class AgentRuntime:
             content = f"（{result.error}）{content}"
         current.append(_tool_message(call.id, content))
         return focus
+
+    def _execution_available(self) -> bool:
+        """执行器可用性（契约 §16.1）：驱动器在、命令可寻、仓库是 git。"""
+        from codeinsight.execution.claude_code import executor_available
+
+        if not self.repo_root:
+            return False
+        try:
+            return executor_available(Path(self.repo_root))
+        except Exception:
+            return False
+
+    async def _maybe_execution(
+        self, project_id: int, question: str, conversation_id: str
+    ) -> dict[str, Any] | None:
+        """识别开发任务并生成执行计划；不是开发任务或不可用返回 None。
+
+        成本纪律：词法闸门不过就不付模型调用；识别失败降级为普通问答
+        （宁可漏判不可误判——误判会把一句话变成待批准的执行任务）。
+        """
+        from codeinsight.execution import orchestrator, planner
+
+        if not self._execution_available():
+            return None
+        if not planner.gate_is_dev_task(question):
+            return None
+        if not await planner.classify(question, self.provider):
+            return None
+
+        context_block = await self._execution_context(project_id, question, conversation_id)
+        plan = await planner.build_plan(question, self.provider, context_block)
+        row = orchestrator.create_execution(
+            project_id, question, plan, conversation_id or None
+        )
+        meta = orchestrator.execution_public(row)
+        files = "、".join(plan["files"]) if plan["files"] else "待执行时判断"
+        nl = chr(10)  # 避免补丁转义歧义：显式换行
+        meta["intro_text"] = nl.join(
+            [
+                "这看起来是一个开发任务，我按项目认知生成了执行计划，等你批准后"
+                "会在隔离分支上驱动执行 agent 完成（改完再由你验收合入）。",
+                "",
+                f"**意图**：{plan['intent']}",
+                "",
+                f"**要动的文件**：{files}",
+                "",
+                "批准前不会动任何代码；也可以点「转为普通问答」只问不做。",
+            ]
+        )
+        return meta
+
+    async def _execution_context(
+        self, project_id: int, question: str, conversation_id: str
+    ) -> str:
+        """给计划器的检索上下文：复用 search_code 工具，证据口径与问答一致。"""
+        if "search_code" not in self.registry.names:
+            return ""
+        try:
+            result = await self.registry.get("search_code").run(
+                {"query": question, "top_k": 8},
+                ToolContext(
+                    project_id=project_id,
+                    repo_root=self.repo_root,
+                    conversation_id=conversation_id,
+                ),
+            )
+        except Exception:
+            return ""
+        lines: list[str] = []
+        for item in (result.data or {}).get("items", [])[:8]:
+            path = item.get("path")
+            lineno = item.get("lineno")
+            qualname = item.get("qualname")
+            if path:
+                where = f"{path}:{lineno}" if lineno else path
+                lines.append(f"- {where} {qualname or ''}".rstrip())
+        return chr(10).join(lines)
 
     async def _one_turn(
         self, messages: list[dict[str, Any]], emit: Emit | None

@@ -84,8 +84,7 @@ def _result_to_outcome(result_obj: dict | None) -> tuple[bool, str, str | None]:
     summary = str(result_obj.get("result") or "").strip()
     if subtype == "success":
         return True, summary, None
-    error = summary or str(subtype or "unknown")
-    return False, summary, f"claude 未能完成：{subtype}"
+    return False, summary, f"claude 未能完成：{subtype or "unknown"}"
 
 
 class ClaudeCodeDriver:
@@ -159,7 +158,7 @@ class ClaudeCodeDriver:
                 if final is not None:
                     result_obj = final
             await proc.wait()
-        except asyncio.TimeoutError:
+        except TimeoutError:
             timed_out = True
             proc.kill()
             await proc.wait()

@@ -15,9 +15,9 @@ import pytest
 
 from codeinsight.config import settings
 from codeinsight.execution import orchestrator, worktree
-from codeinsight.execution.driver import ExecutionProgress, ExecutionRequest, ExecutionResult
 from codeinsight.execution.planner import build_plan, classify, gate_is_dev_task
 from codeinsight.storage.sqlite import db_path, ensure_schema, open_sqlite
+from fake_driver import FakeDriver
 
 
 class FakeProvider:
@@ -32,33 +32,6 @@ class FakeProvider:
     async def complete(self, system, messages, **_kw) -> str:
         self.calls.append(str(messages[-1].get("content", "")))
         return self.replies.pop(0) if self.replies else "{}"
-
-
-class FakeDriver:
-    """可控执行驱动器：成功时在 worktree 里真改一个文件（走真 git 路径）。"""
-
-    name = "fake"
-
-    def __init__(self, ok: bool = True) -> None:
-        self.ok = ok
-        self.requests: list[ExecutionRequest] = []
-
-    async def execute(self, request, emit=None) -> ExecutionResult:
-        self.requests.append(request)
-        if emit is not None:
-            emit(ExecutionProgress(kind="tool", tool="Edit", file="app.py"))
-        if not self.ok:
-            return ExecutionResult(ok=False, summary="", duration_s=0.0, error="boom")
-        (request.worktree / "app.py").write_text("print('v2 done')\n", encoding="utf-8")
-        task = worktree.TaskWorktree(
-            path=request.worktree, branch="", base_commit=request.base_commit,
-            repo_root=request.repo_root,
-        )
-        sha = worktree.ensure_committed(task, request.commit_message)
-        return ExecutionResult(
-            ok=True, summary="改完了", duration_s=0.01, commit_sha=sha,
-            changed_files=("app.py",),
-        )
 
 
 @pytest.fixture
