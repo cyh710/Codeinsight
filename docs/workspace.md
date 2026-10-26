@@ -1,180 +1,150 @@
-# 工作区文档 · 三线并行怎么协作
+# 工作区文档 · 怎么协作
 
-> 本文讲的是**物理环境与协作规矩**：三条线各在哪、谁能动什么、怎么合、卡住了找谁。
-> 功能需求在 [`functional-spec.md`](functional-spec.md)，阶段在 [`roadmap.md`](roadmap.md)。
+> 本文讲的是**物理环境与协作规矩**：分支怎么开、请求单怎么走、怎么合、卡住了找谁。
+> 功能需求在 [`functional-spec.md`](functional-spec.md)（历史文档），阶段在 [`roadmap.md`](roadmap.md)。
 
 ---
 
 ## 1. 一句话
 
-同一个仓库，**三个 worktree、三个分支、三条线并行**。
-`main` 是集成分支，**只有 A 线能合**。
+**单仓单工作区，一次一个授权任务。** `main` 是集成分支，
+动工要用户点头，合并与推送都要用户明确说。
+
+> 历史注记：2026-10 早期曾是"三条线、三个 worktree 并行"（A 索引/检索/Agent、
+> B 知识探索、C 前端），M1–M5 交付后收拢。三线的作业包归档在
+> [`lines/`](lines/)，写明"已归档"。
 
 ---
 
 ## 2. 物理布局
 
 ```
-<仓库根>                 main             A 线（索引+检索+Agent+MCP+集成）
-<仓库根>-wt-knowledge    feat/knowledge   B 线（知识探索）
-<仓库根>-wt-frontend     feat/frontend    C 线（前端+API）
+D:\yy2\CodeInsight   ← 唯一工作区（当前分支视任务而定）
 ```
 
-- 三个目录是**同一个 Git 仓库的三份检出**（`git worktree`），共享同一份对象库。
-  在任一目录提交，另一个目录**看得到那个 commit**（对象共享），但工作区互不影响。
-- 三条线的**起点一致**：`9d8a145`。
-- 查看当前布局：`git worktree list`（在任一目录执行）。
+- 远程：`https://github.com/cyh710/Codeinsight.git`（public）。
+- 密钥与环境：`.env`（gitignore，不入库）。本地跑真机问答需要
+  `CI_LLM_API_KEY`，样例见 `.env.example`。
+- 索引库：`.ci/codeinsight.db`（gitignore）。
 
-### worktree 的三个坑
+### 开工检查清单
 
-| 坑 | 说明 | 怎么办 |
-|---|---|---|
-| 同一个分支不能在两个 worktree 同时 checkout | git 会直接拒绝 | 每个 worktree 一个分支，不要 `git checkout main` |
-| 在 worktree 里跑 `git worktree remove` 会删掉那个目录 | 目录里未提交的改动会丢 | 先 `git status` 确认干净 |
-| `git gc` / `git prune` 在别的 worktree 有未提交改动时可能误伤 | 极少发生 | 不手动 gc |
+```bash
+git branch --show-current     # 确认在任务分支上（或从 main 拉新分支）
+git status                    # ← 有别人未提交的改动就停手，只读巡检
+git log --oneline -3          # 确认基线
+uv sync --extra dev           # Python 依赖
+cd frontend && npm install    # 前端依赖
+```
+
+> **并行的红线**：同一时间可能有别的会话在干活。未提交改动不是你的就别碰；
+> 也不要随手 `taskkill` / `git gc` / `git checkout`——那可能打断并行的工作。
 
 ---
 
-## 3. 三条线的车道
+## 3. 分支与请求单
 
-| 线 | 分支 | 目录 | 负责的源文档章节 |
-|---|---|---|---|
-| **A 线** | `main` | `cognitive/{parsing,indexing,retrieval,embedding}/`、`agent/`、`llm/`、`execution/`、`storage/`、`eval/`、`models.py`、`config.py`、`cli.py`、`docs/` | §2.1 §2.2 §2.3 §2.4 §2.5 §5 §6 |
-| **B 线** | `feat/knowledge` | `cognitive/concepts/`、`knowledge/concepts/` | **§2.6** §5-4 |
-| **C 线** | `feat/frontend` | `frontend/`、`src/codeinsight/api/` | §3.1-1 §2.1-UI |
+### 请求单（`docs/requests/NNNN-<简述>.md`）
 
-### 开工包
+跨范围改动的唯一入口：动**契约文件**、动**别人的模块**、加**新依赖**、
+做**新的大功能**。单上写清：要什么、为什么、影响的调用点、契约增量、
+合并与推送策略。用户批准后再动工。先例：0004（问答端点）、0012（项目探索）、
+0014（左栏重构）。
 
-每条线的工作目录里都有一份"开工包"，**agent 只需要打开自己那一份**：
+### 分支
 
-| 线 | 开工包 |
+- 一个授权任务一条特性分支（命名如 `codex/xxx`、`feat/xxx`、`docs/xxx`）。
+- 分支上**本地提交自由**；**推送、合入 `main` 必须用户明确说**。
+- 合 `main` 前全量测试绿：`uv run pytest -q` + `uv run ruff check .` +
+  前端 `npm run test / lint / build`。
+- 请求单里写了"本地提交、不合并、不推送"的，交付后停在分支上等验收。
+
+### 契约文件（改动必须先走请求单）
+
+| 文件 | 内容 |
 |---|---|
-| A 线 | [`lines/A-line.md`](lines/A-line.md) |
-| B 线 | [`lines/B-line.md`](lines/B-line.md) |
-| C 线 | [`lines/C-line.md`](lines/C-line.md) |
-
-### 目录所有权规则
-
-> **一个目录只有一个 agent 能写。** 这是三线并行不打架的根本保证。
-
-越界了怎么办：**不要直接改**。在 `docs/requests/` 下加一个文件写清
-「要 X 改 Y 的什么、为什么」，由 A 线统一改并同步三条线。
-
-```bash
-# 例：需要 models.py 加一个字段
-cd <仓库根>-wt-knowledge
-# 写 docs/requests/0001-add-symbol-kind-to-evidence.md
-```
-
-### 契约文件（只读）
-
-| 文件 | 内容 | 谁提供 |
-|---|---|---|
-| `src/codeinsight/models.py` | 领域模型 | A 线冻结 |
-| `src/codeinsight/storage/schema.sql` | 数据契约 | A 线冻结（M1 补两张表） |
-| `src/codeinsight/config.py` | 配置项 | A 线冻结 |
-| `docs/api-contract.md` | API + SSE 契约 | A 线本周补 |
-| `frontend/src/api/types.ts` | 前端类型 | A 线本周补 |
-| `fixtures/sample-index.json` | 真实索引样例 | A 线本周补 |
+| `src/codeinsight/models.py` | 领域模型 |
+| `src/codeinsight/storage/schema.sql` | 数据契约（版本号原地递增） |
+| `src/codeinsight/config.py` | 配置项 |
+| `docs/api-contract.md` | API + SSE 契约（变更历史在文末） |
+| `frontend/src/api/types.ts` | 前端类型（与契约一一对应） |
 
 ---
 
-## 4. 每个 agent 的启动检查清单
+## 4. 每天的节奏
 
-开工前照着走一遍：
+| 时机 | 做什么 |
+|---|---|
+| 开工 | 检查清单（§2）→ 写/读请求单 → 拉任务分支 |
+| 干活 | 小步提交，提交信息用中文，格式 `类型: 做了什么`，正文写动机 |
+| 交付 | 全量测试绿 → 报告（做了什么 / 验证证据 / 等用户定的事） |
+| 验收后 | 用户点头 → 合 `main`（跑全量）→ 按用户指示推送 |
 
-```bash
-cd <你的 worktree>
-git branch --show-current      # 确认在自己分支上
-git log --oneline -1           # 确认起点
-uv sync --extra dev            # A 线需要（Python）
-```
+### 提交与推送
 
-然后读：
-
-1. `AGENTS.md`（根目录，作业规程）
-2. `docs/functional-spec.md` 的**自己那一节**
-3. `docs/decisions/` 里与自己相关的 ADR
-4. `docs/workspace.md`（本文）
+- 提交信息用中文，正文说明动机与影响。
+- **`git push` 必须等用户明确说**——包括 feature 分支的备份性推送。
 
 ---
 
-## 5. 每天的节奏
+## 5. 冲突会出现在哪，怎么解
 
-| 时机 | 谁 | 做什么 |
-|---|---|---|
-| 开工 | 各线 | 在自己分支提交，改动只在自己的目录 |
-| 收工 | A 线 | 把 `feat/knowledge` / `feat/frontend` 合进 `main`，跑全量测试 |
-| 有契约变更 | 提出方 | 写 `docs/requests/NNNN-xxx.md`，A 线统一改 |
-| 每周 | 全部 | 三线对齐：各自 demo + 说清下一步依赖 |
-
-### main 的规矩
-
-- **只有 A 线能合 main。**
-- 合之前 `pytest` + `ruff` 必须全绿。**测试红 = main 红 = 谁都别想推。**
-- 合的功能分支合进 main 后，**要合回各 feature 分支**（否则 feature 分支会落后，
-  下次合并时把别人的改动覆盖掉）：
-
-```bash
-cd <仓库根>
-git checkout main && git merge feat/knowledge && git merge feat/frontend
-git push origin main
-
-# 回灌到各 feature 分支
-cd <仓库根>-wt-knowledge && git merge main
-cd <仓库根>-wt-frontend  && git merge main
-```
+| 冲突类型 | 解法 |
+|---|---|
+| 想改契约 | 写请求单，等批准；`schema.sql` 用版本号递增做原地迁移 |
+| 想改别人正在写的模块 | 等对方交付；急就写请求单说明为什么等不了 |
+| 工作区有未提交的陌生改动 | **停手**，只读巡检，问用户这是谁的活 |
+| 接口不匹配 | 以 `docs/api-contract.md` 为准；两边对不上=契约变了没走流程，修流程 |
 
 ---
 
-## 6. 冲突会出现在哪，怎么解
-
-| 冲突类型 | 出现条件 | 解法 |
-|---|---|---|
-| **同文件同时改** | 越界改了别人的目录 | 谁都不改契约文件；提 `docs/requests/` |
-| **接口不匹配** | A 线改了函数签名，另一边按旧签名写的 | 契约变更必须走 `docs/requests/`，**不能口头说** |
-| **git 合并冲突** | 两侧改了同一文件的同一段 | 目录所有权正常时**不该发生**。发生了说明越界了——回退到正确的目录归属 |
-| **schema 不一致** | B 线需要的字段 A 线没给 | A 线加字段（向后兼容），B 线等；不要 B 线自己改 schema |
-| **测试互相影响** | 共用 `tests/conftest.py` | 各线写自己的测试目录，文件名不重名；`conftest.py` 由 A 线维护 |
-
----
-
-## 7. 提交与推送
-
-- **提交信息用中文**，格式：`类型: 做了什么`，正文说明动机与影响。
-  例：`feat: 概念检测器支持 import_names 与 call_names 两类规则`
-- **`git commit` 可以直接做；`git push` 必须等用户明确说。**（本项目约定）
-- 各 feature 分支推到远程只为了备份与审阅，推之前同样要打招呼。
-- 远程：`https://github.com/cyh710/Codeinsight.git`（public）
-
----
-
-## 8. 环境
+## 6. 环境
 
 | 项 | 值 |
 |---|---|
 | Python | 3.13+ |
 | 包管理 | `uv`（`uv sync --extra dev`） |
-| 前端 | Node 24 / npm 11，依赖与织忆一致（+ Monaco + React Flow） |
+| 前端 | Node 24 / npm 11，React 19 + Vite + Zustand + Tailwind 4 |
 | 数据库 | SQLite（WAL），索引库在 `.ci/codeinsight.db`（gitignore） |
-| 密钥 | 只走环境变量 `CI_*` 前缀，**不入库不入日志** |
+| 密钥 | 只走环境变量 / `.env`，`CI_*` 前缀，**不入库不入日志** |
+| MCP | `uv run ci mcp --project <名>`（stdio），接入指南 `docs/mcp.md` |
 
 ### 常用命令
 
 ```bash
 uv run pytest -q                 # 全量测试
 uv run ruff check .              # lint
-uv run ruff format .             # 格式化
-uv run ci init-db                # 建索引库
-uv run ci where                  # 看本地路径
+uv run ci index --repo <路径>    # 建索引
+uv run ci ask --project <名> "问题"
+uv run ci mcp --project <名>     # MCP Server
 ```
+
+---
+
+## 7. 卡住了怎么办
+
+| 情况 | 怎么办 |
+|---|---|
+| 需要改契约 / 改别人的模块 | 写 `docs/requests/NNNN-xxx.md` |
+| 想法与源文档冲突 | **以源文档为准**；确实要改，先写 ADR |
+| 源文档没覆盖的空白 | 写 ADR 记录决策，再写代码 |
+| 需求边界 / 取舍 / 观感 | **问用户**（见 §9） |
+| 三个方向都不确定 | 停下来问用户，不要自由发挥 |
+
+---
+
+## 8. 一条底线
+
+> 所有 agent 写出来的代码，最终署同一个名。
+>
+> 所以：宁可多写一条 ADR 说明为什么这么做，也不要留一段"只有作者自己看得懂"的代码。
+> 注释解释**为什么**，不解释**是什么**。
 
 ---
 
 ## 9. 什么时候该找用户对齐
 
-> **三条线里的每个 agent 都要跟用户对齐，而不是自己拍板。**
-> 三条线同时跑，用户不在现场，所以每个 agent 都必须**主动把决策点摆出来**，
+> 用户不在现场，所以每个 agent 都必须**主动把决策点摆出来**，
 > 而不是默默按自己的理解往下写。
 
 ### 9.1 必须问用户的（不能自己定）
@@ -192,7 +162,7 @@ uv run ci where                  # 看本地路径
 | 类别 | 例子 |
 |---|---|
 | 实现细节 | 函数怎么拆、变量怎么命名、循环怎么写 |
-| 规格里已经写死的 | 契约、命名、目录归属、工具清单 |
+| 规格里已经写死的 | 契约、命名、工具清单 |
 | 有唯一正确答案的技术问题 | 某个 SQLite 特性怎么用、某个库的重试参数 |
 | 风格与格式 | ruff / prettier / 命名习惯 |
 
@@ -204,17 +174,14 @@ uv run ci where                  # 看本地路径
 好的提问长这样：
 
 ```
-我要实现「概念的三级深度解释」。
-第三级"深入探索"有两种写法：
-  A. 概念本体 + 本项目实例一起喂给模型，让它写原理与权衡  ← 我推荐这个
-     理由：能结合本项目的实际取舍讲，不是通用教科书
-  B. 只把本体喂给模型，让它自由发挥
-     理由：更简单，但会丢掉"这个项目为什么这么选"这层信息
-代价：A 的 prompt 更长，token 成本约 +30%
+我要实现 X。有两种做法：
+  A. ……  ← 我推荐这个，理由：……
+  B. ……
+代价：A 的 ……；B 的 ……
 你选哪个？
 ```
 
-**坏的提问**：「深度解释你打算怎么实现？」——把难题原样丢回去。
+**坏的提问**：「X 你打算怎么实现？」——把难题原样丢回去。
 
 **每个提问都要包含**：要做什么 · 两个（或几个）选项 · 你的推荐 + 理由 · 各自代价。
 
@@ -222,10 +189,10 @@ uv run ci where                  # 看本地路径
 
 按这个顺序处理，**并在提交信息里写清楚**：
 
-1. 先查规格 / ADR / 开工包里有没有写 → 有就照做，不用问。
-2. 没有 → 按**开工包里列的默认值**执行。
+1. 先查规格 / ADR / 请求单里有没有写 → 有就照做，不用问。
+2. 没有 → 按**请求单或开工讨论里列的默认值**执行。
 3. 把这个决策记进 ADR（标题写清楚"未与用户确认的默认选择"）。
-4. 在提交信息正文写：`决策：X（未对齐，默认值，理由：…）`，主线会转达给用户。
+4. 在提交信息正文写：`决策：X（未对齐，默认值，理由：…）`。
 
 > **可以自己定默认值，但不可以自己定需求边界与观感。**
 > 边界和观感错了，返工成本远高于问一句。
@@ -234,31 +201,9 @@ uv run ci where                  # 看本地路径
 
 | 时机 | 要对齐什么 |
 |---|---|
-| **开工前** | 本线第一件任务的取舍（见各线开工包的「对齐节点」） |
+| **开工前** | 本次任务的取舍（写进请求单） |
 | **每完成一个任务** | 下一个任务的取舍，或"这一步做完了，下一步没有需要你定的" |
 | **发现范围变化时** | 立刻问，不要做完再说 |
 | **阶段验收时** | 该阶段的产出你满不满意、下一步优先级 |
 
 > 频率原则：**宁早对齐一次，不要写完三天再返工。**
-
----
-
-## 10. 卡住了怎么办
-
-| 情况 | 找谁 / 怎么办 |
-|---|---|
-| 需要改契约 | 写 `docs/requests/NNNN-xxx.md` → A 线 |
-| 需要别的线的数据 | 提需求要 **fixture 或接口**，不要直接读对方的库 |
-| 想法与源文档冲突 | **以源文档为准**；确实要改，先写 ADR |
-| 源文档没覆盖的空白 | 写 ADR 记录决策，再写代码 |
-| 需求边界 / 取舍 / 观感 | **问用户**（见 §9） |
-| 三个方向都不确定 | 停下来问用户，不要各自发挥 |
-
----
-
-## 11. 一条底线
-
-> **三个 agent 写出来的代码，最终署同一个名。**
->
-> 所以：宁可多写一条 ADR 说明为什么这么做，也不要留一段"只有作者自己看得懂"的代码。
-> 注释解释**为什么**，不解释**是什么**。

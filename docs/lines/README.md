@@ -1,5 +1,9 @@
 # 三线 · 开工包
 
+> **已归档（2026-10-26）。** 三线并行模式在 M1–M5 交付后收拢为单仓单工作区，
+> 这些开工包保留作历史追溯；当前的协作方式见 [`../../AGENTS.md`](../../AGENTS.md)
+> 与 [`../workspace.md`](../workspace.md)。
+>
 > **每个 agent 只需要打开自己那一份**，照着做。
 > 详细需求在 [`../functional-spec.md`](../functional-spec.md)，
 > 规矩在 [`../../AGENTS.md`](../../AGENTS.md)。
