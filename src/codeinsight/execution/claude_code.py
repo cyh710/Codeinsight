@@ -19,14 +19,13 @@ import json
 import sys
 import time
 from collections.abc import Callable
-from pathlib import Path
 
-from codeinsight.execution import worktree
 from codeinsight.execution.driver import (
     ExecutionProgress,
     ExecutionRequest,
     ExecutionResult,
 )
+from codeinsight.execution.finalize import finalize
 
 # Windows：不给每次执行弹一个控制台窗口（先例 api/local.py）。
 _CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
@@ -183,56 +182,5 @@ class ClaudeCodeDriver:
                 error = error or f"claude 退出码 {proc.returncode}"
                 summary = summary or stderr_tail
 
-        # git 侧事实：无论成败，把 worktree 里的改动兜底提交并核对。
-        commit_sha: str | None = None
-        changed: tuple[str, ...] = ()
-        try:
-            commit_sha = worktree.ensure_committed(
-                worktree.TaskWorktree(
-                    path=request.worktree,
-                    branch="",
-                    base_commit=request.base_commit,
-                    repo_root=request.repo_root,
-                ),
-                request.commit_message,
-            )
-            summary_stat = worktree._git(request.worktree, "diff", "--name-only",
-                                         f"{request.base_commit}..{commit_sha}")
-            changed = tuple(sorted(p for p in summary_stat.splitlines() if p.strip()))
-        except worktree.WorktreeError as exc:
-            # git 核对失败不掩盖执行结论，作为附注写进 error。
-            note = f"；git 收尾失败：{exc}"
-            error = (error or "") + note if (error or not ok) else note.strip("; ")
-            error = error or None
-
-        return ExecutionResult(
-            ok=ok,
-            summary=summary,
-            duration_s=duration_s,
-            commit_sha=commit_sha,
-            changed_files=changed,
-            error=error,
-        )
-
-
-def driver_from_settings() -> ClaudeCodeDriver | None:
-    """按配置取驱动器；关闭或未知名字返回 None（调用方降级为普通问答）。"""
-    from codeinsight.config import settings
-
-    if settings.executor == "off":
-        return None
-    if settings.executor != "claude-code":
-        return None
-    return ClaudeCodeDriver(command=settings.executor_command)
-
-
-def executor_available(repo_root: Path) -> bool:
-    """meta.execution_enabled 的判定：驱动器在、命令找得到、仓库是 git。"""
-    import shutil
-
-    driver = driver_from_settings()
-    if driver is None:
-        return False
-    if not shutil.which(driver.command):
-        return False
-    return worktree.is_git_repo(repo_root)
+        # git 侧事实（兜底提交 + 改动核对）统一走共享收尾件。
+        return finalize(request, ok=ok, summary=summary, error=error, duration_s=duration_s)

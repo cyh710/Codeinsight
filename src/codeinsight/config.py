@@ -49,8 +49,11 @@ class Settings(BaseSettings):
 
     # ── 编排执行（请求 0015 / ADR 0032）────────────────────
     executor: str = "claude-code"
-    """执行驱动器：`claude-code` 或 `off`（关闭后对话识别退回普通问答）。"""
-    executor_command: str = "claude"
+    """执行驱动器：`claude-code` / `zcode` / `off`（关闭后对话识别退回普通问答）。"""
+    executor_command: str = ""
+    """驱动器 argv[0]。空 = 按驱动器取缺省（claude-code→`claude`，zcode→`node`）。"""
+    executor_extra_args: str = ""
+    """驱动器 argv 的附加项，逗号分隔（zcode 经 node 跑时放 cjs 脚本路径）。"""
     executor_timeout_s: int = 1800
 
     # ── 评测（源文档 §6）───────────────────────────────────

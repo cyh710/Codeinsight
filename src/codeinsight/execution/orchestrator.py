@@ -28,8 +28,8 @@ from typing import Any
 
 from codeinsight.config import settings
 from codeinsight.execution import worktree
-from codeinsight.execution.claude_code import driver_from_settings
 from codeinsight.execution.driver import ExecutionProgress, ExecutionRequest
+from codeinsight.execution.selection import build_driver as driver_from_settings
 from codeinsight.storage.sqlite import db_path, open_sqlite
 
 PLANNED = "planned"

@@ -516,7 +516,7 @@ class AgentRuntime:
 
     def _execution_available(self) -> bool:
         """执行器可用性（契约 §16.1）：驱动器在、命令可寻、仓库是 git。"""
-        from codeinsight.execution.claude_code import executor_available
+        from codeinsight.execution.selection import executor_available
 
         if not self.repo_root:
             return False

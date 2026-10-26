@@ -183,7 +183,7 @@ def test_build_task_prompt_contains_plan_and_boundaries() -> None:
 
 def test_driver_from_settings_off(monkeypatch: pytest.MonkeyPatch) -> None:
     from codeinsight.config import settings
-    from codeinsight.execution.claude_code import driver_from_settings
+    from codeinsight.execution.selection import build_driver as driver_from_settings
 
     monkeypatch.setattr(settings, "executor", "off")
     assert driver_from_settings() is None
