@@ -573,6 +573,8 @@ export interface QueryResponse extends KnowledgeAnswerMetadata {
   /** 走满轮次/工具上限仍未收尾。true 时要提示「没分析完」，不能当成正常答案。 */
   incomplete: boolean
   evidence: Evidence[]
+  /** 编排执行元数据（契约 §16.2）。仅识别为开发任务时有值。 */
+  execution?: ExecutionMetadata | null
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -585,6 +587,8 @@ export interface SseMetaEvent {
   conversation_id: string
   model: string
   tools: string[]
+  /** 执行器可用（契约 §16.1）：false 时前端不展示开发任务相关 UI。 */
+  execution_enabled?: boolean
 }
 
 export interface SseDeltaEvent {
@@ -619,6 +623,8 @@ export interface SseAnswerEvent extends KnowledgeAnswerMetadata {
   reason: string
   /** 未收尾（轮次/工具上限）。与 abstained 是两回事。 */
   incomplete: boolean
+  /** 编排执行元数据（契约 §16.2）。仅识别为开发任务时有值。 */
+  execution?: ExecutionMetadata | null
 }
 
 export interface SseErrorEvent {
@@ -765,6 +771,64 @@ export interface KnowledgeHit {
   score: number
   sources: KnowledgeSource[]
 }
+// ─────────────────────────────────────────────────────────────
+// 编排执行（契约 §16，请求 0015）
+// ─────────────────────────────────────────────────────────────
+
+/** 执行计划（批准卡的内容）。 */
+export interface ExecutionPlan {
+  intent: string
+  files: string[]
+  approach: string
+  risks: string[]
+}
+
+export const EXECUTION_STATUSES = [
+  'planned',
+  'executing',
+  'review',
+  'merged',
+  'rejected',
+  'aborted',
+  'failed',
+] as const
+export type ExecutionStatus = (typeof EXECUTION_STATUSES)[number]
+
+/** 一次 diff 的汇总（全部来自 git 事实）。 */
+export interface DiffSummary {
+  files_changed: number
+  insertions: number
+  deletions: number
+  files: Array<{ path: string; status: string; add: number; del: number }>
+}
+
+/** 执行进度的一帧（驱动器回流）。 */
+export interface ExecutionProgress {
+  kind: string
+  tool: string
+  file: string | null
+  detail: string
+}
+
+/** 变更学习卡（merged 后生成；全部来自增量索引的 change_record）。 */
+export interface ChangeLearningCard {
+  facts: Fact[]
+  impacted: { modules: string[]; symbols: Array<{ qualname: string; path: string; lineno: number }> }
+  concept_ids: string[]
+}
+
+/** answer.execution 元数据（契约 §16.2；旧客户端忽略）。 */
+export interface ExecutionMetadata {
+  task_id: string
+  status: ExecutionStatus
+  plan: ExecutionPlan
+  progress: ExecutionProgress[]
+  diff_summary: DiffSummary | null
+  change_card: ChangeLearningCard | null
+  summary: string
+  error?: string | null
+}
+
 export interface KnowledgeAnswerMetadata {
   knowledge_sources?: KnowledgeHit[]
   learning_entries?: LearningTarget[]

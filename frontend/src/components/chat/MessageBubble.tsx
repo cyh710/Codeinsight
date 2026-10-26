@@ -11,6 +11,7 @@ import { AlertTriangle, Ban, CheckCircle2, Hourglass, Loader2, Wrench } from 'lu
 import type { ChatMessage } from '../../store/types'
 import type { Citation, Inference } from '../../api/types'
 import ConfirmDialog from '../common/ConfirmDialog'
+import ExecutionCard from '../execution/ExecutionCard'
 
 function CitationLine({ citation, onOpen }: { citation: Citation; onOpen: (c: Citation) => void }) {
   return (
@@ -251,6 +252,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
             ))}
           </details>
         )}
+        {message.execution && <ExecutionCard message={message} />}
         {message.tools && message.tools.length > 0 && <ToolTimeline tools={message.tools} />}
         {message.facts && message.facts.length > 0 && (
           <FactList facts={message.facts} onOpenCitation={onOpenCitation} />

@@ -91,6 +91,7 @@ export function applySseEvent(
         learningTargets: event.data.learning_targets ?? [],
         knowledgeError: event.data.knowledge_error,
         sourceHeadCommit: event.data.source_head_commit,
+        execution: event.data.execution ?? null,
       }))
     case 'error':
       // 只记录，不中断：契约保证 done 仍会来，由 done 统一收尾。
