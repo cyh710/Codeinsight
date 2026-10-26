@@ -58,3 +58,7 @@ NNNN-简短英文短语.md
 | [0018](0018-timeline-read-only.md) | 时间线只读索引当时写下的数字 | 已接受 |
 | [0019](0019-learning-sources-and-reading-context.md) | 教材来源独立于代码证据，阅读目标由服务端重读 | 已接受 |
 | [0020](0020-workbench-conversations-and-selection.md) | 会话持久化与可恢复的阅读工作区 | 用户确认，已实施并通过离线验收 |
+| [0032](0032-orchestrated-execution.md) | 编排执行：驱动器 Protocol + worktree 隔离 + 双重审批 | 已接受 |
+
+<!-- 0028–0031 由并行在飞的请求 0014 分支占用（其工作区已写、未合入 main）；
+     0032 越过空号先占，合并后编号连续。0021–0027 的索引行待其作者补。 -->

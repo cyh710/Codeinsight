@@ -1009,6 +1009,7 @@ done                                ← 恰好一次，最后
 | 2026-10-24 | 请求 0001/0003/0005 落地：§8.4 知识扩展——`reading_context` 入参、`knowledge_sources` / `learning_*` / `reading_status` / `knowledge_error` 出参、`answer` 事件带最终 `text`；新增 `/knowledge/*` 三个端点。教材来源与项目 `citations` **永不混用** |
 | 2026-10-24 | M8：新增 §4.5 `/projects/{id}/graph`（BFS 邻域、概念标签、`truncated`）与 §7.2 `/projects/{id}/timeline`。`index_run.started_at` 改存墙钟 ISO 时间（此前误存 `time.monotonic()`） |
 | 2026-10-24 | 左栏按需拉符号：`/projects/{id}/symbols` 的 `path` / `q` 过滤转义 LIKE 通配符（`_` 是普通字符），`path` 同时支持精确路径 OR 目录前缀 |
+| 2026-10-26 | 请求 0015 落地：新增 §16 编排执行——`meta.execution_enabled`、answer 可选 `execution` 元数据、`/projects/{id}/executions/*` 五个端点、`execution_task` 表（schema 3→4）、`CI_EXECUTOR*` 配置。执行经双重审批与 worktree 隔离（ADR 0032） |
 
 ## 11. 内置知识与阅读上下文
 
@@ -1117,3 +1118,59 @@ offset 为章节 content 原文中零起点、右开的 UTF-16 代码单元偏�
 选择框已打开返回 409 `bad_request`；五分钟未完成返回 504 `timeout`；
 桌面不可用或系统调用失败返回 503 `internal_error`，均遵循 §0.3 错误形状。
 Windows 使用系统 PowerShell/Windows Forms，其他桌面使用 Python tkinter；不增加依赖。
+
+## 16. 编排执行（请求 0015，ADR 0032）
+
+对话内识别为开发任务（`dev_task`）时，CodeInsight 编排外部执行 agent
+（Claude Code 先行）完成：**计划 → 用户批准 → 隔离 worktree 执行 →
+用户验收 → 合入 + 增量索引 + 变更学习卡**。两道审批之间 CodeInsight
+不碰用户分支（ADR 0032）。
+
+### 16.1 可用性与降级
+
+`meta` 事件新增 `execution_enabled: boolean`（执行器已配置、命令可执行、
+且项目根是 git 仓库时为 true）。不可用时识别器不工作，一律按普通问答，
+answer 不带 `execution` 字段——不报错不白屏。
+
+### 16.2 识别与计划
+
+- `/query` 与 `/query/stream` 前置一次轻量分类调用（判 `answer | dev_task`）；
+  判为 `dev_task` 且可用时进入编排，最终 `answer` 携带**可选 `execution` 元数据**
+  （照 §13 exploration 先例，旧客户端忽略）：
+
+```json
+"execution": {
+  "task_id": "exec-1a2b",
+  "status": "planned",
+  "plan": { "intent": "…", "files": ["backend/a.py"], "approach": "…", "risks": ["…"] },
+  "progress": [],
+  "diff_summary": null,
+  "change_card": null
+}
+```
+
+- `status`：`planned → executing → review → merged`；拒绝/放弃/失败为终态
+  `rejected / aborted / failed`。
+- 识别误判：前端提供"转为普通问答"（原问题重发，不带执行语义）。
+
+### 16.3 端点
+
+| 方法 | 路径 | 语义 |
+|---|---|---|
+| `GET` | `/projects/{id}/executions/{task_id}` | 详情：计划、进度、diff 摘要、学习卡 |
+| `POST` | `/projects/{id}/executions/{task_id}/approve` | 批准计划 → 进入 executing |
+| `POST` | `/projects/{id}/executions/{task_id}/reject` | 拒绝计划（终态，删隔离 worktree） |
+| `POST` | `/projects/{id}/executions/{task_id}/abort` | 执行中中止（终态，删 worktree） |
+| `POST` | `/projects/{id}/executions/{task_id}/merge` | 验收合入：merge 回原分支 → 增量索引 → 学习卡 |
+
+- 非法迁移（如 planned 直接 merge）返回 409 `bad_request`；
+  task 不存在返回 404 `project_not_found` 语义的 `bad_request`（detail 注明）。
+- `diff_summary`：`{files_changed, insertions, deletions, files: [{path, status, add, del}]}`。
+- `change_card`（仅 merged 后有值）：
+  `{facts: [{text, citation}], impacted: {modules[], symbols[]}, concept_ids: []}`——
+  全部来自增量索引写入的 `change_record`，不重复分析（ADR 0007 事实口径）。
+
+### 16.4 配置
+
+`CI_EXECUTOR`（`claude-code` 默认，`off` 关闭）· `CI_EXECUTOR_COMMAND`（默认 `claude`）·
+`CI_EXECUTOR_TIMEOUT_S`（默认 1800）。
