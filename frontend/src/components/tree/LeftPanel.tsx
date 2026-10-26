@@ -25,8 +25,9 @@ import Select from '../common/Select'
 import ConversationList from '../chat/ConversationList'
 import { layoutStore } from '../../store/layoutStore'
 import ImportProjectDialog from './ImportProjectDialog'
+import RelocateProjectDialog from './RelocateProjectDialog'
 import { projectStatusView } from './projectStatusView'
-import type { SymbolListItem } from '../../api/types'
+import type { ProjectSummary, SymbolListItem } from '../../api/types'
 import {
   buildFileTree,
   filterTree,
@@ -73,10 +74,15 @@ function SymbolRow({ path, symbol, onPick }: {
   )
 }
 
-function StatusLine() {
+function StatusLine({ onRelocate }: { onRelocate: () => void }) {
   const detail = useStore(projectStore, (s) => s.currentDetail)
   if (!detail) return null
-  if (detail.source_available === false) return <p role="status" className="mt-2 text-[11px] leading-5 text-amber-700">源码目录不可用；历史和教材仍可阅读。请确认路径，或重新导入项目。</p>
+  if (detail.status === 'indexing') return null
+  if (detail.source_available === false || detail.status === 'failed') return <div role="status" className="mt-2 text-xs leading-5 text-amber-700">
+    <p>{detail.index_error || (detail.source_available === false ? '找不到源码目录，历史和教材仍可阅读。' : '索引失败，请重新选择目录后重试。')}</p>
+    <p className="truncate text-slate-500" title={detail.root_path}>{detail.root_path}</p>
+    <button className="mt-1 rounded text-accent hover:underline" onClick={onRelocate}>重新定位</button>
+  </div>
   const view = projectStatusView(detail.status)
   if (view.tone === 'none') return null
   const cls =
@@ -255,6 +261,7 @@ export default function LeftPanel() {
   const projectsState = useStore(projectStore)
   const treeFilter = useStore(workbenchStore, (s) => s.treeFilter)
   const [importOpen, setImportOpen] = useState(false)
+  const [relocateProject, setRelocateProject] = useState<ProjectSummary | null>(null)
 
   // 已按文件加载的符号（展开时按需拉）。分组不用再算——store 已是 path → 符号。
   const symbolsByPath = projectsState.symbolsByPath
@@ -361,11 +368,11 @@ export default function LeftPanel() {
           {projectsState.projects.length === 0 && <option value="">（无项目）</option>}
           {projectsState.projects.map((p) => (
             <option key={p.id} value={String(p.id)}>
-              {p.name}（{p.symbols} 符号）
+              {p.name}{p.id === projectsState.currentProjectId && projectsState.currentDetail?.status === 'indexing' ? ' · 索引中' : `（${p.symbols} 符号）`}
             </option>
           ))}
         </Select>
-        <StatusLine />
+        <StatusLine onRelocate={() => { if (projectsState.currentDetail) setRelocateProject(projectsState.currentDetail) }} />
       </div>
       <ImportProjectDialog open={importOpen} onClose={() => setImportOpen(false)} />
 
@@ -397,7 +404,11 @@ export default function LeftPanel() {
             {projectsState.error}
           </p>
         )}
-        {!projectsState.loading && !projectsState.error && treeWithSymbols.length === 0 && (
+        {projectsState.currentDetail?.status === 'indexing' && !searching && treeWithSymbols.length === 0 && <div className="px-3 py-3" aria-label="正在准备项目文件" aria-busy="true">
+          <p className="mb-4 text-xs text-slate-500">正在准备项目文件，完成后自动显示。</p>
+          <div className="space-y-3" aria-hidden="true">{[70, 92, 58, 82, 65, 88].map((width, index) => <div key={index} className="h-2.5 rounded bg-slate-200/70 motion-safe:animate-pulse" style={{ width: `${width}%`, marginLeft: index % 3 === 0 ? 0 : 12 }} />)}</div>
+        </div>}
+        {!projectsState.loading && !projectsState.error && projectsState.currentDetail?.status !== 'indexing' && treeWithSymbols.length === 0 && (
           <p className="px-2 py-4 text-xs text-slate-400">没有匹配的文件。</p>
         )}
         {treeWithSymbols.map((node) => (
@@ -412,9 +423,10 @@ export default function LeftPanel() {
       </div>
 
       <div className="border-t border-slate-200/70 px-3 py-1.5 text-[10px] text-slate-400">
-        {projectsState.files.length} 文件 · {totalSymbols} 符号
+        {projectsState.currentDetail?.status === 'indexing' && !projectsState.files.length ? '索引完成后显示文件与符号数量' : `${projectsState.files.length} 文件 · ${totalSymbols} 符号`}
       </div>
       </>}
+      {relocateProject && <RelocateProjectDialog key={relocateProject.id} project={relocateProject} onClose={() => setRelocateProject(null)} />}
     </aside>
   )
 }

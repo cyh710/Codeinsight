@@ -52,7 +52,7 @@ export class ApiError extends Error {
 const FALLBACK_ERROR = {
   code: 'internal_error' as ApiErrorCode,
   title: '服务异常',
-  hint: '请稍后重试；若持续出现，检查后端是否在 8020 端口运行。',
+  hint: '请稍后重试；若持续出现，请检查本地后端服务是否正常运行。',
   detail: '',
 }
 

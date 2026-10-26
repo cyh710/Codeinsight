@@ -16,6 +16,7 @@ import * as conversationsApi from '../api/conversations'
 import { isMockMode } from '../api/dataSource'
 import type { Conversation, ConversationTurn, ReadingContext } from '../api/types'
 import { readLocal, writeLocal } from './persistence'
+import { hotState } from './hotState'
 
 type Set = (partial: Partial<ChatStore> | ((s: ChatStore) => Partial<ChatStore>)) => void
 type Get = () => ChatStore
@@ -326,7 +327,7 @@ export function createChatActions(set: Set, get: Get) {
     reset: () => { active = null; generation++; set({ messages: [], streaming: false, conversationId: '', draft: '', _abortController: null }) },
   }
 }
-export const chatStore = createStore<ChatStore>((set, get) => ({
+export const chatStore = hotState(import.meta.hot, 'chat', () => createStore<ChatStore>((set, get) => ({
   messages: [], streaming: false, conversationId: '', _abortController: null,
   ...createChatActions(set, get),
-}))
+})))

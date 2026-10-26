@@ -108,7 +108,8 @@ def _resolve_commit(root: Path, ref: str | None) -> tuple[str, str]:
     if not (root / ".git").exists():
         return "", ""
     commit = _git(root, "rev-parse", ref or "HEAD")
-    branch = _git(root, "rev-parse", "--abbrev-ref", ref or "HEAD")
+    # tag／commit 的 --abbrev-ref 可能为空；保留明确指定的 ref，避免拿旧快照误比当前 HEAD。
+    branch = ref if ref and ref != "HEAD" else _git(root, "rev-parse", "--abbrev-ref", "HEAD")
     return commit, branch
 
 
@@ -153,6 +154,7 @@ def run_index(
     embed: bool = False,
     concepts_dir: str | Path | None = None,
     incremental: bool = False,
+    commit: bool = True,
 ) -> dict:
     """扫描 → 解析 → 落库 → `repo_state` 收尾（**不含** `index_run` 记账）。
 
@@ -177,6 +179,9 @@ def run_index(
     `incremental=True` 时先试增量：只重算变了的文件与符号，其余行一行不动。
     不能增量（没有上一位点 / 历史被改写 / 解析器版本变了）时自动退回全量——
     **退路由引擎自己判断**，调用方不需要知道哪条路走成了。
+
+    全量模式可指定 `commit=False`，由调用方统一提交或回滚；清空旧索引也不单独提交。
+    此选项仅用于 `incremental=False`，增量模式仍遵守增量索引器原有的事务规则。
     """
     started = time.monotonic()
     root = Path(root_path)
@@ -209,7 +214,7 @@ def run_index(
     to_parse = [f for f in indexed if parser.supports(f.path)]
 
     with nullcontext(conn) as conn:
-        _clear_project_data(conn, project_id)
+        _clear_project_data(conn, project_id, commit=commit)
 
         file_ids: dict[str, int] = {}
         file_sha: dict[str, str] = {}
@@ -402,7 +407,8 @@ def run_index(
             (project_id, head_commit, head_branch, PARSER_VERSION, next_epoch, concept_version),
         )
 
-        conn.commit()
+        if commit:
+            conn.commit()
 
     return {
         "head_commit": head_commit,
@@ -542,7 +548,7 @@ def _ensure_project(conn: sqlite3.Connection, *, name: str, root_path: str) -> i
     return int(cur.lastrowid or 0)
 
 
-def _clear_project_data(conn: sqlite3.Connection, project_id: int) -> None:
+def _clear_project_data(conn: sqlite3.Connection, project_id: int, *, commit: bool = True) -> None:
     """清掉这个项目的旧索引数据（保留 project 行与 id）。
 
     删除顺序照顾外键：`file` 的 CASCADE 会带走 module/symbol/edge/chunk/flow。
@@ -558,7 +564,8 @@ def _clear_project_data(conn: sqlite3.Connection, project_id: int) -> None:
     conn.execute("DELETE FROM design_decision WHERE project_id = ?", (project_id,))
     conn.execute("DELETE FROM flow WHERE project_id = ?", (project_id,))
     conn.execute("DELETE FROM file WHERE project_id = ?", (project_id,))
-    conn.commit()
+    if commit:
+        conn.commit()
 
 
 def _write_file(

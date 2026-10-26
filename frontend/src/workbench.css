@@ -1,5 +1,5 @@
 /* 同一布局状态控制顶栏、正文与阅读模式，关闭辅助区后空间回到主任务。 */
-.workbench-header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:0 16px}
+.workbench-header{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:42px;padding:0 14px}
 .wb-main{display:flex;position:relative;flex:1;min-height:0;overflow:hidden}
 .wb-left{width:var(--left-width);flex:none;min-height:0;z-index:3}
 .wb-center{flex:1;min-width:0;min-height:0}
@@ -9,14 +9,17 @@
 .wb-hidden{display:none!important}
 .wb-overlay{position:absolute;inset:0 auto 0 0;box-shadow:10px 0 35px #213a5522}
 .wb-scrim{position:absolute;inset:0;z-index:2;background:#20364c18;border:0}
-.wb-split{width:6px;flex:none;cursor:col-resize;background:#e2e8f0;touch-action:none;transition:background .1s}
-.wb-split:hover,.wb-split:focus-visible{background:#7bc7e7;outline:2px solid #0284c7;outline-offset:-2px}
+.wb-split{position:relative;z-index:4;width:var(--split-width,1px);flex:none;cursor:col-resize;background:#e1e7ed;touch-action:none;transition:background .1s}
+/* 可见线只占 1px，透明命中范围向两侧延伸，保留鼠标拖拽的容错。 */
+.wb-split:not(.wb-edge)::before{content:'';position:absolute;inset:0 -4px;cursor:col-resize}
+.wb-split:not(.wb-edge):hover{background:#83b7ce;box-shadow:0 0 0 1px #e2eef5}
+.wb-app .wb-split:focus-visible{outline:1px solid #0284c7;outline-offset:1px}
 .wb-edge,.wb-split-overlay{position:absolute;inset-block:0;z-index:4}
 .wb-edge{width:9px;background:transparent}
-.wb-edge::after{content:"";position:absolute;top:calc(50% - 24px);height:48px;width:3px;border-radius:3px;background:#b4c9d9}
+.wb-edge::after{content:"";position:absolute;top:calc(50% - 24px);height:48px;width:1px;border-radius:1px;background:#b4c9d9}
 .wb-edge-left{left:0}.wb-edge-left::after{left:1px}
 .wb-edge-right{right:0}.wb-edge-right::after{right:1px}
-.wb-edge:hover{background:#d7ecf8b0}
+.wb-edge:hover{background:transparent}.wb-edge:hover::after{background:#6eabc7}
 .wb-split-overlay-left{left:var(--left-width)}
 .wb-split-overlay-right{left:0}
 .wb-single .wb-split-overlay-right{left:10px;z-index:2}
@@ -34,5 +37,5 @@
 .material-tab>button{padding:6px}.material-tab>button:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wb-materials pre{tab-size:4}.wb-full [data-reading-scroll]{padding:24px 40px}.wb-app :focus-visible{outline:2px solid #1992c6;outline-offset:2px}
 @media(max-width:1190px){.wb-conversation-title{display:none}.workbench-header{gap:6px;padding-inline:10px}.workbench-header nav button{padding-inline:8px}}
-@media(max-width:700px){.workbench-header{flex-wrap:wrap;padding-block:7px}.workbench-header nav{order:3;justify-content:center;width:100%}.wb-status span:last-child{display:none}.wb-full [data-reading-scroll]{padding:16px}}
+@media(max-width:700px){.workbench-header{flex-wrap:wrap;gap:4px;padding-block:4px}.workbench-header nav{order:3;justify-content:center;width:100%}.wb-status span:last-child{display:none}.wb-full [data-reading-scroll]{padding:16px}}
 @media(prefers-reduced-motion:reduce){.wb-app *{transition:none!important}}

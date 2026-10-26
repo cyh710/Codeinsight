@@ -1,5 +1,6 @@
 import { createStore } from 'zustand'
 import { persistenceStore } from './persistence'
+import { hotState } from './hotState'
 
 interface Layout {
   left: boolean; right: boolean; full: boolean; leftWidth: number; rightWidth: number
@@ -21,31 +22,34 @@ function saved() {
       sidebar: raw.sidebar === 'files' ? 'files' as const : 'conversations' as const }
   } catch { return defaults() }
 }
-export const layoutStore = createStore<Layout>((set) => ({
-  ...saved(), viewport, resizing: false,
-  toggleLeft: () => set((s) => ({ left: !s.left, full: false })),
-  toggleRight: () => set((s) => ({ right: !s.right, full: false })),
-  showRight: () => set({ right: true }),
-  toggleFull: () => set((s) => ({ full: !s.full, right: true })),
-  resize: (side, width) => set(side === 'left'
-    ? { leftWidth: Math.max(220, Math.min(360, width)) }
-    : { rightWidth: Math.max(360, Math.min(720, width)) }),
-  dragSidebar: (side, width, opening) => set(() => {
-    // 关闭时保留上次宽度；重新展开后再进入正常的尺寸调整。
-    if (width < (opening ? 48 : 64)) return side === 'left'
-      ? { left: false }
-      : { right: false, full: false }
-    return side === 'left'
-      ? { left: true, full: false, leftWidth: Math.max(220, Math.min(360, width)) }
-      : { right: true, full: false, rightWidth: Math.max(360, Math.min(720, width)) }
-  }),
-  reset: () => set(defaults()), setSidebar: (sidebar) => set({ sidebar }),
-  setViewport: (viewport) => set((s) => ({ viewport, ...(viewport < 1280 && s.viewport >= 1280 ? { left: false } : {}) })),
-}))
-layoutStore.subscribe((state) => {
-  if (typeof localStorage === 'undefined') return
-  try {
-    const { left, right, leftWidth, rightWidth, sidebar } = state
-    localStorage.setItem('ci.layout.v1', JSON.stringify({ left, right, leftWidth, rightWidth, sidebar }))
-  } catch { persistenceStore.setState({ error: '布局偏好保存失败，刷新后可能恢复默认布局。' }) }
+export const layoutStore = hotState(import.meta.hot, 'layout', () => {
+  const store = createStore<Layout>((set) => ({
+    ...saved(), viewport, resizing: false,
+    toggleLeft: () => set((s) => ({ left: !s.left, full: false })),
+    toggleRight: () => set((s) => ({ right: !s.right, full: false })),
+    showRight: () => set({ right: true }),
+    toggleFull: () => set((s) => ({ full: !s.full, right: true })),
+    resize: (side, width) => set(side === 'left'
+      ? { leftWidth: Math.max(220, Math.min(360, width)) }
+      : { rightWidth: Math.max(360, Math.min(720, width)) }),
+    dragSidebar: (side, width, opening) => set(() => {
+      // 关闭时保留上次宽度；重新展开后再进入正常的尺寸调整。
+      if (width < (opening ? 48 : 64)) return side === 'left'
+        ? { left: false }
+        : { right: false, full: false }
+      return side === 'left'
+        ? { left: true, full: false, leftWidth: Math.max(220, Math.min(360, width)) }
+        : { right: true, full: false, rightWidth: Math.max(360, Math.min(720, width)) }
+    }),
+    reset: () => set(defaults()), setSidebar: (sidebar) => set({ sidebar }),
+    setViewport: (viewport) => set((s) => ({ viewport, ...(viewport < 1280 && s.viewport >= 1280 ? { left: false } : {}) })),
+  }))
+  store.subscribe((state) => {
+    if (typeof localStorage === 'undefined') return
+    try {
+      const { left, right, leftWidth, rightWidth, sidebar } = state
+      localStorage.setItem('ci.layout.v1', JSON.stringify({ left, right, leftWidth, rightWidth, sidebar }))
+    } catch { persistenceStore.setState({ error: '布局偏好保存失败，刷新后可能恢复默认布局。' }) }
+  })
+  return store
 })

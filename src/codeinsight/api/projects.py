@@ -21,6 +21,7 @@ from codeinsight.api.errors import (
     not_found_symbol,
 )
 from codeinsight.api.indexing import start_indexing, validate_root_path
+from codeinsight.api.relocation import latest_index_error, rebuild_relocated_project
 from codeinsight.config import settings
 from codeinsight.storage.sqlite import db_path, ensure_schema, open_sqlite
 
@@ -75,6 +76,7 @@ def create_project(body: CreateProjectBody, background: BackgroundTasks) -> dict
     ensure_schema(path)
     conn = open_sqlite(path, row_factory=True)
     try:
+        conn.execute("BEGIN IMMEDIATE")
         # 同名项目：引擎按名字复用项目行，重复导入语义与之对齐——
         # 同名同路径 = 重建索引（stale 状态的"重新导入可刷新"走的就是这条路）；
         # 同名不同路径 = 歧义，拒绝。
@@ -105,13 +107,19 @@ def create_project(body: CreateProjectBody, background: BackgroundTasks) -> dict
                 "INSERT INTO project (name, root_path) VALUES (?, ?)", (name, body.root_path)
             )
             project_id = int(cur.lastrowid)
-            conn.commit()
+        run = conn.execute(
+            "INSERT INTO index_run (project_id, head_commit, mode, started_at, ok, stats_json) "
+            "VALUES (?, '', 'full', datetime('now'), 0, ?)",
+            (project_id, '{"operation":"import"}'),
+        )
+        run_id = int(run.lastrowid)
+        conn.commit()
     finally:
         conn.close()
 
     # 建索引是异步的（契约 §3.3）：响应 202 后由后台任务推进，
     # 前端轮询 GET /projects/{id} 直到 status !== "indexing"。
-    background.add_task(start_indexing, project_id, name, body.root_path, body.ref)
+    background.add_task(start_indexing, project_id, name, body.root_path, body.ref, run_id)
 
     return {
         "id": project_id,
@@ -124,6 +132,67 @@ def create_project(body: CreateProjectBody, background: BackgroundTasks) -> dict
 
 
 # ─── GET /projects/{id} ───────────────────────────────────────
+
+
+class RelocateProjectBody(BaseModel):
+    root_path: str
+
+
+@router.post("/projects/{project_id}/relocate", status_code=202)
+def relocate_project(
+    project_id: int, body: RelocateProjectBody, background: BackgroundTasks
+) -> dict[str, Any]:
+    """受理显式的新仓库根路径，保留原项目 ID；后台原子切换路径与索引。"""
+    conn = connect_db(project_id)
+    try:
+        require_project(conn, project_id)
+        root = Path(body.root_path)
+        validate_root_path(body.root_path)
+        if not root.is_absolute() or not (root / ".git").exists():
+            raise bad_request(
+                "请选择 Git 仓库的根目录", hint="该目录应包含 .git，且路径必须为绝对路径。"
+            )
+        from codeinsight.api.indexing import _git_head
+
+        head = _git_head(str(root), "HEAD^{commit}")
+        if not head:
+            raise bad_request("所选仓库没有可读取的提交", hint="请先确认 Git 仓库至少有一个提交。")
+        conn.execute("BEGIN IMMEDIATE")
+        running = conn.execute(
+            "SELECT 1 FROM index_run WHERE project_id = ? AND finished_at IS NULL",
+            (project_id,),
+        ).fetchone()
+        answering = conn.execute(
+            "SELECT 1 FROM conversation_turn WHERE project_id = ? AND status = 'running'",
+            (project_id,),
+        ).fetchone()
+        if running or answering:
+            raise ApiFailure(
+                status_code=409,
+                code="index_running",
+                title="项目正在处理任务",
+                hint="请等待索引或回答结束，再重新定位源码目录。",
+            )
+        project = conn.execute("SELECT name FROM project WHERE id = ?", (project_id,)).fetchone()
+        cursor = conn.execute(
+            "INSERT INTO index_run (project_id, head_commit, mode, started_at, ok, stats_json) "
+            "VALUES (?, ?, 'full', datetime('now'), 0, ?)",
+            (project_id, head, '{"operation":"relocate"}'),
+        )
+        conn.commit()
+        background.add_task(
+            rebuild_relocated_project, project_id, str(root.resolve()), int(cursor.lastrowid)
+        )
+        return {
+            "id": project_id,
+            "name": project["name"],
+            "root_path": str(root.resolve()),
+            "status": "indexing",
+            "head_commit": None,
+            "head_branch": None,
+        }
+    finally:
+        conn.close()
 
 
 @router.get("/projects/{project_id}")
@@ -145,6 +214,7 @@ def get_project(project_id: int) -> dict[str, Any]:
         return {
             **dict(row),
             "source_available": Path(row["root_path"]).is_dir(),
+            "index_error": latest_index_error(conn, project_id),
             "status": _project_status(conn, project_id, dict(row)),
             **counts,
         }

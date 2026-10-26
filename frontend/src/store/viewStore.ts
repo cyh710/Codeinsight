@@ -6,6 +6,7 @@
  * 「看哪一屏」耦在一起；这里只记「看哪一屏、图以谁为中心」。
  */
 import { createStore } from 'zustand'
+import { hotState } from './hotState'
 
 export type CenterTab = 'chat' | 'graph' | 'timeline'
 
@@ -28,7 +29,7 @@ export interface ViewStore {
   reset: () => void
 }
 
-export const viewStore = createStore<ViewStore>((set) => ({
+export const viewStore = hotState(import.meta.hot, 'views', () => createStore<ViewStore>((set) => ({
   timelineExpanded: null, timelineScroll: 0, graphHistory: [], graphMode: 'reading',
   setTimelineExpanded: value => set(s => ({ timelineExpanded: typeof value === 'function' ? value(s.timelineExpanded) : value })),
   centerTab: 'chat',
@@ -41,4 +42,4 @@ export const viewStore = createStore<ViewStore>((set) => ({
   openTimeline: () => set({ centerTab: 'timeline' }),
   setGraphFocus: (qualname) => set({ graphFocus: qualname }),
   reset: () => set({ centerTab: 'chat', graphFocus: null, graphRequest: 0, timelineExpanded: null, timelineScroll: 0, graphHistory: [], graphMode: 'reading' }),
-}))
+})))

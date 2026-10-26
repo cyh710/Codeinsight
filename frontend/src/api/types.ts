@@ -200,6 +200,11 @@ export interface CreateProjectRequest {
   name?: string
 }
 
+/** 按原项目 ID 重新定位源码目录并重建索引，保留历史。 */
+export interface RelocateProjectRequest {
+  root_path: string
+}
+
 /** `POST /projects` 响应（202）。 */
 export interface CreateProjectResponse {
   id: number
@@ -213,6 +218,7 @@ export interface CreateProjectResponse {
 /** `GET /projects/{id}` 响应（契约 §3.4）。 */
 export interface ProjectDetail extends ProjectSummary {
   source_available?: boolean
+  index_error?: string | null
   status: ProjectStatus
   edges: number
   concepts: number

@@ -10,6 +10,7 @@ import type { Citation } from '../../api/types'
 import MessageBubble from './MessageBubble'
 import InputBox from './InputBox'
 import { workbenchStore } from '../../store/workbenchStore'
+import { projectStore } from '../../store/projectStore'
 import { ArrowDown, ArrowUp, Search, X } from 'lucide-react'
 
 export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Citation) => void }) {
@@ -20,6 +21,7 @@ export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Cit
   const cursor = useStore(chatStore, (s) => s.turnsCursor)
   const loading = useStore(chatStore, (s) => s.loading)
   const error = useStore(chatStore, (s) => s.error)
+  const indexing = useStore(projectStore, state => state.currentDetail?.status === 'indexing')
   const archived = useStore(chatStore, s => s.currentArchived)
   const saved = useStore(workbenchStore, (s) => s.chatScroll)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -88,8 +90,9 @@ export default function ChatWindow({ onOpenCitation }: { onOpenCitation: (c: Cit
           {cursor !== null && <button type="button" className="text-xs text-accent" onClick={() => void chatStore.getState().loadMore()}>加载更早的对话</button>}
           {messages.length === 0 && (
             <div className="mt-10 text-center">
-              <h2 className="text-xl font-semibold text-slate-700">从一个问题开始</h2>
-              <p className="mt-3 text-sm text-slate-500">读懂项目，也弄懂代码背后的概念。</p>
+              <h2 className="text-xl font-semibold text-slate-700">{indexing ? '项目代码正在准备' : '从一个问题开始'}</h2>
+              <p className="mt-3 text-sm text-slate-500">{indexing ? '先写下问题，或直接询问基础知识。索引完成后可探索项目代码。' : '读懂项目，也弄懂代码背后的概念。'}</p>
+              {indexing && <button className="wb-button mt-4" onClick={() => workbenchStore.getState().openKnowledgeTree()}>浏览教材</button>}
             </div>
           )}
           {messages.map((m) => (

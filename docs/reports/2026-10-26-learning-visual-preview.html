@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CodeInsight · 教材图文编排提案</title>
+<style>
+:root{color-scheme:light;--ink:#25364a;--muted:#66768a;--accent:#087fac;--line:#e2e9ef;--width:760px}
+*{box-sizing:border-box}body{margin:0;background:#f3f6f8;color:var(--ink);font-family:"Microsoft YaHei UI","Microsoft YaHei",sans-serif;font-size:15px;line-height:1.85}
+header{padding:26px max(22px,calc((100vw - 980px)/2));background:#fff;border-bottom:1px solid var(--line)}header p{margin:0;color:var(--muted);font-size:13px}h1{font-size:25px;line-height:1.5;font-weight:650;margin:6px 0 10px}header nav{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:15px}a{color:var(--accent);text-underline-offset:4px}
+.controls{max-width:980px;margin:16px auto;padding:0 22px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;color:var(--muted);font-size:13px}.controls label{display:flex;align-items:center;gap:10px}.controls input{width:160px;accent-color:var(--accent)}button{font:inherit;cursor:pointer;color:var(--accent);background:#fff;border:1px solid #cddfe8;border-radius:6px;padding:5px 12px;line-height:1.6}button:hover{background:#edf7fb}button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+main{width:min(var(--width),calc(100% - 28px));margin:0 auto 50px;padding:32px clamp(18px,4vw,42px);background:#fff;box-shadow:0 4px 28px #29456106}section+section{margin-top:46px;padding-top:30px;border-top:1px solid var(--line)}.eyebrow{font-size:12px;color:var(--accent);letter-spacing:.04em;margin:0}h2{font-size:23px;font-weight:650;line-height:1.55;margin:7px 0 17px}h3{font-size:17px;margin:25px 0 10px}p{margin:12px 0}code,pre{font-family:Consolas,"Cascadia Code",monospace}code{font-size:.94em;background:#f1f5f8;padding:1px 4px;border-radius:3px}pre{padding:16px;background:#f5f8fa;border-radius:6px;overflow:auto;font-size:13px;line-height:1.8}pre code{padding:0;background:none}.note{color:var(--muted);font-size:13px}.figure{margin:22px 0}figcaption{font-size:13px;color:var(--muted);margin-top:9px;line-height:1.7}.figure-tools{display:flex;justify-content:flex-end;margin-top:8px}.figure-tools button{font-size:12px}.diagram{display:block;width:100%;height:auto;background:#f7fafc;border-radius:7px}.diagram text{font-family:"Microsoft YaHei",sans-serif;fill:#25364a}.diagram .label{fill:#62788d}.steps{padding-left:1.4em}.steps li{margin:7px 0}.steps li::marker{color:var(--accent);font-weight:600}
+.tree{font-family:Consolas,"Microsoft YaHei",monospace;font-size:14px;background:#f7fafc;border-radius:6px;padding:17px 22px}.tree ul{list-style:none;margin:0;padding-left:21px}.tree>ul{padding-left:0}.tree li{position:relative;padding:3px 0}.tree li li::before{content:"";position:absolute;left:-14px;top:0;width:9px;height:19px;border-left:1px solid #c6d5df;border-bottom:1px solid #c6d5df}.tree small{font-family:"Microsoft YaHei",sans-serif;color:var(--muted);font-size:12px;margin-left:9px}.table-scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px;min-width:420px}th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:#4d647a;background:#f6f9fb;font-weight:600}.boundary{border-left:2px solid #8ec9df;padding-left:15px;margin:20px 0;color:#4c6579}details{margin-top:16px;font-size:14px}summary{color:var(--accent);cursor:pointer}footer{font-size:12px;color:var(--muted);margin-top:34px}
+dialog{width:min(960px,calc(100vw - 24px));max-height:90vh;padding:20px;border:0;border-radius:10px;color:var(--ink);box-shadow:0 20px 80px #10243433}dialog::backdrop{background:#182e4666}dialog .bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:15px}dialog .diagram{width:100%;min-width:560px}.zoom-scroll{overflow:auto}dialog p{font-size:13px;color:var(--muted)}
+@media(max-width:600px){header{padding:20px}h1{font-size:22px}main{padding:24px 18px}h2{font-size:21px}.tree small{display:block;margin-left:0}.controls{padding-inline:18px}.diagram text{font-weight:500}}
+</style>
+</head>
+<body>
+<header>
+<p>CodeInsight / 教材编排提案 / 2026.10.26</p>
+<h1>让文字、图和可观察的结果一起解释问题</h1>
+<p>独立排版预览，内容为教学示例。此页未接入工作台，不代表教材改版已完成。</p>
+<nav aria-label="预览章节"><a href="#function">机制示意图</a><a href="#tree">目录树与步骤</a><a href="#storage">边界对比表</a></nav>
+</header>
+<div class="controls"><label for="width">模拟材料阅读宽度 <input id="width" type="range" min="360" max="900" value="760"><output id="width-value" for="width">760px</output></label><span>图可放大；列表和表格仍是可选择的正文。</span></div>
+<main>
+<section id="function">
+<p class="eyebrow">基础解释 · Python</p>
+<h2>函数已经打印了结果，为什么拿到的是 None？</h2>
+<p>先把“屏幕上出现的内容”和“函数交回的结果”分开观察。这段函数算出了 36，也显示了 36，但它没有把这个数交给调用者。</p>
+<pre><code>def calculate_total(price, quantity):
+    print(price * quantity)
+
+amount = calculate_total(12, 3)
+print(amount)</code></pre>
+<figure class="figure" aria-labelledby="flow-caption">
+<svg id="return-flow" class="diagram" viewBox="80 0 440 480" role="img" aria-labelledby="flow-title flow-desc">
+<title id="flow-title">打印和返回值经过两条不同的路径</title><desc id="flow-desc">调用函数后，函数内的 print 将 36 输出到屏幕；没有 return 的函数隐式返回 None，amount 因此是 None，外部的 print 随后显示 None。最终先后显示 36 和 None。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8" fill="#68a3bd"/></marker></defs>
+<rect x="120" y="24" width="340" height="58" rx="7" fill="#e6f3f9"/><text x="290" y="60" text-anchor="middle" font-size="22">调用 calculate_total(12, 3)</text>
+<path d="M290 82V115" fill="none" stroke="#68a3bd" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="120" y="118" width="340" height="58" rx="7" fill="#fff" stroke="#d5e2ea"/><text x="290" y="154" text-anchor="middle" font-size="22">函数内执行 print(36)</text>
+<path d="M290 176V207" fill="none" stroke="#68a3bd" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="315" y="199" class="label" font-size="18">屏幕先出现 36</text>
+<rect x="120" y="210" width="340" height="58" rx="7" fill="#fff" stroke="#d5e2ea"/><text x="290" y="246" text-anchor="middle" font-size="22">没有 return，隐式返回 None</text>
+<path d="M290 268V299" fill="none" stroke="#68a3bd" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="120" y="302" width="340" height="58" rx="7" fill="#e6f3f9"/><text x="290" y="338" text-anchor="middle" font-size="22">调用处得到 amount = None</text>
+<path d="M290 360V391" fill="none" stroke="#68a3bd" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="290" y="427" text-anchor="middle" font-size="22">外部 print(amount) 再显示 None</text>
+<text x="290" y="459" text-anchor="middle" class="label" font-size="18">显示内容，不会自动变成返回值</text>
+</svg>
+<figcaption id="flow-caption">图 1 · 屏幕先后出现 36 和 None。箭头表示执行顺序；有返回值与输出的地方分别标注，正文保留同样的解释。</figcaption>
+<div class="figure-tools"><button type="button" data-zoom="return-flow">放大这张图</button></div>
+</figure>
+<p>把函数里的那行改为 <code>return price * quantity</code> 后，计算结果才会交给 <code>amount</code>。这时只有外面的 <code>print(amount)</code> 显示 36，函数本身不再输出。</p>
+<details><summary>自己验证一次</summary><p>保留 return，删掉外部 print：函数仍然完成计算，但屏幕没有输出。再把结果用于 <code>amount + 1</code>，看看调用者是否拿到了可继续计算的数字。</p></details>
+</section>
+<section id="tree">
+<p class="eyebrow">动手教程 · 运行环境</p>
+<h2>这些文件放在哪里，命令又从哪里运行？</h2>
+<p>假设你拿到的是下面这个教学项目。目录树表达文件的包含关系，旁边的说明解释每个文件的用途。</p>
+<figure class="figure"><div class="tree" role="group" aria-label="教学项目目录树"><ul><li>demo/<ul><li>app.py <small>程序入口</small></li><li>requirements.txt <small>声明需要安装的依赖</small></li><li>README.md <small>说明运行条件和启动步骤</small></li></ul></li></ul></div><figcaption>图 2 · 教学目录，文件名不代表当前 CodeInsight 的实际项目结构。</figcaption></figure>
+<h3>先定位，再执行</h3><ol class="steps"><li>在终端进入 <code>demo</code> 文件夹，确认能看见 <code>app.py</code>。</li><li>使用选定的 Python 环境，按 README 安装依赖。</li><li>在该文件夹执行 <code>python app.py</code>，观察启动日志。</li></ol>
+<p class="boundary">目录树回答“在哪里”，步骤列表回答“先后做什么”。两者分工明确，比把所有说明堆进一段话更容易跟着操作。</p>
+</section>
+<section id="storage">
+<p class="eyebrow">参考对比 · 状态与存储</p>
+<h2>刷新页面，会丢掉哪一份数据？</h2>
+<p>“刷新以后还能看到”取决于数据保存在哪里，以及页面有没有重新读取。下面假设写入已经成功，应用也实现了相应的恢复流程。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="不同存储的生命周期对照，可横向滚动"><table><thead><tr><th scope="col">保存位置</th><th scope="col">网页刷新</th><th scope="col">后端重启</th><th scope="col">主要边界</th></tr></thead><tbody><tr><th scope="row">前端内存</th><td>通常丢失</td><td>页面未重载时可仍在</td><td>页面进程与对象生命周期</td></tr><tr><th scope="row">localStorage / IndexedDB</th><td>可重新读取</td><td>浏览器数据仍在</td><td>同源、浏览器配置与清理策略</td></tr><tr><th scope="row">后端内存</th><td>服务未重启时可重新请求</td><td>丢失</td><td>后端进程生命周期</td></tr><tr><th scope="row">SQLite 文件</th><td>可经接口读取</td><td>使用同一文件时可读取</td><td>实际数据库路径与已提交写入</td></tr></tbody></table></div>
+<p>因此，“已经显示在页面上”不能证明“已经保存到数据库”。检查时应先找到写入发生的位置，再确认写入成功，最后验证刷新或重启后的恢复路径。</p>
+<p class="note">这里给的是边界地图，实际工程还要检查异常、事务、路径和恢复逻辑。表格不会替代这些说明。</p>
+</section>
+<footer>此页展示三种编排方式。正式样章仍需补齐来源、版本、完整示例与工作台接入；每篇文章按自己的问题选择表达方式。</footer>
+</main>
+<dialog id="zoom" aria-labelledby="zoom-title"><div class="bar"><strong id="zoom-title">打印与返回值 · 放大查看</strong><button id="close-zoom" type="button">关闭</button></div><div id="zoom-content" class="zoom-scroll"></div><p>按 Esc 关闭，回到原来的阅读位置。</p></dialog>
+<script>
+const slider=document.getElementById('width'),output=document.getElementById('width-value');
+slider.addEventListener('input',()=>{document.documentElement.style.setProperty('--width',slider.value+'px');output.value=slider.value+'px'});
+const zoom=document.getElementById('zoom');
+document.querySelectorAll('[data-zoom]').forEach(button=>button.addEventListener('click',()=>{const copy=document.getElementById(button.dataset.zoom).cloneNode(true);copy.removeAttribute('id');const map=new Map();copy.querySelectorAll('[id]').forEach(element=>{const old=element.id;map.set(old,'zoom-'+old);element.id='zoom-'+old});[copy,...copy.querySelectorAll('*')].forEach(element=>{for(const attr of [...element.attributes]){let value=attr.value;map.forEach((next,old)=>{value=value.replaceAll('url(#'+old+')','url(#'+next+')');if(attr.name==='aria-labelledby')value=value.split(' ').map(id=>id===old?next:id).join(' ')});if(value!==attr.value)element.setAttribute(attr.name,value)}});document.getElementById('zoom-content').replaceChildren(copy);zoom.showModal()}));
+document.getElementById('close-zoom').addEventListener('click',()=>zoom.close());
+</script>
+</body>
+</html>

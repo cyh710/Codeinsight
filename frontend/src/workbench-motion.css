@@ -20,8 +20,8 @@
 @keyframes wb-reading-focus-in{from{opacity:.45;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .wb-app[data-resizing]{cursor:col-resize;user-select:none}
 .wb-app[data-resizing] .wb-motion-panel,.wb-app[data-resizing] .wb-panel-surface{transition:none!important;animation:none!important}
-.wb-view-navigation{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:3px;isolation:isolate}
-.wb-view-navigation::before{content:"";position:absolute;inset:3px auto 3px 3px;width:calc((100% - 6px)/3);border-radius:8px;background:#e4f2fa;transform:translateX(calc(var(--active-view)*100%));transition:transform var(--motion-base) var(--ease-standard);z-index:-1}
+.wb-view-navigation{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:2px;isolation:isolate}
+.wb-view-navigation::before{content:"";position:absolute;inset:2px auto 2px 2px;width:calc((100% - 4px)/3);border-radius:7px;background:#e4f2fa;transform:translateX(calc(var(--active-view)*100%));transition:transform var(--motion-base) var(--ease-standard);z-index:-1}
 .wb-view-navigation>button{justify-content:center;background:transparent;white-space:nowrap}
 .wb-view-enter{animation:wb-view-in var(--motion-fast) var(--ease-enter)}
 .wb-material-enter{animation:wb-content-in var(--motion-fast) var(--ease-enter)}

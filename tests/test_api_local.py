@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -76,3 +77,13 @@ def test_native_result_validation(monkeypatch, tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="不存在"):
         local.choose_folder()
     assert runner.call_args.kwargs["timeout"] == 300
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows venv 进程重定向")
+def test_windows_picker_timeout_controls_actual_worker(monkeypatch) -> None:
+    runner = Mock(return_value=subprocess.CompletedProcess([], 0, '{"root_path": null}'))
+    monkeypatch.setattr(local.subprocess, "run", runner)
+    assert local.choose_folder() is None
+    command = runner.call_args.args[0]
+    assert command[0] == sys._base_executable
+    assert Path(command[1]).name == "folder_picker.py"

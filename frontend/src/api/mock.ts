@@ -576,6 +576,10 @@ export const mockApi = {
     })
   },
 
+  async relocateProject(): Promise<CreateProjectResponse> {
+    throw new ApiError({ code: 'bad_request', title: '演示模式无法重新定位项目', hint: '请连接本机后端后重试。', detail: '', status: 400 })
+  },
+
   async getProject(id: number): Promise<ProjectDetail> {
     return withDerived((d, snap) => ({
       id: snap.project.id,

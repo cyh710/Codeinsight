@@ -22,6 +22,7 @@ from codeinsight.api.local import router as local_router
 from codeinsight.api.overview import router as overview_router
 from codeinsight.api.projects import router as projects_router
 from codeinsight.api.query import router as query_router
+from codeinsight.api.relocation import recover_relocations
 from codeinsight.api.structure import router as structure_router
 from codeinsight.config import settings
 from codeinsight.storage.conversations import ConversationRepository
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
     if path.exists():
         ensure_schema(path)
         with open_sqlite(path, row_factory=True) as conn:
+            recover_relocations(conn)
             repository = ConversationRepository(conn)
             repository.backfill()
             repository.recover()

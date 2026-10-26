@@ -5,12 +5,72 @@
 import { createStore } from 'zustand'
 import { api } from '../api/dataSource'
 import { waitForIndexing } from '../api/importFlow'
-import type { FileEntry, ProjectSummary, SymbolListItem } from '../api/types'
+import { ApiError } from '../api/client'
+import type { FileEntry, ProjectDetail, ProjectSummary, SymbolListItem } from '../api/types'
 import { chatStore } from './chatStore'
-import type { ProjectStore } from './types'
+import type { IndexActivity, ProjectStore } from './types'
 import { workbenchStore } from './workbenchStore'
+import { hotState } from './hotState'
 
 const STORAGE_KEY = 'ci.projectId'
+const indexMonitors = new Map<number, symbol>()
+
+function errorText(error: unknown): string {
+  return error instanceof ApiError ? `${error.title}。${error.hint}` : error instanceof Error ? error.message : String(error)
+}
+
+function updateActivity(id: number, patch: Partial<IndexActivity>) {
+  projectStore.setState(state => {
+    const previous = state.indexActivities[id]
+    if (!previous) return {}
+    return { indexActivities: { ...state.indexActivities, [id]: { ...previous, ...patch } } }
+  })
+}
+
+function observeIndex(detail: ProjectDetail) {
+  const state = projectStore.getState()
+  if (!state.indexActivities[detail.id] && ['indexing', 'failed'].includes(detail.status)) {
+    projectStore.setState({ indexActivities: { ...state.indexActivities, [detail.id]: {
+      projectId: detail.id, name: detail.name, phase: detail.status === 'failed' ? 'failed' : 'indexing',
+      observedAt: Date.now(), detail, message: detail.index_error || undefined,
+    } } })
+  }
+  if (detail.status === 'indexing') monitorIndex(detail.id)
+}
+
+function monitorIndex(id: number) {
+  if (indexMonitors.has(id) || !projectStore.getState().indexActivities[id]) return
+  const token = Symbol()
+  indexMonitors.set(id, token)
+  updateActivity(id, { phase: 'indexing', message: undefined })
+  void (async () => {
+    try {
+      const detail = await waitForIndexing(projectId => api.getProject(projectId), id, {
+        onTick: current => {
+          updateActivity(id, { detail: current, name: current.name })
+          if (projectStore.getState().currentProjectId === id) projectStore.setState({ currentDetail: current, loading: false })
+        },
+      })
+      if (detail.status === 'indexing') {
+        updateActivity(id, { phase: 'paused', message: '索引仍未完成，自动检查已暂停。可继续检查，不会重复建立索引。' })
+      } else if (detail.status === 'failed') {
+        updateActivity(id, { phase: 'failed', message: detail.index_error || '本次索引未完成，请检查项目目录和提交版本。' })
+      } else {
+        updateActivity(id, { phase: 'syncing' })
+        if (projectStore.getState().currentProjectId === id) {
+          const loaded = await loadProjectData(partial => projectStore.setState(partial), id)
+          if (!loaded && projectStore.getState().currentProjectId === id) throw new Error('索引已建立，文件列表暂未加载成功。请重新检查。')
+        }
+        projectStore.setState(state => ({ projects: state.projects.map(project => project.id === id ? { ...project, ...detail } : project) }))
+        updateActivity(id, { phase: 'ready', detail, message: detail.status === 'stale' ? '索引已建立，但仓库又有新提交；当前结果仍对应已索引版本。' : undefined })
+      }
+    } catch (error) {
+      updateActivity(id, { phase: 'unavailable', message: errorText(error) })
+    } finally {
+      if (indexMonitors.get(id) === token) indexMonitors.delete(id)
+    }
+  })()
+}
 
 function loadStoredProjectId(): number | null {
   try {
@@ -34,7 +94,7 @@ function storeProjectId(id: number | null) {
 async function loadProjectData(
   set: (partial: Partial<ProjectStore>) => void,
   projectId: number,
-): Promise<void> {
+): Promise<boolean> {
   set({ loading: true, error: '' })
   try {
     // 文件树一次拉全（契约：裸数组）。每个文件自带 symbol_count，
@@ -49,7 +109,7 @@ async function loadProjectData(
     ])
     // 竞态防护：切项目时旧请求可能后到，丢弃过期响应，
     // 否则会把上一个项目的数据写进当前项目。
-    if (projectStore.getState().currentProjectId !== projectId) return
+    if (projectStore.getState().currentProjectId !== projectId) return false
     set({
       currentDetail: detail,
       files,
@@ -58,14 +118,17 @@ async function loadProjectData(
       loading: false,
     })
     workbenchStore.getState().setIndexVersion(detail.head_commit)
+    observeIndex(detail)
+    return true
   } catch (e) {
-    if (projectStore.getState().currentProjectId !== projectId) return
+    if (projectStore.getState().currentProjectId !== projectId) return false
     const msg = e instanceof Error ? e.message : String(e)
     set({ loading: false, error: msg })
+    return false
   }
 }
 
-export const projectStore = createStore<ProjectStore>((set, get) => ({
+export const projectStore = hotState(import.meta.hot, 'projects', () => createStore<ProjectStore>((set, get) => ({
   projects: [] as ProjectSummary[],
   currentProjectId: null,
   currentDetail: null,
@@ -76,6 +139,22 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
   error: '',
   importing: false,
   importError: '',
+  indexActivities: {},
+  resumeIndexing: id => monitorIndex(id),
+  dismissIndexActivity: id => {
+    if (indexMonitors.has(id)) return
+    set(state => {
+      const next = { ...state.indexActivities }; delete next[id]
+      return { indexActivities: next }
+    })
+  },
+  retryIndexing: async id => {
+    const request = get().indexActivities[id]?.request
+    if (request) {
+      await get().importProject(request.root_path, request.name, request.ref)
+      if (get().importError) updateActivity(id, { phase: 'failed', message: get().importError })
+    }
+  },
 
   init: async () => {
     try {
@@ -136,6 +215,29 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
     }
   },
 
+  relocateProject: async (id, rootPath) => {
+    if (get().importing) return false
+    set({ importing: true, importError: '' })
+    try {
+      await api.relocateProject(id, { root_path: rootPath })
+      set(state => ({ indexActivities: { ...state.indexActivities, [id]: {
+        projectId: id, name: state.currentDetail?.id === id ? state.currentDetail.name : state.projects.find(project => project.id === id)?.name || '项目',
+        phase: 'indexing', observedAt: Date.now(),
+      } } }))
+      if (get().currentProjectId === id && get().currentDetail) {
+        set({ currentDetail: { ...get().currentDetail!, status: 'indexing', index_error: null } })
+      }
+      // 只刷新索引数据；同一个项目的对话、草稿、材料及阅读来路保持原身份。
+      monitorIndex(id)
+      return true
+    } catch (error) {
+      set({ importError: errorText(error) })
+      return false
+    } finally {
+      set({ importing: false })
+    }
+  },
+
   importProject: async (rootPath: string, name?: string, ref?: string) => {
     if (get().importing) return
     set({ importing: true, importError: '' })
@@ -145,31 +247,35 @@ export const projectStore = createStore<ProjectStore>((set, get) => ({
         ...(name ? { name } : {}),
         ...(ref ? { ref } : {}),
       })
-      // 列表刷新 + 立即切到新项目（此时 status=indexing，状态行开始转圈）。
-      set({ currentProjectId: created.id, currentDetail: null, files: [], symbolsByPath: new Map(), loadingPaths: new Set(), loading: true })
+      const sameProject = get().currentProjectId === created.id
+      const previous = sameProject ? get().currentDetail : null
+      const pending: ProjectDetail = {
+        indexed_at: null, index_epoch: 0, files: 0, symbols: 0, chunks: 0, edges: 0, concepts: 0, concept_instances: 0,
+        ...previous, ...created, status: 'indexing', index_error: null,
+      }
+      const activity: IndexActivity = {
+        projectId: created.id, name: created.name, phase: 'indexing', observedAt: Date.now(), detail: pending,
+        request: { root_path: rootPath, ...(name ? { name } : {}), ...(ref ? { ref } : {}) },
+      }
+      set(state => ({
+        currentProjectId: created.id, currentDetail: pending, loading: false, error: '',
+        ...(sameProject ? {} : { files: [], symbolsByPath: new Map(), loadingPaths: new Set() }),
+        projects: state.projects.some(project => project.id === created.id)
+          ? state.projects.map(project => project.id === created.id ? { ...project, name: created.name } : project)
+          : [...state.projects, pending],
+        indexActivities: { ...state.indexActivities, [created.id]: activity },
+      }))
       storeProjectId(created.id)
       // 202 代表任务已接受；状态轮询不阻塞提交弹窗，也不能回写后来选择的项目。
-      void (async () => {
-        await chatStore.getState().switchProject(created.id)
-        try {
-          set({ projects: await api.listProjects() })
-        } catch {
-          // 列表刷新失败不阻塞状态读取，项目详情仍然是权威来源。
-        }
-        const detail = await waitForIndexing((id) => api.getProject(id), created.id, {
-          onTick: (d) => { if (get().currentProjectId === created.id) set({ currentDetail: d, loading: false }) },
-        })
-        if (get().currentProjectId !== created.id) return
-        set({ currentDetail: detail, loading: false })
-        if (detail.status === 'ready') await loadProjectData(set, created.id)
-      })().catch(error => {
+      monitorIndex(created.id)
+      if (chatStore.getState().projectId !== created.id) void chatStore.getState().switchProject(created.id).catch(error => {
         if (get().currentProjectId === created.id) set({ loading: false, error: `项目状态读取失败：${error instanceof Error ? error.message : String(error)}` })
       })
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
+      const msg = errorText(e)
       set({ importError: msg })
     } finally {
       set({ importing: false })
     }
   },
-}))
+})))

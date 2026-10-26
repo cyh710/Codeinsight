@@ -60,8 +60,15 @@ def _default_concepts_dir() -> Path | None:
         return None
 
 
-def start_indexing(project_id: int, name: str, root_path: str, ref: str | None) -> None:
+def start_indexing(
+    project_id: int, name: str, root_path: str, ref: str | None, run_id: int | None = None
+) -> None:
     """后台索引任务：调引擎（含概念检测）；引擎抛异常时补记失败的 index_run。"""
+    if run_id is not None:
+        from codeinsight.api.relocation import rebuild_relocated_project
+
+        rebuild_relocated_project(project_id, root_path, run_id, ref=ref, operation="import")
+        return
     path = db_path(settings.data_dir)
     try:
         index_project(

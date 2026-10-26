@@ -53,7 +53,7 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
 
   return (
     <Modal open={open} onClose={() => { if (!picking && !importing) onClose() }} title="导入项目并建索引" widthClass="max-w-md" closeOnBackdrop={false}>
-      <div className="space-y-3">
+      <div className="space-y-3" aria-busy={importing}>
         <p className="text-[11px] leading-relaxed text-slate-500">
           选择 Git 项目文件夹，索引将在后台建立。
         </p>
@@ -83,6 +83,7 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
               className={`mt-1 ${inputCls}`}
               placeholder="缺省 = 目录名"
               value={name}
+              disabled={importing || picking}
               onChange={(e) => setName(e.target.value)}
             />
           </label>
@@ -94,6 +95,7 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
               className={`mt-1 ${inputCls} font-mono`}
               placeholder="缺省 = 当前 HEAD"
               value={ref}
+              disabled={importing || picking}
               onChange={(e) => setRef(e.target.value)}
             />
           </label>
@@ -113,6 +115,7 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
             {pickerError || importError}
           </p>
         )}
+        {importing && <p role="status" className="text-xs leading-5 text-accent">正在提交导入请求，接受后将在工作台显示索引状态。</p>}
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="secondary" size="sm" onClick={onClose} disabled={importing || picking}>
@@ -124,7 +127,7 @@ export default function ImportProjectDialog({ open, onClose }: { open: boolean; 
             onClick={() => void submit()}
             disabled={!rootPath.trim() || importing || picking}
           >
-            <FolderInput size={13} strokeWidth={1.8} />
+            {importing ? <LoaderCircle size={14} className="motion-safe:animate-spin" /> : <FolderInput size={13} strokeWidth={1.8} />}
             {importing ? '提交中…' : '导入并建索引'}
           </Button>
         </div>

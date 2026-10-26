@@ -1,10 +1,26 @@
 /* 用字号、留白和背景区分层次，分隔线只保留在空间边界。 */
+.index-notice{position:relative;display:flex;align-items:center;gap:10px;flex-shrink:0;min-height:40px;padding:6px 16px;overflow:hidden;background:#edf7fd;color:#17618b}
+.index-notice-body{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:12px}
+.index-notice-body>p{margin-top:0}
+.index-notice-actions .wb-button{min-height:28px;padding-block:3px}
+.index-notice-actions .wb-icon-button{width:28px;height:28px}
+.index-notice-icon{display:flex;align-self:flex-start;margin-top:2px;flex-shrink:0}
+.index-notice-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.index-notice--success{background:#eff9f4;color:#237350}
+.index-notice--danger{background:#fff2f1;color:#a33a35}
+.index-notice--warning{background:#fff8ea;color:#94642a}
+.index-notice[data-busy]::after{content:'';position:absolute;bottom:0;left:0;width:28%;height:2px;background:#5baed4;animation:index-wait 2s ease-in-out infinite}
+@keyframes index-wait{from{transform:translateX(-100%)}to{transform:translateX(460%)}}
+@media(max-width:700px){.index-notice{flex-wrap:wrap;gap:8px;padding:8px 12px}.index-notice-actions{margin-left:27px}.index-notice .text-sm{font-size:14px}}
+@media(prefers-reduced-motion:reduce){.index-notice[data-busy]::after{animation:none;width:100%;opacity:.35}}
 .wb-app,[role="dialog"]{--text-xs:.8125rem;--text-sm:.9375rem;font-size:14px}
 .wb-app{background:#f6f8fa}
 .wb-app [class*="text-[10"],.wb-app [class*="text-[11"],.wb-app [class*="text-[9"],
 [role="dialog"] [class*="text-[10"],[role="dialog"] [class*="text-[11"],[role="dialog"] [class*="text-[9"]{font-size:12px}
 .wb-app .text-slate-400,[role="dialog"] .text-slate-400{color:#758295}
-.workbench-header{min-height:54px;padding-inline:18px;border-color:#e7ecf1}
+.workbench-header{min-height:42px;padding-inline:14px;border-color:#e7ecf1}
+.workbench-header .wb-button{min-height:30px;padding:4px 8px}
+.workbench-header .wb-view-navigation>button{min-height:30px;padding:4px 10px;line-height:20px}
 .workbench-header h1{font-size:15px}.workbench-header nav button{font-size:14px}
 .workbench-header nav svg{width:16px;height:16px}
 .wb-left{background:#f6f8fa}.wb-left>.wb-panel-surface>aside{background:transparent;border:0}
@@ -14,8 +30,9 @@
 .wb-left>.wb-panel-surface>aside>nav button[aria-pressed=true]{background:#e4eef5;color:#087fac}
 .wb-left>.wb-panel-surface>aside>div:last-child{border:0}
 .wb-center,.wb-center>section,.wb-center [data-chat-scroll]{background:#fff}
-.wb-materials>.wb-panel-surface>aside{border-color:#e7ecf1}.wb-full .learning-article{max-width:780px}
-.wb-split{background:#eef2f5}
+.wb-materials>.wb-panel-surface>aside{border-left:0}.wb-full .learning-article{max-width:780px}
+.wb-split:not(.wb-edge){background:#e1e7ed}
+.wb-split:not(.wb-edge):hover{background:#83b7ce}
 .wb-button,.wb-primary{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;border:0;padding:5px 9px;font-size:13px}
 .wb-button{color:#596b7d;background:transparent}.wb-button:hover{background:#edf4f8}
 .wb-button[aria-pressed=true],.wb-primary{background:#e4f2fa;color:#087fac}.wb-primary:hover{background:#d5ebf8}
@@ -34,17 +51,19 @@
 .wb-action-menu button:hover{background:#edf5fa;color:#087fac}.wb-action-menu button:disabled{opacity:.4;cursor:not-allowed}
 .wb-action-menu small{display:block;margin-top:3px;color:#7b8a99;font-size:12px}
 .wb-menu-caption{padding:10px 10px 3px;color:#8391a0;font-size:12px}
-.material-toolbar{display:flex;align-items:center;gap:3px;min-height:46px;padding:5px 12px}
-.material-toolbar>button{min-width:28px;min-height:30px}
-.material-tabs{align-items:center;border-color:#edf0f4;padding:3px 10px 7px;background:#fff}
+.material-toolbar{display:flex;align-items:center;gap:3px;min-height:36px;padding:2px 10px}
+.material-toolbar>button{min-width:28px;min-height:28px}
+.material-toolbar .wb-button,.material-toolbar .wb-icon-button{min-height:28px;height:28px}
+.material-toolbar .wb-icon-button{width:28px}
+.material-tabs{align-items:center;border-color:#edf0f4;padding:2px 10px 4px;background:#fff}
 .material-tab{max-width:240px;border:0;border-radius:6px;font-size:13px}
 .material-tab.active{background:#edf5fa;box-shadow:none}
-.material-tab>button{min-height:30px}.material-tab>button:last-child{min-width:28px}
+.material-tab>button{min-height:26px;padding:3px 6px}.material-tab>button:last-child{min-width:26px}
 .material-tab svg{width:14px;height:14px}
 /* 阅读位置由工作区保存，避免浏览器在调宽时另做一次自动滚动补偿。 */
 .wb-materials [data-reading-scroll]{padding:16px 20px;overflow-anchor:none}.wb-full [data-reading-scroll]{padding:20px 36px}
 .wb-action-menu :focus-visible{outline:2px solid #1992c6;outline-offset:2px}
-.chat-toolbar{display:flex;align-items:center;gap:5px;min-height:44px;padding:4px 22px;background:#fff}
+.chat-toolbar{display:flex;align-items:center;gap:5px;min-height:36px;padding:2px 18px;background:#fff}
 .assistant-answer{padding:4px 2px 12px;width:100%;font-size:15px;line-height:1.8}
 .message-actions{display:flex;align-items:center;flex-wrap:wrap;gap:3px 10px;margin-top:14px;font-size:12px;color:#718296}
 .message-actions button{min-height:30px;padding:3px 0}.message-actions button:hover{color:#087fac}

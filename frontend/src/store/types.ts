@@ -110,6 +110,16 @@ export interface ChatStore {
 
 // ─── 项目 ─────────────────────────────────────────────────────
 
+export interface IndexActivity {
+  projectId: number
+  name: string
+  phase: 'indexing' | 'syncing' | 'ready' | 'failed' | 'unavailable' | 'paused'
+  observedAt: number
+  message?: string
+  detail?: import('../api/types').ProjectDetail
+  request?: import('../api/types').CreateProjectRequest
+}
+
 export interface ProjectStore {
   projects: import('../api/types').ProjectSummary[]
   currentProjectId: number | null
@@ -130,10 +140,15 @@ export interface ProjectStore {
   /** 导入项目进行中（对话框按钮的禁用态与状态行共用）。 */
   importing: boolean
   importError: string
+  indexActivities: Record<number, IndexActivity>
+  resumeIndexing: (id: number) => void
+  dismissIndexActivity: (id: number) => void
+  retryIndexing: (id: number) => Promise<void>
 
   init: () => Promise<void>
   selectProject: (id: number) => Promise<void>
   importProject: (rootPath: string, name?: string, ref?: string) => Promise<void>
+  relocateProject: (id: number, rootPath: string) => Promise<boolean>
   /** 展开文件时按需拉它的符号（已拉过则直接返回）。 */
   loadSymbolsForPath: (path: string) => Promise<void>
 }

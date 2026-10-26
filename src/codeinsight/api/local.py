@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import json
 import subprocess
 import sys
@@ -17,33 +16,6 @@ from codeinsight.api.errors import ApiFailure
 router = APIRouter(tags=["local"])
 _picker_lock = Lock()
 _LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
-
-_WINDOWS_PICKER = """
-$ErrorActionPreference = 'Stop'
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-Add-Type -AssemblyName System.Windows.Forms
-[System.Windows.Forms.Application]::EnableVisualStyles()
-$owner = [System.Windows.Forms.Form]::new()
-$owner.TopMost = $true
-$owner.ShowInTaskbar = $false
-$owner.Opacity = 0
-$dialog = [System.Windows.Forms.FolderBrowserDialog]::new()
-$dialog.Description = '选择要导入的 Git 项目文件夹'
-$dialog.ShowNewFolderButton = $false
-if ($dialog.PSObject.Properties['AutoUpgradeEnabled']) { $dialog.AutoUpgradeEnabled = $true }
-try {
-    $owner.Show()
-    $owner.Activate()
-    $selected = $null
-    if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {
-        $selected = $dialog.SelectedPath
-    }
-    ConvertTo-Json -Compress -InputObject @{root_path = $selected}
-} finally {
-    $dialog.Dispose()
-    $owner.Dispose()
-}
-"""
 
 _TK_PICKER = """
 import json
@@ -63,8 +35,12 @@ finally:
 def choose_folder() -> str | None:
     """在独立进程运行桌面选择框；取消为 None，失败交给端点转成可读错误。"""
     if sys.platform == "win32":
-        encoded = base64.b64encode(_WINDOWS_PICKER.encode("utf-16-le")).decode("ascii")
-        command = ["powershell.exe", "-NoProfile", "-STA", "-EncodedCommand", encoded]
+        # Windows venv 的 python.exe 是重定向器；超时只杀它会遗留真正的窗口进程。
+        # helper 仅用标准库，直接以基础解释器运行，确保 timeout 能关闭实际窗口。
+        command = [
+            getattr(sys, "_base_executable", sys.executable),
+            str(Path(__file__).with_name("folder_picker.py")),
+        ]
     else:
         command = [sys.executable, "-c", _TK_PICKER]
     result = subprocess.run(

@@ -16,6 +16,7 @@ import type {
   ProjectOverview,
   ProjectSummary,
   RelationListResponse,
+  RelocateProjectRequest,
   SymbolDetail,
   SymbolListItem,
   SymbolQuery,
@@ -32,6 +33,10 @@ export function listProjects(): Promise<ProjectSummary[]> {
 
 export function createProject(req: CreateProjectRequest): Promise<CreateProjectResponse> {
   return jsonRequest<CreateProjectResponse>('/projects', { method: 'POST', body: JSON.stringify(req) })
+}
+
+export function relocateProject(id: number, req: RelocateProjectRequest): Promise<CreateProjectResponse> {
+  return jsonRequest<CreateProjectResponse>(`/projects/${id}/relocate`, { method: 'POST', body: JSON.stringify(req) })
 }
 
 /** 打开本机系统选择框；沿用原导入接口提交选中的完整路径。 */

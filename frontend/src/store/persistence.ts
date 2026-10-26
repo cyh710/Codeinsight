@@ -1,10 +1,11 @@
 /** 记录写入完成后才报告成功；失败对用户可见，不把内存缓存说成已保存。 */
 import { createStore } from 'zustand'
+import { hotState } from './hotState'
 
-export const persistenceStore = createStore<{ error: string; pending: number }>(() => ({ error: '', pending: 0 }))
-let database: Promise<IDBDatabase> | undefined
+export const persistenceStore = hotState(import.meta.hot, 'persistence', () => createStore<{ error: string; pending: number }>(() => ({ error: '', pending: 0 })))
+const connection = hotState(import.meta.hot, 'indexeddb', () => ({ database: undefined as Promise<IDBDatabase> | undefined }))
 function db() {
-  return database ??= new Promise<IDBDatabase>((resolve, reject) => {
+  return connection.database ??= new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open('codeinsight-workbench', 1)
     request.onupgradeneeded = () => request.result.createObjectStore('workspaces')
     request.onsuccess = () => resolve(request.result)

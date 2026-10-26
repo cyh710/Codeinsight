@@ -19,6 +19,7 @@ import { persistenceStore } from './store/persistence'
 import { restoreLocation, startNavigation } from './store/navigation'
 import SplitHandle from './components/common/SplitHandle'
 import WorkspacePanel from './components/common/WorkspacePanel'
+import ProjectIndexNotice from './components/tree/ProjectIndexNotice'
 import './workbench.css'
 import './workbench-density.css'
 import './workbench-motion.css'
@@ -30,13 +31,17 @@ function openCitation(c: Citation) {
 }
 
 let initialization: Promise<void> | undefined
+const SPLIT_WIDTH = 1
 export default function App() {
   const layout = useStore(layoutStore)
   const saving = useStore(persistenceStore)
   const newEvidence = useStore(workbenchStore, s => s.newEvidence)
   useEffect(() => {
     let alive = true, dispose: (() => void) | undefined
-    initialization ??= projectStore.getState().init().then(restoreLocation)
+    // 热更新已有工作台时沿用当前身份，避免重新激活会话或擅自展开已隐藏的材料。
+    initialization ??= projectStore.getState().currentProjectId !== null && projectStore.getState().projects.length > 0
+      ? Promise.resolve()
+      : projectStore.getState().init().then(restoreLocation)
     void initialization.then(() => { if (alive) dispose = startNavigation() })
     const resize = () => layoutStore.getState().setViewport(innerWidth)
     addEventListener('resize', resize)
@@ -44,8 +49,8 @@ export default function App() {
     return () => { alive = false; dispose?.(); removeEventListener('resize', resize); clearInterval(timer) }
   }, [])
   const single = layout.full || layout.viewport < 1100
-  const leftOverlay = single || layout.viewport - layout.leftWidth - (layout.right ? layout.rightWidth + 6 : 0) - 6 < 440
-  const styles = { '--left-width': `${layout.leftWidth}px`, '--right-width': `${Math.min(layout.rightWidth, layout.viewport - (layout.left && !leftOverlay ? layout.leftWidth + 6 : 0) - 446)}px` } as CSSProperties
+  const leftOverlay = single || layout.viewport - layout.leftWidth - (layout.right ? layout.rightWidth + SPLIT_WIDTH : 0) - SPLIT_WIDTH < 440
+  const styles = { '--split-width': `${SPLIT_WIDTH}px`, '--left-width': `${layout.leftWidth}px`, '--right-width': `${Math.min(layout.rightWidth, layout.viewport - (layout.left && !leftOverlay ? layout.leftWidth + SPLIT_WIDTH : 0) - 440 - SPLIT_WIDTH)}px` } as CSSProperties
   const projectsError = useStore(projectStore, (s) => s.error)
 
   return (
@@ -76,12 +81,13 @@ export default function App() {
       </header>
 
       {saving.error && <p role="alert" className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">{saving.error}</p>}
+      <ProjectIndexNotice />
       <main className={`wb-main ${single ? 'wb-single' : ''} ${layout.full ? 'wb-full' : ''}`}>
         <WorkspacePanel id="workspace-left" side="left" open={layout.left && !layout.full} overlay={leftOverlay}>
           <LeftPanel />
         </WorkspacePanel>
         <SplitHandle side="left" overlay={leftOverlay} />
-        {layout.left && leftOverlay && !layout.full && <button type="button" aria-label="关闭项目侧栏" className="wb-scrim" onClick={layout.toggleLeft} />}
+        {layout.left && leftOverlay && !layout.full && !(single && layout.right) && <button type="button" aria-label="关闭项目侧栏" className="wb-scrim" style={layout.right ? { right: 'calc(var(--right-width) + var(--split-width))' } : undefined} onClick={layout.toggleLeft} />}
         <div className={`wb-center ${single && layout.right ? 'wb-hidden' : ''}`}>
           <CenterPanel onOpenCitation={openCitation} />
         </div>
