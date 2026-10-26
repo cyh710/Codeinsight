@@ -52,3 +52,23 @@
 识别错误可退回普通问答；abort/reject/超时/执行失败各路径状态如实；
 pytest + vitest + ruff + build 全绿；离线 Provider，真实模型调用 0
 （真机验收另记：fixture 仓 + 真 `claude -p` 走一遍全流程，记录于本单）。
+
+## 真机验收记录（2026-10-26，branch feat/orchestrated-execution）
+
+fixture：`e2e/repo`（单文件 calc.py，add 函数故意写成减法）+ 真 deepseek-chat +
+真 `claude` CLI（2.1.218），后端 8030，数据目录 e2e/data。
+
+| 步骤 | 结果 |
+|---|---|
+| 提问「帮我修复 calc.py 里 add 函数的 bug…」 | SSE 事件流 `meta → answer → done`；LLM 判定 dev_task，计划准确命中 calc.py 与「减法应为加法」，answer.execution.status=planned |
+| approve | 202 转 executing；真 `claude -p` 在隔离 worktree 执行 30s；进度 11 帧（Read/Bash/Edit 带 file 路径）回流 |
+| 执行细节 | claude 改了代码但其 `git commit` 被权限拦截；**驱动器 git 兜底提交接住**（ci-exec 分支 commit c2e44d0）→ review |
+| 隔离不变量 | 用户检出 calc.py 仍是 bug 版、`git status` 干净；改动只在 worktree |
+| diff_summary | 1 文件 +1/−1，status=modified，来自 git numstat 事实 |
+| merge | `merge --no-ff` 合入用户分支（3a37b6c）；用户检出的 calc.py 变为正确加法 |
+| 学习卡 | 后台增量索引自动跑完，change_card 出现：calc/calc.add 的 body_changed（带 calc.py:1 引用）；concept_ids 空（该仓无概念命中，如实） |
+| 清理 | worktree 目录删除，worktree list 无残留 |
+
+发现与处置：claude CLI 的 `--permission-mode acceptEdits` 在无头模式下允许编辑
+但默认拦 `git commit`——已由驱动器的 ensure_committed 兜底覆盖（本就是按
+"不可信 agent 会不提交"设计的）。无需代码变更。
