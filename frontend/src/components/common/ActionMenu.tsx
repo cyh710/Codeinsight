@@ -3,11 +3,12 @@ import { createPortal } from 'react-dom'
 import { usePresence } from './Presence'
 
 /** 浮层脱离阅读区的层叠上下文，避免被正文的固定工具条遮住。 */
-export default function ActionMenu({ label, trigger, children, className = '' }: {
+export default function ActionMenu({ label, trigger, children, className = '', menuClassName = '' }: {
   label: string
   trigger: ReactNode
   children: (close: () => void) => ReactNode
   className?: string
+  menuClassName?: string
 }) {
   const [position, setPosition] = useState<{ top: number; right: number } | null>(null)
   const [open, setOpen] = useState(false)
@@ -46,7 +47,7 @@ export default function ActionMenu({ label, trigger, children, className = '' }:
         setOpen(true)
       }}>{trigger}</button>
     {mounted && position && createPortal(<div id={id} ref={menu} role="menu" aria-label={label} aria-hidden={exiting || undefined} inert={exiting}
-      className={`wb-action-menu ${exiting ? 'wb-menu-exiting' : 'wb-menu-entering'}`}
+      className={`wb-action-menu ${menuClassName} ${exiting ? 'wb-menu-exiting' : 'wb-menu-entering'}`}
       onAnimationEnd={event => { if (event.target === event.currentTarget && exiting) finishExit() }}
       style={{ top: Math.max(8, position.top), right: position.right }}
       onKeyDown={event => {

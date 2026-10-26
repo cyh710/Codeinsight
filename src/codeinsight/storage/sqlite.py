@@ -18,7 +18,7 @@ BUSY_TIMEOUT_MS = 5_000
 
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 """schema 版本号，写进 `PRAGMA user_version`。
 
 改 `schema.sql` 的表结构时**必须**把这里 +1 并补一条迁移，
@@ -30,6 +30,7 @@ SCHEMA_VERSION = 4
 # 键是**旧版本号**，值是升级到该键+1 的步骤序列。
 # 迁移是**原地**的，不删库、不重建——用户的索引数据不能因为 schema 演进而丢。
 MIGRATIONS: dict[int, tuple[str, ...]] = {
+    4: (),  # 身份高水位表由 apply_schema 原地创建，不重建项目或索引。
     3: ("ALTER TABLE conversation ADD COLUMN exploration_json TEXT NOT NULL DEFAULT '{}'",),
     2: (),  # 新会话表由 apply_schema 原地创建，账本回填由会话仓储幂等执行。
     1: (
@@ -64,6 +65,16 @@ def open_sqlite(path: str | Path, *, row_factory: bool = False) -> sqlite3.Conne
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
+
+
+def reserve_project_id(conn: sqlite3.Connection) -> int:
+    """调用方事务内分配不复用的项目 ID；兼容历史或测试直接插入的项目行。"""
+    return int(
+        conn.execute(
+            "UPDATE project_id_counter SET last_id=MAX(last_id,"
+            "(SELECT COALESCE(MAX(id),0) FROM project))+1 WHERE singleton=1 RETURNING last_id"
+        ).fetchone()[0]
+    )
 
 
 def apply_schema(conn: sqlite3.Connection) -> None:

@@ -534,6 +534,10 @@ async function withDerived<T>(fn: (d: Derived, snap: Snapshot) => T): Promise<T>
 }
 
 export const mockApi = {
+  async removeProject(): Promise<import('./types').RemoveProjectResponse> {
+    throw new ApiError({ code: 'bad_request', title: '演示数据不能移除',
+      hint: '连接本地后端后可管理真实导入项目。', detail: '', status: 400 })
+  },
   async getHealth(): Promise<HealthResponse> {
     return {
       status: 'ok',

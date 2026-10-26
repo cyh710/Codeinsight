@@ -156,6 +156,18 @@ export function createChatActions(set: Set, get: Get) {
     }
   }
   return {
+    forgetProject: (pid: number) => {
+      for (const [id, client] of clients) if (client.pid === pid) { client.controller?.abort(); clients.delete(id) }
+      if (active?.pid === pid) {
+        active = null; generation++; suspendWorkbench()
+        set({ projectId: null, conversationId: '', messages: [], draft: '', streaming: false,
+          conversations: [], taskId: null, loading: false, _abortController: null, error: '',
+          currentTitle: '新对话', currentArchived: false, nextCursor: null, turnsCursor: null,
+          search: '', allProjects: false, archived: false, focusRequest: null, find: '' })
+      }
+      set(s => ({ conversations: s.conversations.filter(c => c.project_id !== pid) }))
+      try { localStorage.removeItem(`ci.activeConversation.${pid}`) } catch { /* 失效缓存不重新赋予项目身份。 */ }
+    },
     projectId: null, currentTitle: '新对话', currentArchived: false, listLoading: false, draft: '', error: '', loading: browserApi(), conversations: [] as Conversation[],
     nextCursor: null, turnsCursor: null, taskId: null, search: '', allProjects: false,
     archived: false, find: '', focusRequest: null,

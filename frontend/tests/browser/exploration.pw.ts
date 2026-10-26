@@ -83,6 +83,8 @@ test('局部知识解读、全文、来源回合与刷新恢复', async ({ page 
 test('旧索引动作禁用，导览失败可重试，窄窗口仍可探索', async ({ page }) => {
   await page.route('**/api/projects/1/overview', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'internal_error', title: '离线失败', hint: '重试', detail: '' } }) }))
   await page.goto('/')
+  // 等项目详情加载完成，避免把初始化期间的临时失败当成稳定的重试状态。
+  await expect(page.locator('.sidebar-project-path')).toBeVisible()
   await expect(page.locator('.project-guide')).toContainText('项目导览读取失败')
   await page.unroute('**/api/projects/1/overview')
   await page.locator('.project-guide').getByRole('button', { name: '重新读取' }).click()

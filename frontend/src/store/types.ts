@@ -69,6 +69,7 @@ export interface ChatMessage {
 }
 
 export interface ChatStore {
+  forgetProject: (pid: number) => void
   projectId: number | null
   currentTitle: string
   currentArchived: boolean
@@ -125,6 +126,7 @@ export interface IndexActivity {
 }
 
 export interface ProjectStore {
+  removeProject: (pid: number) => Promise<void>
   projects: import('../api/types').ProjectSummary[]
   currentProjectId: number | null
   /** 当前项目的详情（含 status 与计数；导入轮询期间实时更新）。 */

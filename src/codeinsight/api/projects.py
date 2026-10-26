@@ -103,8 +103,11 @@ def create_project(body: CreateProjectBody, background: BackgroundTasks) -> dict
                 )
             project_id = int(existing["id"])
         else:
+            from codeinsight.storage.sqlite import reserve_project_id
+
             cur = conn.execute(
-                "INSERT INTO project (name, root_path) VALUES (?, ?)", (name, body.root_path)
+                "INSERT INTO project (id, name, root_path) VALUES (?, ?, ?)",
+                (reserve_project_id(conn), name, body.root_path),
             )
             project_id = int(cur.lastrowid)
         run = conn.execute(
@@ -191,6 +194,40 @@ def relocate_project(
             "head_commit": None,
             "head_branch": None,
         }
+    finally:
+        conn.close()
+
+
+@router.delete("/projects/{project_id}")
+def remove_project(project_id: int) -> dict[str, Any]:
+    """只移除 CodeInsight 数据；源码目录与全局教材不属于删除范围。"""
+    conn = connect_db(project_id)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        require_project(conn, project_id)
+        busy = any(
+            conn.execute(sql, (project_id,)).fetchone()
+            for sql in (
+                "SELECT 1 FROM index_run WHERE project_id=? AND finished_at IS NULL",
+                "SELECT 1 FROM conversation_turn WHERE project_id=? AND status='running'",
+                "SELECT 1 FROM agent_task WHERE project_id=? AND status='running'",
+            )
+        )
+        if busy:
+            raise ApiFailure(
+                status_code=409,
+                code="index_running",
+                title="项目正在处理任务",
+                hint="请等待索引和所有回答结束，或先停止回答，再移除项目。",
+            )
+        # 保留所有曾用过的项目身份；同名重新导入也必须得到新 ID。
+        conn.execute(
+            "UPDATE project_id_counter SET last_id=MAX(last_id,"
+            "(SELECT COALESCE(MAX(id),0) FROM project)) WHERE singleton=1"
+        )
+        conn.execute("DELETE FROM project WHERE id=?", (project_id,))
+        conn.commit()
+        return {"project_id": project_id, "removed": True, "source_deleted": False}
     finally:
         conn.close()
 

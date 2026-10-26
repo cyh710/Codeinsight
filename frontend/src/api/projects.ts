@@ -17,6 +17,7 @@ import type {
   ProjectSummary,
   RelationListResponse,
   RelocateProjectRequest,
+  RemoveProjectResponse,
   SymbolDetail,
   SymbolListItem,
   SymbolQuery,
@@ -46,6 +47,10 @@ export function selectProjectFolder(): Promise<FolderSelectionResponse> {
 
 export function getProject(id: number): Promise<ProjectDetail> {
   return jsonRequest<ProjectDetail>(`/projects/${id}`)
+}
+
+export function removeProject(id: number): Promise<RemoveProjectResponse> {
+  return jsonRequest<RemoveProjectResponse>(`/projects/${id}`, { method: 'DELETE' })
 }
 
 export function getProjectOverview(id: number): Promise<ProjectOverview> {

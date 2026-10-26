@@ -11,6 +11,7 @@ import { chatStore } from './chatStore'
 import type { IndexActivity, ProjectStore } from './types'
 import { workbenchStore } from './workbenchStore'
 import { hotState } from './hotState'
+import { removeProjectLocal } from './persistence'
 
 const STORAGE_KEY = 'ci.projectId'
 const indexMonitors = new Map<number, symbol>()
@@ -182,6 +183,22 @@ export const projectStore = hotState(import.meta.hot, 'projects', () => createSt
     // 工作台与中栏视图重置，避免带着上一个项目的上下文继续看。
     await chatStore.getState().switchProject(id)
     await loadProjectData(set, id)
+  },
+
+  removeProject: async (id: number) => {
+    await api.removeProject(id)
+    indexMonitors.delete(id)
+    chatStore.getState().forgetProject(id)
+    // 确认框卸载前完成缓存清理，避免切换项目后仍残留旧项目的本地记录。
+    await removeProjectLocal(id)
+    const remaining = get().projects.filter(p => p.id !== id)
+    set(s => { const activities = { ...s.indexActivities }; delete activities[id]; return { projects: remaining, indexActivities: activities } })
+    if (get().currentProjectId === id) {
+      set({ currentProjectId: null, currentDetail: null, files: [], symbolsByPath: new Map(), loadingPaths: new Set(), loading: false, error: '' })
+      storeProjectId(null)
+      if (remaining.length) await get().selectProject(remaining[0].id)
+      else if (typeof history !== 'undefined') history.replaceState(null, '', '/')
+    }
   },
 
   loadSymbolsForPath: async (path: string) => {

@@ -39,3 +39,26 @@ export async function writeLocal(key: string, value: unknown) {
   } catch (error) { persistenceStore.setState({ error: `本地保存失败，当前内容仍可使用：${String(error)}` }) }
   finally { persistenceStore.setState((s) => ({ pending: Math.max(0, s.pending - 1) })) }
 }
+
+/** 只清理被显式移除项目的草稿和材料，布局及其他项目不受影响。 */
+export async function removeProjectLocal(projectId: number) {
+  if (typeof indexedDB === 'undefined') return
+  persistenceStore.setState(s => ({ pending: s.pending + 1 }))
+  try {
+    const database = await db()
+    await new Promise<void>((resolve, reject) => {
+      const tx = database.transaction('workspaces', 'readwrite')
+      const cursor = tx.objectStore('workspaces').openCursor()
+      cursor.onsuccess = () => {
+        const item = cursor.result
+        if (!item) return
+        if (['workspace', 'draft', 'pending'].some(prefix => String(item.key).startsWith(`${prefix}:${projectId}:`))) item.delete()
+        item.continue()
+      }
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+      tx.onabort = () => reject(tx.error)
+    })
+  } catch (error) { persistenceStore.setState({ error: `项目已移除，但本地缓存清理失败：${String(error)}` }) }
+  finally { persistenceStore.setState(s => ({ pending: Math.max(0, s.pending - 1) })) }
+}

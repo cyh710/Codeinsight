@@ -215,6 +215,12 @@ export interface CreateProjectResponse {
   head_branch: string | null
 }
 
+export interface RemoveProjectResponse {
+  project_id: number
+  removed: boolean
+  source_deleted: false
+}
+
 /** `GET /projects/{id}` 响应（契约 §3.4）。 */
 export interface ProjectDetail extends ProjectSummary {
   source_available?: boolean

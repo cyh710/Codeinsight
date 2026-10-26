@@ -541,9 +541,11 @@ def _ensure_project(conn: sqlite3.Connection, *, name: str, root_path: str) -> i
     row = conn.execute("SELECT id FROM project WHERE name = ?", (name,)).fetchone()
     if row:
         return int(row[0])
+    from codeinsight.storage.sqlite import reserve_project_id
+
     cur = conn.execute(
-        "INSERT INTO project (name, root_path) VALUES (?, ?)",
-        (name, root_path),
+        "INSERT INTO project (id, name, root_path) VALUES (?, ?, ?)",
+        (reserve_project_id(conn), name, root_path),
     )
     return int(cur.lastrowid or 0)
 

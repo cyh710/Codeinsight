@@ -25,6 +25,15 @@ CREATE TABLE IF NOT EXISTS project (
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- 项目被移除后也保留身份高水位，旧浏览器 URL 不能命中新建项目。
+CREATE TABLE IF NOT EXISTS project_id_counter (
+    singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
+    last_id INTEGER NOT NULL
+);
+INSERT INTO project_id_counter(singleton,last_id)
+VALUES (1,(SELECT COALESCE(MAX(id),0) FROM project))
+ON CONFLICT(singleton) DO UPDATE SET last_id=MAX(last_id,excluded.last_id);
+
 CREATE TABLE IF NOT EXISTS repo_state (
     project_id      INTEGER PRIMARY KEY REFERENCES project(id) ON DELETE CASCADE,
     head_commit     TEXT,                       -- 索引停在这个 commit

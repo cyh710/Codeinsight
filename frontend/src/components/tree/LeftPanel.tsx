@@ -17,6 +17,8 @@ import {
   Loader2,
   Package,
   Search,
+  MessageSquare,
+  Files,
 } from 'lucide-react'
 import { api } from '../../api/dataSource'
 import { projectStore } from '../../store/projectStore'
@@ -26,6 +28,7 @@ import ConversationList from '../chat/ConversationList'
 import { layoutStore } from '../../store/layoutStore'
 import ImportProjectDialog from './ImportProjectDialog'
 import RelocateProjectDialog from './RelocateProjectDialog'
+import ProjectActions from './ProjectActions'
 import { projectStatusView } from './projectStatusView'
 import type { ProjectSummary, SymbolListItem } from '../../api/types'
 import {
@@ -336,28 +339,26 @@ export default function LeftPanel() {
     files.reduce((sum, f) => sum + f.symbol_count, 0)
 
   return (
-    <aside className="flex h-full min-h-0 w-full shrink-0 flex-col border-r border-slate-200/80 bg-bg-elevated">
+    <aside className="agent-sidebar flex h-full min-h-0 w-full shrink-0 flex-col bg-bg-elevated" aria-label="项目与对话导航">
       {/* 项目切换器：左栏顶部（C-Q6 已对齐）。 */}
-      <div className="border-b border-slate-200/70 px-3 py-2.5">
-        <div className="flex items-center justify-between">
-          <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            项目
-          </label>
+      <div className="sidebar-project-header">
+        <div className="sidebar-project-caption">
+          <span>工作区</span>
           <button
             type="button"
             onClick={() => setImportOpen(true)}
-            className="flex h-5.5 w-5.5 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-accent-soft hover:text-accent"
+            className="wb-icon-button"
             title="导入项目并建索引"
             aria-label="导入项目并建索引"
           >
-            <FolderInput size={13} strokeWidth={1.7} />
+            <FolderInput size={17} strokeWidth={1.7} />
           </button>
         </div>
         {/* 自绘 Select（通用件）：API 与原生下拉兼容，但走统一的
             listbox 语义与动效——随基建复制的契约测试要求原生下拉
             元素全局退场。 */}
-        <Select
-          className="mt-1"
+        <div className="sidebar-project-row"><FolderOpen size={20} className="sidebar-project-icon" aria-hidden="true" /><Select
+          className="sidebar-project-select"
           label="选择项目"
           value={projectsState.currentProjectId === null ? '' : String(projectsState.currentProjectId)}
           onChange={(e) => {
@@ -368,23 +369,26 @@ export default function LeftPanel() {
           {projectsState.projects.length === 0 && <option value="">（无项目）</option>}
           {projectsState.projects.map((p) => (
             <option key={p.id} value={String(p.id)}>
-              {p.name}{p.id === projectsState.currentProjectId && projectsState.currentDetail?.status === 'indexing' ? ' · 索引中' : `（${p.symbols} 符号）`}
+              {p.name}{p.id === projectsState.currentProjectId && projectsState.currentDetail?.status === 'indexing' ? ' · 索引中' : ''}
             </option>
           ))}
-        </Select>
+        </Select>{projectsState.currentProjectId !== null && projectsState.projects.find(p => p.id === projectsState.currentProjectId) && <ProjectActions
+          key={projectsState.currentProjectId} project={projectsState.currentDetail ?? projectsState.projects.find(p => p.id === projectsState.currentProjectId)!}
+          onRelocate={() => setRelocateProject(projectsState.currentDetail ?? projectsState.projects.find(p => p.id === projectsState.currentProjectId)!)} />}</div>
+        {projectsState.currentDetail && <p className="sidebar-project-path" title={projectsState.currentDetail.root_path}>{projectsState.currentDetail.root_path}</p>}
         <StatusLine onRelocate={() => { if (projectsState.currentDetail) setRelocateProject(projectsState.currentDetail) }} />
       </div>
       <ImportProjectDialog open={importOpen} onClose={() => setImportOpen(false)} />
 
-      <nav aria-label="左栏内容" className="flex gap-1 border-b border-slate-200/70 p-2">
-        <button type="button" aria-pressed={sidebar === 'conversations'} onClick={() => layoutStore.getState().setSidebar('conversations')} className="wb-button flex-1">对话</button>
-        <button type="button" aria-pressed={sidebar === 'files'} onClick={() => layoutStore.getState().setSidebar('files')} className="wb-button flex-1">文件</button>
+      <nav aria-label="左栏内容" className="sidebar-view-tabs">
+        <button type="button" aria-pressed={sidebar === 'conversations'} onClick={() => layoutStore.getState().setSidebar('conversations')}><MessageSquare size={15} aria-hidden="true" />对话</button>
+        <button type="button" aria-pressed={sidebar === 'files'} onClick={() => layoutStore.getState().setSidebar('files')}><Files size={15} aria-hidden="true" />文件</button>
       </nav>
       {sidebar === 'conversations' ? <ConversationList /> : <>
 
       {/* 搜索：同时作用于文件路径与符号名。 */}
-      <div className="border-b border-slate-200/70 px-3 py-2">
-        <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1.5 focus-within:border-accent">
+      <div className="sidebar-file-search">
+        <div className="sidebar-search-field">
           <Search size={13} strokeWidth={1.8} className="shrink-0 text-slate-400" />
           <input
             className="min-w-0 flex-1 bg-transparent text-xs text-slate-700 outline-none placeholder:text-slate-400"
@@ -395,7 +399,7 @@ export default function LeftPanel() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
+      <div className="sidebar-file-tree min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
         {q.length >= 2 && !currentHits && <p role="status" className="p-2 text-xs text-slate-400">正在查找文件和函数…</p>}
         {currentHits && symbolHits.error && <p role="alert" className="p-2 text-xs text-danger">函数搜索失败：{symbolHits.error} <button onClick={() => setSearchRetry(value => value + 1)}>重试</button></p>}
         {projectsState.loading && <p className="px-2 py-4 text-xs text-slate-400">加载索引中…</p>}
@@ -422,10 +426,11 @@ export default function LeftPanel() {
         ))}
       </div>
 
-      <div className="border-t border-slate-200/70 px-3 py-1.5 text-[10px] text-slate-400">
+      <div className="sidebar-footer">
         {projectsState.currentDetail?.status === 'indexing' && !projectsState.files.length ? '索引完成后显示文件与符号数量' : `${projectsState.files.length} 文件 · ${totalSymbols} 符号`}
       </div>
       </>}
+      {!projectsState.projects.length && <button className="sidebar-empty-import" onClick={() => setImportOpen(true)}><FolderInput size={17} />导入第一个项目</button>}
       {relocateProject && <RelocateProjectDialog key={relocateProject.id} project={relocateProject} onClose={() => setRelocateProject(null)} />}
     </aside>
   )
