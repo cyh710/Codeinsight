@@ -141,8 +141,9 @@ async def test_abstains_when_no_grounding() -> None:
     assert answer.abstained is True
     assert answer.abstention_reason
     assert answer.facts == []
-    assert answer.inferences == []
-    assert "没有找到" in answer.text
+    assert answer.inferences
+    assert answer.text == answer.raw_text == "我猜入口在 main.py。"
+    assert answer.evidence_review["status"] == "no_match"
     assert events[-1].data["abstained"] is True
 
 
@@ -159,7 +160,9 @@ async def test_fabricated_citation_cannot_become_a_fact() -> None:
     answer, _ = await _run(runtime)
 
     assert answer.facts == []
-    assert "777" not in answer.text
+    assert "未核实位置：b.py:777" in answer.text
+    assert answer.raw_text == "入口在 [b.py:777]。"
+    assert answer.evidence_review["unverified_citations"] == ["b.py:777"]
 
 
 @pytest.mark.asyncio

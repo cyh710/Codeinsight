@@ -8,9 +8,8 @@
    而是检索时该往哪儿靠的提示。把它塞进 messages 会污染上下文；
    Runtime 用它来给 `search_code` 补一个默认查询词。
 
-v1 放在**进程内**：CodeInsight 是单用户本地工具，重启丢会话是可接受的。
-真正需要持久化的是 `agent_task` / `agent_event` 账本（见 `ledger.py`）——
-那是审计与复现用的，不是会话记忆。
+此类提供 CLI 的内存会话；HTTP 使用 storage.conversations.PersistentConversationStore，
+从 SQLite 恢复最终答案、来源与状态。账本仍独立用于审计，不把未核实历史升级成事实。
 """
 
 from __future__ import annotations

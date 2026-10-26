@@ -242,6 +242,9 @@ async def query(body: QueryBody) -> dict[str, Any]:
         "request_id": rid,
         "source_head_commit": getattr(session, "head_commit", None),
         "text": answer.text,
+        "raw_text": answer.raw_text,
+        "response_kind": answer.response_kind,
+        "evidence_review": answer.evidence_review,
         "facts": answer.facts,
         "inferences": answer.inferences,
         "citations": [

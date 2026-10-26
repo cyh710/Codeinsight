@@ -169,6 +169,10 @@ class Answer:
     """
 
     text: str = ""
+    raw_text: str = ""
+    """最终生成原文，仅供回看；引用未校验，不可当作结构化事实或模型记忆。"""
+    response_kind: str = "answer"
+    evidence_review: dict[str, Any] | None = None
     facts: list[dict[str, Any]] = field(default_factory=list)
     inferences: list[dict[str, Any]] = field(default_factory=list)
     citations: list[Citation] = field(default_factory=list)

@@ -1223,3 +1223,40 @@ SQLite schema 3→4 原地增加 `conversation.exploration_json TEXT NOT NULL DE
 保留索引和全部回合。仅完整成功回合更新脉络；失败、中断和 incomplete 不加入。
 模型仍读取最近六个有效问答对；脉络最多 4096 UTF-8 字节并计入原上下文总预算。
 裁剪优先保留当前问题与目标。索引更新后旧脉络标 stale，旧要点不作为新版依据，继续提问须重新取证。
+
+## 14. 正文保留与续问取证（请求 0013，ADR 0030）
+
+非流式结果、SSE 最终 answer 及持久化 answer_json 增加可选字段：
+
+- `raw_text`：最终生成原文。只供回看，不能成为可点击引用、检索证据或直接模型记忆。
+  中断前的增量原文也随 delta 持久化；成功时以最终原文替换。
+- `response_kind`：answer/rephrase/clarification，分别为正常回答、接续解释及无前文时的澄清。
+- `evidence_review`：`{status,message,checks,unverified_citations,source_version,followup_from?}`。
+  source_version 沿用 project_id/head_commit/index_epoch，followup_from 为同会话来源请求 ID。
+
+| status | 含义 |
+|---|---|
+| verified | 正文主张有已校验代码引用，仍不证明角色、设计解释的语义正确性 |
+| partial | 有已校验引用，同时存在未核实说明或引用；不能将整段自动升级为事实 |
+| knowledge | 基于本轮教材解释，不授予项目事实资格 |
+| unverified | 没有取得有效引用；可能尚未检索或未将已读取代码对应到正文，不能称为查无实现 |
+| no_match | 本轮真实定位操作均未取得可引用位置，不证明整个项目不存在相关机制 |
+| unavailable | 检索或源码读取未完成，区别于实际无命中 |
+
+checks 随本轮已有工具预算产生，元素 `{tool,status,target}`；status 为 matched/no_match/unavailable。
+只记录真实定位、检索与源码读取，不把结构建议当作取证。unverified_citations 是未通过位置的
+纯文字列表；正文将对应 `[path:line]` 改为不可点击的“未核实位置”标记，保留解释。
+同一句混合有效/无效引用时整体按未核实说明处理，合法位置仍可单独查看，不给整句事实资格。
+
+`abstained/reason` 等旧字段保持兼容；前端不能因为 abstained 为真隐藏正文，或要求用户先点开
+才能阅读解释。核查细节和生成原文默认折叠。旧记录没有 raw_text 时不补造原文。
+
+短续问从同项目、同会话上一完整回合取来路，最多重新读取两份同版本代码来源；
+教材经现有服务按文章版本重新读取。历史来源不直接加入 grounding，旧版本不能静默重绑定。
+明确的阅读目标优先；内部取证不改客户端草稿或关联，也不增加额外模型轮次与预算。
+无前文且无明确阅读目标时简短澄清。首版保守识别明确的“听不懂/换种说法/举个例子”等请求，
+不声称覆盖所有自然语言指代。
+
+未核实历史注入模型时标明不可直接当作项目事实；未核实回合不写入可靠探索脉络。
+部分有据的回答也仅将实际显示且能对应到已校验事实的要点写入。原有索引、历史与 schema 4 保留，
+本次不新增数据库列、不重建用户索引、不追溯恢复过去已覆盖且未保存的生成原文。

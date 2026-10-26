@@ -91,6 +91,8 @@ def test_real_process_restart_keeps_history_and_interrupts_partial_turn(data_dir
         assert turns[0]["status"] == "completed"
         assert turns[1]["status"] == "interrupted"
         assert turns[1]["answer"]["text"] == "SQL 是查询数据库的语言。"
+        assert turns[1]["answer"]["raw_text"] == "SQL 是查询数据库的语言。"
+        assert turns[0]["answer"]["evidence_review"]["status"] == "knowledge"
         with request(
             "/query", {**common, "request_id": "after", "question": "SQL 再解释一下"}
         ) as response:

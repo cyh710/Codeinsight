@@ -4,10 +4,10 @@
 
 1. **有界**：≤10 次模型轮次、每轮 ≤16 次工具调用、两层字节预算
    （`context.py`）。超了就明确说「没做完」，不硬编答案。
-2. **可追溯**：每条证据都进 grounded 集合；模型引用对不上的 `file:line`
-   会被删掉（`answer.py`）。**编造的位置永远到不了用户眼前**。
+2. **可追溯**：每条证据都进 grounded 集合；对不上的 `file:line` 标为未核实，
+   不授予跳转或事实资格；原文与可读解释仍保留（请求 0013）。
 3. **可复现**：每一步先落 `agent_event`，再由同一份记录折回 messages。
-4. **诚实**：没有证据就弃答。`abstained` 是产品能力，不是失败。
+4. **诚实**：取证状态与正文分别呈现，不将未检索误报为检索无命中。
 
 事件流（SSE 契约 §8.3）通过 `emit` 回调交出：
 `meta → (tool|evidence|delta)* → answer → done`，`answer` 与 `done` 各恰好一次。
@@ -24,7 +24,9 @@ from typing import Any
 
 from codeinsight.agent.answer import GroundedFile, Grounding, split_answer
 from codeinsight.agent.context import ContextBudget, assemble, truncate_bytes
+from codeinsight.agent.evidence_review import assess, record_check
 from codeinsight.agent.exploration import normalize, plain, version
+from codeinsight.agent.followup import prepare_followup
 from codeinsight.agent.ledger import EventLedger, new_task_id
 from codeinsight.agent.prompts import SYSTEM_PROMPT
 from codeinsight.agent.selection import SelectionError, code_selection
@@ -116,6 +118,15 @@ class AgentRuntime:
         goal = {"role": "user", "content": question}
         current: list[dict[str, Any]] = []
         initial_version = version(self.conn, project_id) if self.conn is not None else None
+        followup = prepare_followup(self.conn, project_id, conversation_id, question, prior)
+        if followup:
+            if reading_context is not None and followup["kind"] == "clarification":
+                followup["kind"] = "rephrase"
+                followup["note"] = (
+                    "本次围绕明确的阅读目标重新解释；用服务端读取的正文或源码讲清楚，不猜测缺失内容。"
+                )
+            answer.response_kind = followup["kind"]
+            prior = [*prior, {"role": "user", "content": followup["note"]}]
         if conversation_id and hasattr(self.store, "exploration_context"):
             context = self.store.exploration_context(session_key)
             if context:
@@ -154,12 +165,13 @@ class AgentRuntime:
                     ),
                 )
             if self.learning is not None:
+                knowledge_reading = reading_context or (followup or {}).get("knowledge")
                 goal, prepared = self.learning.prepare_goal(
                     question,
                     reading_context=(
                         None
-                        if reading_context and reading_context.get("kind") == "code"
-                        else reading_context
+                        if knowledge_reading and knowledge_reading.get("kind") == "code"
+                        else knowledge_reading
                     ),
                     max_message_bytes=min(
                         self.budget.max_message_bytes, self.budget.max_turn_bytes
@@ -187,6 +199,40 @@ class AgentRuntime:
                 ):
                     raise SelectionError(
                         answer.knowledge_error or "无法验证教材选区。", answer.reading_status
+                    )
+            if followup and reading_context is None:
+                for index, target in enumerate(followup["code"]):
+                    call = ToolCall(
+                        id=f"followup-{task_id}-{index}",
+                        name="read_file",
+                        arguments={
+                            "path": target["path"],
+                            "start_line": target["lineno"],
+                            "end_line": target["end_lineno"],
+                        },
+                    )
+                    current.append(_assistant_message("重新核对上轮解释的源码。", [call]))
+                    if ledger:
+                        ledger.record(
+                            task_id,
+                            "assistant.tool_calls",
+                            {
+                                "content": "重读上轮来源",
+                                "tool_calls": [
+                                    {"id": call.id, "name": call.name, "arguments": call.arguments}
+                                ],
+                            },
+                        )
+                    focus = await self._invoke_tool(
+                        call,
+                        project_id=project_id,
+                        conversation_id=conversation_id,
+                        answer=answer,
+                        grounding=grounding,
+                        focus=focus,
+                        current=current,
+                        ledger=ledger,
+                        emit=emit,
                     )
             if reading_context and reading_context.get("kind") == "code":
                 path = reading_context.get("path")
@@ -292,13 +338,14 @@ class AgentRuntime:
                 answer.incomplete = True
                 final_text = ""
 
+            answer.raw_text = final_text
             if not final_text:
                 answer.incomplete = True
                 final_text = (
                     "这个问题在允许的轮次内没有分析完。可以把问题缩小到具体模块或符号再问。"
                 )
 
-            split = split_answer(final_text, grounding)
+            split = split_answer(final_text, grounding, preserve_invalid=True)
             answer.text = split.text
             answer.facts = split.facts
             answer.inferences = split.inferences
@@ -312,21 +359,24 @@ class AgentRuntime:
                 dropped_citations=split.dropped_citations,
                 incomplete=answer.incomplete,
             )
+            if followup and followup.get("project_based"):
+                knowledge_only = False
+            if followup and followup.get("knowledge") and answer.reading_status != "ok":
+                knowledge_only = False
             if knowledge_only:
                 answer.inferences = []
-            if len(grounding) == 0 and not knowledge_only:
-                # 一条证据都没有：模型说的任何话都不是项目事实。
-                # 前端见到 abstained 会整块渲染弃答卡，正文不显示——
-                # 所以这里不再往正文里塞「不是项目事实」的前缀：
-                # 那段话既没人看，又把阅读体验弄脏。
-                answer.abstained = True
-                answer.abstention_reason = "没有在这个项目的索引里找到能支撑回答的代码位置"
-                answer.inferences = []
+            if not answer.citations and not knowledge_only:
+                # 缺证据不授予事实资格，但保留正文；未检索不能声称项目没有实现。
+                answer.abstained = answer.response_kind != "clarification"
                 answer.facts = []
                 answer.citations = []
-                # 正文统一用弃答说明：模型在无证据时说的多半是猜测
-                # （「我猜入口在 main.py」），留着会让人以为那就是答案。
-                answer.text = ABSTAIN_TEXT
+            answer.evidence_review = assess(
+                answer, knowledge_only=knowledge_only, source_version=initial_version
+            )
+            if followup:
+                answer.evidence_review["followup_from"] = followup["request_id"]
+            if answer.abstained:
+                answer.abstention_reason = answer.evidence_review["message"]
 
             if self.learning is not None and prepared is not None:
                 projection = self.learning.finalize_answer(answer.text, prepared)
@@ -353,6 +403,14 @@ class AgentRuntime:
                     ]
                     if not answer.exploration["takeaways"] and not answer.abstained:
                         answer.exploration["takeaways"] = [visible[:240]]
+                    if answer.evidence_review["status"] != "knowledge":
+                        # 部分有据时也只纳入能对应到已验证事实的要点，不将整段解释升级。
+                        verified = [plain(f["text"]) for f in answer.facts if f["text"].strip()]
+                        answer.exploration["takeaways"] = [
+                            s
+                            for s in answer.exploration["takeaways"]
+                            if len(plain(s)) >= 6 and any(plain(s) in f for f in verified)
+                        ]
                 except (ValueError, TypeError, KeyError, sqlite3.Error):
                     # 附加建议不能破坏已经完成且可核查的正文。
                     answer.exploration = None
@@ -364,6 +422,9 @@ class AgentRuntime:
                     "answer",
                     {
                         "text": answer.text,
+                        "raw_text": answer.raw_text,
+                        "response_kind": answer.response_kind,
+                        "evidence_review": answer.evidence_review,
                         "exploration": answer.exploration,
                         "tools_used": answer.tools_used,
                         "evidence": answer.evidence,
@@ -417,6 +478,9 @@ class AgentRuntime:
                         "assistant.answer",
                         {
                             "text": answer.text,
+                            "raw_text": answer.raw_text,
+                            "response_kind": answer.response_kind,
+                            "evidence_review": answer.evidence_review,
                             "facts": answer.facts,
                             "inferences": answer.inferences,
                             "abstained": answer.abstained,
@@ -424,7 +488,13 @@ class AgentRuntime:
                     )
                 ledger.finish(task_id, status=status, reason=answer.abstention_reason)
             if answer.error is None and conversation_id:
-                self.store.record_turn(session_key, question, answer.text, focus=focus)
+                history_text = answer.text
+                if answer.evidence_review and answer.evidence_review["status"] != "verified":
+                    history_text = (
+                        "[历史说明未完全核实，不可直接作为项目事实；涉及代码请重新取证]\n"
+                        + history_text
+                    )
+                self.store.record_turn(session_key, question, history_text, focus=focus)
             await _emit(
                 emit,
                 RuntimeEvent(
@@ -485,6 +555,7 @@ class AgentRuntime:
             answer.tools_used.append(call.name)
         focus = _update_focus(focus, call.name, result.data)
         _absorb_grounding(grounding, result.data)
+        record_check(answer, call.name, call.arguments, result.data, result.error)
         _collect_evidence(answer, call.name, result.data)
         _collect_knowledge(answer, result.data)
         if call.name == "propose_exploration" and not result.error:

@@ -32,6 +32,35 @@ class BrowserProvider:
         ):
             raise RuntimeError("浏览器测试中的 Provider 故障")
         question = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+        original_question = question.splitlines()[0]
+        recent = messages[
+            next(i for i in range(len(messages) - 1, -1, -1) if messages[i]["role"] == "user") :
+        ]
+        if "__fixture_review_unchecked__" in original_question:
+            yield StreamChunk(text="先把它想成一个收件窗口，具体实现还需要核对。")
+            await asyncio.sleep(0.3)
+            yield StreamChunk(text=" 我猜入口在 [ghost.py:99]。", finish_reason="stop")
+            return
+        if "__fixture_review_code__" in original_question or original_question == "听不懂":
+            read = any(m["role"] == "tool" for m in recent)
+            if not read and "__fixture_review_code__" in original_question:
+                yield StreamChunk(
+                    tool_calls=[
+                        ToolCall(
+                            "review-read",
+                            "read_file",
+                            {"path": "store.py", "start_line": 1, "end_line": 6},
+                        )
+                    ]
+                )
+                return
+            text = (
+                "把提交想成按下保存键：修改在提交后完成。 [store.py:6]"
+                if read
+                else "你希望我重新解释哪一段？"
+            )
+            yield StreamChunk(text=text, finish_reason="stop")
+            return
         exploring = "核对实现，再讨论取舍" in question or question.startswith("SQL 如果没有提交")
         if exploring:
             recent = messages[

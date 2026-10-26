@@ -7,7 +7,7 @@ import { memo, useState } from 'react'
 import { chatStore } from '../../store/chatStore'
 import LearningMarkdown from '../learning/LearningMarkdown'
 import { workbenchStore } from '../../store/workbenchStore'
-import { AlertTriangle, Ban, CheckCircle2, Hourglass, Loader2, Wrench } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Hourglass, Loader2, Wrench } from 'lucide-react'
 import type { ChatMessage } from '../../store/types'
 import type { Citation, Inference } from '../../api/types'
 import ConfirmDialog from '../common/ConfirmDialog'
@@ -16,6 +16,7 @@ import { projectStore } from '../../store/projectStore'
 import ExplorationActions from '../exploration/ExplorationActions'
 import ExplorationFlow from '../exploration/ExplorationFlow'
 import { openRelated } from '../exploration/actions'
+import { AnswerReviewDetails, AnswerReviewNotice } from './AnswerReview'
 
 function CitationLine({ citation, onOpen }: { citation: Citation; onOpen: (c: Citation) => void }) {
   return (
@@ -163,41 +164,11 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
     )
   }
 
-  if (message.abstained && !message.streaming) {
-    // 弃答：明确说没找到，绝不编造 file:line（ADR 0007 / 契约 §8.1）。
-    return (
-      <div className="flex justify-start">
-        <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-slate-300/60 bg-slate-50 px-3.5 py-2.5">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-            <Ban size={13} strokeWidth={1.8} />
-            暂时没有足够依据
-          </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-            {message.abstentionReason || '索引里没有命中这个问题对应的代码，换个问法或先重建索引。'}
-          </p>
-          {message.knowledgeError && (
-            <p className="mt-2 text-[11px] leading-6 text-warning">{message.knowledgeError}</p>
-          )}
-          {message.learningEntries?.slice(0, 3).map((t) => (
-            <button
-              type="button"
-              key={t.href}
-              onClick={() => workbenchStore.getState().openKnowledge(t)}
-              className="mr-2 mt-2 text-[11px] text-accent hover:underline"
-            >
-              学习：{t.title}
-            </button>
-          ))}
-          <MessageActions message={message} />
-        </div>
-      </div>
-    )
-  }
-
   const settled = !message.streaming
   return (
     <div className="flex justify-start">
       <div className="assistant-answer min-w-0 max-w-full">
+        <AnswerReviewNotice message={message} />
         <div
           className={`text-sm leading-relaxed text-slate-800 ${message.streaming ? 'reply-text-in' : settled ? 'reply-settled' : ''}`}
         >
@@ -273,6 +244,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
         {message.inferences && message.inferences.length > 0 && (
           <InferenceList inferences={message.inferences} />
         )}
+        {settled && <AnswerReviewDetails message={message} />}
         {settled && <MessageActions message={message} />}
         {settled && message.incomplete && (
           // 未完成≠没找到（契约 §8.3 新增字段）：内容照常显示，追加提示条，

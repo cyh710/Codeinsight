@@ -42,7 +42,7 @@ export default function ConversationList() {
         <div className="flex items-start gap-1">
           <button className="min-w-0 flex-1 text-left" title={c.title} type="button" onClick={() => void open(c.project_id, c.id, state.search ? c.match_request_id : undefined)}>
             <div className="truncate text-sm font-medium">{c.pinned ? '◆ ' : ''}{c.title}</div>
-            <p className="conversation-meta">{state.allProjects ? `${c.project_name} · ` : ''}{c.status === 'running' ? '生成中' : c.status === 'interrupted' ? '回答中断' : c.status === 'failed' ? '回答失败' : c.status === 'abstained' ? '依据不足' : updatedLabel(c.updated_at)}{c.unread && c.status !== 'running' ? ' · 新结果' : ''}</p>
+            <p className="conversation-meta">{state.allProjects ? `${c.project_name} · ` : ''}{c.status === 'running' ? '生成中' : c.status === 'interrupted' ? '回答中断' : c.status === 'failed' ? '回答失败' : c.status === 'abstained' ? '待核实' : updatedLabel(c.updated_at)}{c.unread && c.status !== 'running' ? ' · 新结果' : ''}</p>
             {c.snippet && <p className="conversation-preview">{preview(c.snippet)}</p>}
           </button>
           <ActionMenu label={`对话操作 ${c.title}`} trigger={<MoreHorizontal size={17} />}>

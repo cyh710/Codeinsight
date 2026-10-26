@@ -297,9 +297,14 @@ test('切项目后丢弃旧文件函数列表的迟到响应', async ({ page }) 
 test('刷新恢复长对话的中间阅读位置，不强制跳到底部', async ({ page }) => {
   await ready(page)
   await input(page).fill('SQL 是什么 __fixture_long__'); await page.getByRole('button', { name: '发送', exact: true }).click()
-  await expect(page.getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0, { timeout: 15000 })
   const scroll = page.locator('[data-chat-scroll]')
-  await scroll.evaluate(e => { e.scrollTop = 500 })
+  // 等待原生滚动事件进入保存流程，避免在事件尚未派发时直接刷新页面。
+  await scroll.evaluate(e => new Promise<void>(resolve => {
+    if (e.scrollTop === 500) { resolve(); return }
+    e.addEventListener('scroll', () => resolve(), { once: true })
+    e.scrollTop = 500
+  }))
   await expect.poll(() => scroll.evaluate(e => e.scrollTop)).toBe(500)
   await expect(page.getByText('正在保存工作区…', { exact: true })).toHaveCount(0)
   await page.reload(); await expect(input(page)).toBeEnabled()

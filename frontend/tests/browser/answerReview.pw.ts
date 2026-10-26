@@ -1,0 +1,50 @@
+import { expect, test } from '@playwright/test'
+import { resolve } from 'node:path'
+
+test.beforeEach(async ({ page, request }) => {
+  const conversation = await (await request.post('/api/projects/1/conversations')).json()
+  await page.addInitScript(cid => localStorage.setItem('ci.activeConversation.1', cid), conversation.id)
+  await page.goto('/')
+  await expect(page.locator('.wb-center textarea')).toBeEnabled()
+})
+
+test('无依据回答在流结束、刷新后仍完整可读，原文可查看且伪造位置不能点击', async ({ page }) => {
+  const input = page.locator('.wb-center textarea')
+  await input.fill('这个项目如何收件 __fixture_review_unchecked__')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+  const answer = page.locator('.assistant-answer').last()
+  await expect(answer).toContainText('收件窗口', { timeout: 15000 })
+  await expect(page.getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0)
+  await expect(answer).toContainText('本轮尚未取得有效代码引用')
+  await expect(answer).toContainText('未核实位置：ghost.py:99')
+  await expect(answer.getByRole('button', { name: '[1]', exact: true })).toHaveCount(0)
+  await answer.getByText('核查与生成原文', { exact: true }).click()
+  await expect(answer.locator('pre')).toContainText('[ghost.py:99]')
+  await expect.poll(() => answer.locator('pre').evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThan(30)
+  await expect(answer.locator('pre')).toBeInViewport({ ratio: 1 })
+  await page.screenshot({ path: resolve('..', '.ci/browser/answer-review.png'), animations: 'disabled' })
+  await page.reload()
+  await expect(page.locator('.assistant-answer')).toContainText('收件窗口')
+  await expect(page.locator('.assistant-answer')).toContainText('未核实位置：ghost.py:99')
+})
+
+test('听不懂沿用上一轮问题并重读来源，刷新后保留解释和来源标识', async ({ page, request }) => {
+  const input = page.locator('.wb-center textarea')
+  await input.fill('解释保存函数 __fixture_review_code__')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+  await expect(page.locator('.assistant-answer')).toContainText('保存键', { timeout: 15000 })
+  await expect(page.getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0)
+  const cid = new URL(page.url()).searchParams.get('conversation')!
+  await input.fill('听不懂')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+  await expect(page.locator('.assistant-answer').last()).toContainText('保存键')
+  await expect(page.getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0)
+  const turns = await (await request.get(`/api/projects/1/conversations/${cid}/turns`)).json()
+  const last = turns.items.at(-1)
+  expect(last.answer.response_kind).toBe('rephrase')
+  expect(last.answer.tools_used).toEqual(['read_file'])
+  expect(last.answer.evidence_review.followup_from).toBe(turns.items.at(-2).request_id)
+  expect(last.answer.citations[0].path).toBe('store.py')
+  await page.reload()
+  await expect(page.locator('.assistant-answer').last()).toContainText('保存键')
+})

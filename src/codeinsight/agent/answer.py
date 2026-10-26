@@ -207,8 +207,8 @@ class SplitAnswer:
     """本回合里出现、但 grounded 集合对不上的位置——审计用，不给用户看。"""
 
 
-def split_answer(text: str, grounding: Grounding) -> SplitAnswer:
-    """按句子拆事实/推断，并清掉校验不过的 `file:line`。
+def split_answer(text: str, grounding: Grounding, *, preserve_invalid: bool = False) -> SplitAnswer:
+    """按句子拆事实/推断；preserve_invalid 时保留无效位置但标明未核实。
 
     事实/推断的判定在**块内**做，但 markdown 的块结构原样保留——
     前端是 markdown 渲染器，代码块和列表被逐句切开就会糊成一段。
@@ -227,14 +227,34 @@ def split_answer(text: str, grounding: Grounding) -> SplitAnswer:
             for item in block.splitlines(keepends=True):
                 if not item.strip():
                     continue
-                cleaned, cited = _verify(item, grounding, result.dropped_citations)
+                before = len(result.dropped_citations)
+                cleaned, cited = _verify(
+                    item, grounding, result.dropped_citations, preserve_invalid
+                )
                 paragraphs.append(cleaned)
-                _record(cleaned, cited, grounding, result, seen_citations)
+                _record(
+                    cleaned,
+                    cited,
+                    grounding,
+                    result,
+                    seen_citations,
+                    invalid=len(result.dropped_citations) > before,
+                )
             continue
         for sentence in _sentences(block):
-            cleaned, cited = _verify(sentence, grounding, result.dropped_citations)
+            before = len(result.dropped_citations)
+            cleaned, cited = _verify(
+                sentence, grounding, result.dropped_citations, preserve_invalid
+            )
             paragraphs.append(cleaned)
-            _record(cleaned, cited, grounding, result, seen_citations)
+            _record(
+                cleaned,
+                cited,
+                grounding,
+                result,
+                seen_citations,
+                invalid=len(result.dropped_citations) > before,
+            )
 
     result.text = _join_paragraphs(paragraphs)
     return result
@@ -246,6 +266,8 @@ def _record(
     grounding: Grounding,
     result: SplitAnswer,
     seen_citations: set[tuple[str, int]],
+    *,
+    invalid: bool = False,
 ) -> None:
     """把一句归到事实或推断。引用落到**模型说的那一行**，不是窗口起点。"""
     if not cleaned.strip():
@@ -255,18 +277,22 @@ def _record(
         anchor = grounding.nearest(path, lineno)
         if anchor is None:  # pragma: no cover —— _verify 只放行 grounded 位置
             return
-        result.facts.append(
-            {
-                "text": _plain_text(_strip_markers(cleaned)),
-                "citation": {
-                    "path": path,
-                    "lineno": lineno,
-                    "end_lineno": lineno,
-                    "qualname": anchor.qualname,
-                    "snippet": anchor.snippet,
-                },
-            }
-        )
+        statement = {
+            "text": _plain_text(_strip_markers(cleaned)),
+            "citation": {
+                "path": path,
+                "lineno": lineno,
+                "end_lineno": lineno,
+                "qualname": anchor.qualname,
+                "snippet": anchor.snippet,
+            },
+        }
+        if invalid:
+            result.inferences.append(
+                {"text": statement["text"], "confidence": DEFAULT_INFERENCE_CONFIDENCE}
+            )
+        else:
+            result.facts.append(statement)
         for path, lineno in cited:
             key = (path, lineno)
             if key in seen_citations:
@@ -299,11 +325,18 @@ def _sentences(text: str) -> list[str]:
             continue
         start = 0
         for match in _SENTENCE_END.finditer(line):
+            if match.start() < start:
+                continue
             piece = match.group(0)
             if piece in {"。", "！", "？", "!", "?"}:
                 # 句末标点：连同它前面的正文一起成一段。
-                pieces.append(line[start : match.end()])
-                start = match.end()
+                end = match.end()
+                # 中文答案常把引用放在句号后，不能把它拆成没有主张的独立“事实”。
+                suffix = re.match(r"(?:[ \t]*" + _CITATION.pattern + r")+", line[end:])
+                if suffix:
+                    end += suffix.end()
+                pieces.append(line[start:end])
+                start = end
             else:
                 # 换行：先落地正文，换行自己成一段。
                 if match.start() > start:
@@ -316,7 +349,7 @@ def _sentences(text: str) -> list[str]:
 
 
 def _verify(
-    sentence: str, grounding: Grounding, dropped: list[str]
+    sentence: str, grounding: Grounding, dropped: list[str], preserve_invalid: bool = False
 ) -> tuple[str, list[tuple[str, int]]]:
     """把句子里的引用分成「通过」与「编造」；编造的从文本里删掉。"""
     accepted: list[tuple[str, int]] = []
@@ -327,7 +360,7 @@ def _verify(
             accepted.append((path, start))
             return match.group(0)
         dropped.append(f"{path}:{start}")
-        return ""
+        return f"`未核实位置：{path}:{start}`" if preserve_invalid else ""
 
     cleaned = _CITATION.sub(replace, sentence)
     # 删掉引用后可能留下多余空格或空括号，收拾一下。

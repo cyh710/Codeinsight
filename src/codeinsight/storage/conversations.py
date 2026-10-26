@@ -209,6 +209,7 @@ class ConversationRepository:
             )
         elif kind == "delta":
             answer["text"] = answer.get("text", "") + data["text"]
+            answer["raw_text"] = answer.get("raw_text", "") + data["text"]
         elif kind == "answer":
             answer.update(data)
         elif kind == "error":
@@ -235,6 +236,11 @@ class ConversationRepository:
                 status == "completed"
                 and not answer.get("incomplete")
                 and isinstance(answer.get("exploration"), dict)
+                and (
+                    not answer.get("evidence_review")
+                    or answer["evidence_review"].get("status")
+                    in {"verified", "partial", "knowledge"}
+                )
             ):
                 proposal = answer["exploration"]
                 previous = self.get(project_id, cid).get("exploration_state", {})
@@ -344,14 +350,21 @@ class PersistentConversationStore:
 
         def historical(raw: str) -> str:
             answer = json.loads(raw)
-            v = answer.get("exploration") or {}
+            review = answer.get("evidence_review") or {}
+            v = review.get("source_version") or answer.get("exploration") or {}
             stale = current and (
                 (v and v.get("index_epoch") != current[1])
                 or answer.get("source_head_commit") != current[0]
             )
             return (
-                "[历史解释来自旧索引，只作对话来路，当前代码须重新取证]\n" if stale else ""
-            ) + answer.get("text", "")
+                ("[历史解释来自旧索引，只作对话来路，当前代码须重新取证]\n" if stale else "")
+                + (
+                    "[历史说明未完全核实，不可直接作为项目事实；涉及代码请重新取证]\n"
+                    if (review and review.get("status") != "verified") or answer.get("abstained")
+                    else ""
+                )
+                + answer.get("text", "")
+            )
 
         return [
             message

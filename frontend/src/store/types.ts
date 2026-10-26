@@ -35,6 +35,9 @@ export interface PanelEvidence {
 }
 
 export interface ChatMessage {
+  rawText?: string
+  responseKind?: 'answer' | 'rephrase' | 'clarification'
+  evidenceReview?: import('../api/types').AnswerEvidenceReview | null
   exploration?: import('../api/types').ExplorationResult | null
   id: string
   role: 'user' | 'assistant'

@@ -179,7 +179,9 @@ async def test_textbook_does_not_ground_project_questions_or_fabricated_code(bri
     assert answer.abstained and not answer.facts
     runtime.provider.text = "入口在 [fabricated.py:99]。"
     answer = await runtime.run(project_id=1, question="SQL 是什么")
-    assert answer.abstained and not answer.citations and "fabricated.py:99" not in answer.text
+    assert answer.abstained and not answer.citations
+    assert "未核实位置：fabricated.py:99" in answer.text
+    assert answer.raw_text == "入口在 [fabricated.py:99]。"
 
 
 async def test_reading_target_is_reloaded_and_old_versions_are_explicit(bridge):

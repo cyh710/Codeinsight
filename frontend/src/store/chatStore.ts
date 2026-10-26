@@ -92,6 +92,9 @@ export function applySseEvent(
         knowledgeError: event.data.knowledge_error,
         sourceHeadCommit: event.data.source_head_commit,
         exploration: event.data.exploration,
+        rawText: event.data.raw_text,
+        responseKind: event.data.response_kind,
+        evidenceReview: event.data.evidence_review,
       }))
     case 'error':
       // 只记录，不中断：契约保证 done 仍会来，由 done 统一收尾。

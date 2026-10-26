@@ -18,12 +18,23 @@ test('侧栏有中间过渡帧，快速反向开关保留阅读，拖动不滞�
   const scroll = panel.locator('[data-reading-scroll]')
   await page.locator('.wb-center textarea').fill('动画不能清空这份草稿')
   await scroll.evaluate(e => { e.scrollTop = 450 })
-  await page.getByRole('button', { name: '隐藏材料', exact: true }).click()
-  const middle = await panel.evaluate(async e => {
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    await new Promise(resolve => setTimeout(resolve, 45))
-    return { width: e.getBoundingClientRect().width, inert: (e as HTMLElement).inert }
-  })
+  // 在浏览器内暂停真实宽度过渡并检查中点，避免跨进程调用延迟错过整个动画。
+  const middle = await panel.evaluate(e => new Promise<{ width: number; inert: boolean }>(resolve => {
+    const sample = (event: Event) => {
+      if ((event as TransitionEvent).propertyName !== 'width' || event.target !== e) return
+      e.removeEventListener('transitionrun', sample)
+      const animation = e.getAnimations().find(a => (a as CSSTransition).transitionProperty === 'width')!
+      animation.pause()
+      animation.currentTime = Number(animation.effect!.getTiming().duration) / 2
+      requestAnimationFrame(() => {
+        const result = { width: e.getBoundingClientRect().width, inert: (e as HTMLElement).inert }
+        animation.play()
+        resolve(result)
+      })
+    }
+    e.addEventListener('transitionrun', sample)
+    document.querySelector<HTMLButtonElement>('[data-material-toggle]')!.click()
+  }))
   expect(middle.width).toBeGreaterThan(0)
   expect(middle.width).toBeLessThan(480)
   expect(middle.inert).toBe(true)

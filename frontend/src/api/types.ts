@@ -564,7 +564,22 @@ export interface QueryRequest {
 }
 
 /** `POST /query` 响应（契约 §8.1）。 */
-export interface QueryResponse extends KnowledgeAnswerMetadata {
+export interface AnswerEvidenceReview {
+  status: 'verified' | 'partial' | 'knowledge' | 'unverified' | 'no_match' | 'unavailable'
+  message: string
+  checks: Array<{ tool: string; status: 'matched' | 'no_match' | 'unavailable'; target: string }>
+  unverified_citations: string[]
+  source_version: { project_id: number; head_commit: string | null; index_epoch: number } | null
+  followup_from?: string | null
+}
+
+export interface AnswerEvidenceMetadata {
+  raw_text?: string
+  response_kind?: 'answer' | 'rephrase' | 'clarification'
+  evidence_review?: AnswerEvidenceReview | null
+}
+
+export interface QueryResponse extends KnowledgeAnswerMetadata, AnswerEvidenceMetadata {
   conversation_id?: string
   request_id?: string
   source_head_commit?: string | null
@@ -612,7 +627,7 @@ export interface SseEvidenceEvent {
   concepts: string[]
 }
 
-export interface SseAnswerEvent extends KnowledgeAnswerMetadata {
+export interface SseAnswerEvent extends KnowledgeAnswerMetadata, AnswerEvidenceMetadata {
   tools_used?: string[]
   evidence?: Evidence[]
   source_head_commit?: string | null
