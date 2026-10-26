@@ -26,10 +26,11 @@ def _line(payload: dict, type_: str) -> str:
 # ─── 解析 ─────────────────────────────────────────────────────
 
 
-def test_parse_tool_call_frames() -> None:
+def test_parse_tool_updated_started_frame() -> None:
+    """真实帧形（真机录制）：tool.updated + kind=started + input 挂参数。"""
     progress, final = parse_stream_line(
-        _line({"toolCallId": "t1", "toolName": "Edit", "args": {"file_path": "calc.py"}},
-              "tool.call.started")
+        _line({"toolCallId": "t1", "toolName": "Edit",
+               "input": {"file_path": "calc.py"}, "kind": "started"}, "tool.updated")
     )
     assert progress is not None and final is None
     assert progress.kind == "tool"
@@ -37,21 +38,37 @@ def test_parse_tool_call_frames() -> None:
     assert progress.file == "calc.py"
 
 
-def test_parse_tool_failed_carries_detail() -> None:
-    progress, _ = parse_stream_line(
-        _line({"toolName": "Bash", "error": "权限不足"}, "tool.call.failed")
+def test_parse_tool_updated_non_started_is_skipped() -> None:
+    """completed/failed 更新不发进度——时间线一行一工具，不刷双行。"""
+    progress, final = parse_stream_line(
+        _line({"toolName": "Edit", "kind": "completed"}, "tool.updated")
     )
-    assert progress is not None
-    assert progress.tool == "Bash"
-    assert "权限不足" in progress.detail
+    assert progress is None and final is None
+
+
+def test_parse_bash_command_detail() -> None:
+    progress, _ = parse_stream_line(
+        _line({"toolName": "Bash", "input": {"command": "pytest -q"}, "kind": "started"},
+              "tool.updated")
+    )
+    assert progress is not None and "pytest" in progress.detail
 
 
 def test_parse_turn_completed_is_terminal() -> None:
     progress, final = parse_stream_line(
-        _line({"content": "改完了", "toolCallCount": 2}, "turn.completed")
+        _line({"response": "改完了", "toolCallCount": 2}, "turn.completed")
     )
     assert progress is None and final is not None
     assert final["ok"] is True and final["summary"] == "改完了"
+
+
+def test_parse_flat_result_frame_is_terminal() -> None:
+    """zcode 新版还有 claude 风格的平铺 result 帧。"""
+    progress, final = parse_stream_line(
+        json.dumps({"type": "result", "response": "改好了", "sessionId": "s"})
+    )
+    assert progress is None and final is not None
+    assert final["ok"] is True and final["summary"] == "改好了"
 
 
 def test_parse_turn_failed_is_terminal_error() -> None:
@@ -66,6 +83,8 @@ def test_parse_ignores_noise_frames() -> None:
         json.dumps({"type": "session.titleUpdated", "payload": {"title": "x"}, "seq": 1}),
         json.dumps({"type": "model.streaming", "payload": {"kind": "text_delta", "delta": "好"}, "seq": 2}),
         json.dumps({"type": "session.updated", "payload": {"messageCount": 3}, "seq": 3}),
+        json.dumps({"type": "tool.updated", "payload": {"toolName": "Read", "kind": "completed"}, "seq": 4}),
+        json.dumps({"type": "checkpoint.created", "payload": {}, "seq": 5}),
         "not json", "", "null",
     ):
         progress, final = parse_stream_line(raw)
@@ -87,7 +106,7 @@ def test_argv_with_node_and_script() -> None:
     driver = ZcodeDriver(command="node", extra_args="D:/zc/ZCode/resources/glm/zcode.cjs")
     argv = driver._argv("修 bug")
     assert argv[:3] == ["node", "D:/zc/ZCode/resources/glm/zcode.cjs", "-p"]
-    assert "stream-json" in argv and "edit" in argv
+    assert "stream-json" in argv and "yolo" in argv
 
 
 def test_argv_with_path_shim() -> None:

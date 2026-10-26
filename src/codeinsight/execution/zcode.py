@@ -1,7 +1,11 @@
 """Zcode 驱动器：`zcode -p` 无头模式（请求 0015 第二驱动器 / ADR 0032）。
 
-调用形态：`<command> <extra_args…> -p <prompt> --output-format stream-json --mode edit`，
-cwd 指向隔离 worktree。Zcode 桌面版不带 PATH shim，常见起法是
+调用形态：`<command> <extra_args…> -p <prompt> --output-format stream-json --mode yolo`，
+cwd 指向隔离 worktree、stdin 接 DEVNULL。
+两次真机教训写进设计：`--mode edit` 会对带副作用的命令（如 git commit）
+等权限确认，无头下没人应答就永久阻塞——隔离与审批在 CodeInsight 编排层
+（worktree + 双重审批），agent 层用 yolo 一次放行；stdin 断开让任何意外
+的交互等待快速失败而不是挂死。Zcode 桌面版不带 PATH shim，常见起法是
 `node <ZCode>/resources/glm/zcode.cjs`——配置为
 `CI_EXECUTOR_COMMAND=node` + `CI_EXECUTOR_EXTRA_ARGS=<cjs 路径>`（逗号分隔）；
 若本机有 `zcode` shim，command=zcode、extra_args 留空即可。
@@ -51,22 +55,32 @@ def parse_stream_line(line: str) -> tuple[ExecutionProgress | None, dict | None]
     payload = obj.get("payload") if isinstance(obj.get("payload"), dict) else {}
 
     if kind == "turn.completed":
-        summary = str(payload.get("content") or payload.get("result") or "").strip()
+        summary = str(payload.get("response") or payload.get("content") or "").strip()
         return None, {"ok": True, "summary": summary, "error": None}
     if kind == "turn.failed":
         detail = str(
             payload.get("error") or payload.get("reason") or "zcode 回合失败"
         )
         return None, {"ok": False, "summary": "", "error": detail}
+    if kind == "result":
+        # claude 风格的平铺终点帧（zcode 新版也有）：response 直接在顶层。
+        ok = not bool(obj.get("is_error"))
+        return None, {
+            "ok": ok,
+            "summary": str(obj.get("response") or "").strip(),
+            "error": None if ok else str(obj.get("error") or "zcode 结果帧标记失败"),
+        }
 
-    if kind in ("tool.call.started", "tool.call.completed", "tool.call.failed"):
+    if kind == "tool.updated":
+        # 真实帧形：{toolCallId, toolName, input, kind: started|completed|…}。
+        # 只在 started 发进度——completed/failed 的更新会把时间线刷成双行。
+        if payload.get("kind") not in (None, "started"):
+            return None, None
         tool = str(payload.get("toolName") or payload.get("name") or "tool")
-        args = payload.get("args") if isinstance(payload.get("args"), dict) else {}
+        args = payload.get("input") if isinstance(payload.get("input"), dict) else {}
         file = args.get("file_path") or args.get("path") or args.get("notebook_path")
         detail = ""
-        if kind == "tool.call.failed":
-            detail = str(payload.get("error") or "失败")
-        elif tool.lower() in ("bash", "run") and isinstance(args.get("command"), str):
+        if tool.lower() in ("bash", "run") and isinstance(args.get("command"), str):
             detail = args["command"][:80]
         return (
             ExecutionProgress(kind="tool", tool=tool, file=str(file) if file else None, detail=detail),
@@ -98,7 +112,7 @@ class ZcodeDriver:
             "--output-format",
             "stream-json",
             "--mode",
-            "edit",
+            "yolo",
         ]
 
     async def execute(
@@ -112,6 +126,7 @@ class ZcodeDriver:
             proc = await asyncio.create_subprocess_exec(
                 *argv,
                 cwd=str(request.worktree),
+                stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 creationflags=_CREATE_NO_WINDOW,
