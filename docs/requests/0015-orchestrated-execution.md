@@ -72,3 +72,30 @@ fixture：`e2e/repo`（单文件 calc.py，add 函数故意写成减法）+ 真 
 发现与处置：claude CLI 的 `--permission-mode acceptEdits` 在无头模式下允许编辑
 但默认拦 `git commit`——已由驱动器的 ensure_committed 兜底覆盖（本就是按
 "不可信 agent 会不提交"设计的）。无需代码变更。
+
+## 真机验收记录 · Zcode 驱动器（2026-10-26，第二执行器）
+
+fixture 同上（calc.py 减法 bug）；执行器 `CI_EXECUTOR=zcode`（node +
+resources/glm/zcode.cjs，无 PATH shim）；deepseek-chat + zcode CLI 0.17.0。
+
+| 步骤 | 结果 |
+|---|---|
+| meta.execution_enabled | true（zcode 命令可寻、git 仓） |
+| 识别与计划 | dev_task 命中，计划准确；SSE 流与 claude 驱动器一致 |
+| approve → 执行 | 30s 进 review；进度 8 帧（Read/Bash/Edit…，tool.updated 解析生效） |
+| zcode 自主提交 | yolo 模式下 agent 自己完成 commit（4b1342a），无需兜底 |
+| 隔离不变量 | 用户检出保持 bug 版、干净；改动只在 worktree |
+| merge → 学习卡 | 合入 3be9fa2；change_card 自动生成（calc/calc.add body_changed 带 calc.py:1） |
+| 清理 | worktree 删除无残留 |
+
+两次真机发现（已修，见 e481343）：
+1. `--mode edit` 对带副作用的命令等权限确认，无头下永久阻塞（首次尝试
+   12 分钟零进度，abort 后重试）——改 `--mode yolo`（隔离与审批在编排层）
+   并把 stdin 接 DEVNULL，让任何意外的交互等待快速失败。
+2. 真实事件帧形与从 bundle 推断的不同：工具进度是 `tool.updated`
+   （kind=started 才发帧、input 挂参数）；终点是 `turn.completed`
+   （response 字段）与平铺 `result` 帧。解析器照录制样本重写。
+
+配置备注：`CI_EXECUTOR=zcode` 时 `CI_EXECUTOR_COMMAND` 缺省 node，
+`CI_EXECUTOR_EXTRA_ARGS` 填 zcode.cjs 绝对路径（逗号分隔）；有 PATH shim
+的机器 command=zcode、extra_args 留空。

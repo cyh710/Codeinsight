@@ -1010,6 +1010,7 @@ done                                ← 恰好一次，最后
 | 2026-10-24 | M8：新增 §4.5 `/projects/{id}/graph`（BFS 邻域、概念标签、`truncated`）与 §7.2 `/projects/{id}/timeline`。`index_run.started_at` 改存墙钟 ISO 时间（此前误存 `time.monotonic()`） |
 | 2026-10-24 | 左栏按需拉符号：`/projects/{id}/symbols` 的 `path` / `q` 过滤转义 LIKE 通配符（`_` 是普通字符），`path` 同时支持精确路径 OR 目录前缀 |
 | 2026-10-26 | 请求 0015 落地：新增 §16 编排执行——`meta.execution_enabled`、answer 可选 `execution` 元数据、`/projects/{id}/executions/*` 五个端点、`execution_task` 表（schema 3→4）、`CI_EXECUTOR*` 配置。执行经双重审批与 worktree 隔离（ADR 0032） |
+| 2026-10-26 | 0015 增补：第二执行器 `zcode`（node + zcode.cjs 无头模式）；`CI_EXECUTOR_COMMAND` 改空缺省按执行器取值，新增 `CI_EXECUTOR_EXTRA_ARGS`。两驱动器真机验收通过 |
 
 ## 11. 内置知识与阅读上下文
 
@@ -1172,5 +1173,7 @@ answer 不带 `execution` 字段——不报错不白屏。
 
 ### 16.4 配置
 
-`CI_EXECUTOR`（`claude-code` 默认，`off` 关闭）· `CI_EXECUTOR_COMMAND`（默认 `claude`）·
-`CI_EXECUTOR_TIMEOUT_S`（默认 1800）。
+`CI_EXECUTOR`（`claude-code` 默认；`zcode` 第二执行器；`off` 关闭）·
+`CI_EXECUTOR_COMMAND`（空 = 按执行器取缺省：claude-code→`claude`，zcode→`node`）·
+`CI_EXECUTOR_EXTRA_ARGS`（逗号分隔附加 argv；zcode 桌面版无 PATH shim 时填
+其 `resources/glm/zcode.cjs` 路径）· `CI_EXECUTOR_TIMEOUT_S`（默认 1800）。

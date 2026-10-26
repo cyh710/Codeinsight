@@ -26,7 +26,9 @@ class ExecutorDriver(Protocol):
 ```
 
 - 第一批只实现 `ClaudeCodeDriver`（`claude -p --output-format stream-json`，
-  本机已装、无头模式成熟）；Zcode 等后续按同一 Protocol 接入。
+  本机已装、无头模式成熟）；**Zcode 已接入**（2026-10-26，`ZcodeDriver`：
+  node + zcode.cjs 无头模式，`--mode yolo` + stdin 断开——权限等待在无头下
+  会永久阻塞，隔离与审批由编排层负责）；两者真机验收通过。
 - CodeInsight 对驱动器的全部假设只有一条：给它隔离检出目录与组装好的
   prompt，它把变更提交到该目录的 git 分支上并回流进度事件。
   不假设 agent 的内部状态，不解析它的会话语义之外的任何东西。
