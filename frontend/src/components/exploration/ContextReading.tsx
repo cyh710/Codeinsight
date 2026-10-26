@@ -9,6 +9,7 @@ import { openCode } from './actions'
 import { chatStore } from '../../store/chatStore'
 import { viewStore } from '../../store/viewStore'
 import { layoutStore } from '../../store/layoutStore'
+import { BookOpen, ChevronLeft } from 'lucide-react'
 
 /** 解读绑定来源回合，正文仍从同版本教材读取；客户端缓存不授予事实资格。 */
 export default function ContextReading({ projectId, conversationId, requestId, target }: {
@@ -49,7 +50,7 @@ export default function ContextReading({ projectId, conversationId, requestId, t
   const takeaways = turn.answer.exploration?.takeaways ?? []
   return <article ref={root} className="context-reading" data-reading-ready="true">
     <header><p className="exploration-section-label">围绕这次问题理解</p><h2>{topic.title}</h2><p>{turn.question}</p></header>
-    <div className="context-reading-tools"><button type="button" onClick={full}>阅读全文</button><button type="button" onClick={() => { void chatStore.getState().openConversation(projectId, conversationId, requestId).then(() => { viewStore.getState().setCenterTab('chat'); layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) }) }) }}>回到来源回答</button></div>
+    <div className="context-reading-tools context-reading-actions"><button className="context-reading-primary" type="button" onClick={full}><BookOpen size={18} aria-hidden="true" />阅读全文</button><button className="context-reading-return" type="button" onClick={() => { void chatStore.getState().openConversation(projectId, conversationId, requestId).then(() => { viewStore.getState().setCenterTab('chat'); layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) }) }) }}><ChevronLeft size={16} aria-hidden="true" />回到来源回答</button></div>
     {citations.length > 0 && takeaways.length > 0 && <section><h3 className="exploration-section-label">本回合已解释的要点</h3><div className="context-excerpt"><LearningMarkdown text={takeaways.slice(0, 2).join('\n\n')} citations={citations} onCitation={c => openCode({ kind: 'code', project_id: projectId, path: c.path, lineno: c.lineno, head_commit: turn.answer.source_head_commit })} /></div></section>}
     {citations.length > 0 && <section><h3 className="exploration-section-label">对应的项目位置</h3>{citations.slice(0, 3).map(c => <button className="block text-left text-sm text-accent" key={`${c.path}:${c.lineno}`} onClick={() => openCode({ kind: 'code', project_id: projectId, path: c.path, lineno: c.lineno, head_commit: turn.answer.source_head_commit })}>{c.path}:{c.lineno}</button>)}</section>}
     {!citations.length && <p className="exploration-muted">这次回答没有项目代码依据，下面展示相关教材章节。</p>}
