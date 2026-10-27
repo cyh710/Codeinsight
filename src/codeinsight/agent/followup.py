@@ -13,7 +13,8 @@ _REPHRASE = re.compile(
     r"^(?:(?:我|还是|完全|有点|这个|这段|刚才|再|能不能|可以|请|你)[，,\s]*)*"
     r"(?:听不懂|看不懂|没听懂|没看懂|没懂|不明白|不太懂|不理解|换[一种个]+说法|"
     r"说[得的]简单|简单[一点些]+|讲[得的]简单|讲[得的]通俗|解释[得的]简单|"
-    r"举[一个]+例子|用例子|解释一遍|讲一遍|说一遍|具体一点|详细一点|展开讲|"
+    r"举[一个]+例子|换(?:个|一个)例子|用例子|画(?:个|一张)?(?:图|示意图)|"
+    r"用图(?:解释|说明|讲)|用表(?:解释|说明|讲)|解释一遍|讲一遍|说一遍|具体一点|详细一点|展开讲|"
     r"explain (?:again|more simply)|simplify|i (?:don't|do not) understand)",
     re.I,
 )
@@ -30,6 +31,7 @@ def prepare_followup(
     if len(question) > 160 or not _REPHRASE.search(question.strip()):
         return None
     previous = None
+    recent: list[dict[str, Any]] = []
     if conn is not None and cid:
         rows = conn.execute(
             "SELECT request_id,question,answer_json FROM conversation_turn "
@@ -48,10 +50,19 @@ def prepare_followup(
                 continue
             if answer.get("incomplete"):
                 continue
-            previous = {"request_id": row[0], "question": row[1], "answer": answer}
-            break
+            recent.append({"request_id": row[0], "question": row[1], "answer": answer})
+        previous = recent[0] if recent else None
     elif len(prior) >= 2:
-        previous = {"request_id": None, "question": prior[-2].get("content", ""), "answer": {}}
+        for index in range(len(prior) - 2, -1, -2):
+            if prior[index].get("role") == "user" and prior[index + 1].get("role") == "assistant":
+                recent.append(
+                    {
+                        "request_id": None,
+                        "question": prior[index].get("content", ""),
+                        "answer": {"text": prior[index + 1].get("content", "")},
+                    }
+                )
+        previous = recent[0] if recent else None
     if previous is None:
         return {
             "kind": "clarification",
@@ -61,6 +72,15 @@ def prepare_followup(
             "note": "本次是要求重新解释，但本会话没有可关联的上一轮；请简短澄清对象，不猜测项目内容。",
         }
     answer = previous["answer"]
+    requests = [question[:160]]
+    topic_question = ""
+    for turn in recent:
+        text = str(turn["question"])
+        if _REPHRASE.search(text.strip()):
+            requests.append(text[:160])
+        else:
+            topic_question = text[:400]
+            break
     review = answer.get("evidence_review") or {}
     stored = review.get("source_version") or answer.get("exploration") or {}
     current = version(conn, project_id) if conn is not None else {}
@@ -79,7 +99,15 @@ def prepare_followup(
         "code": [],
         "knowledge": None,
         "project_based": bool(answer.get("citations")),
-        "note": "用户希望重新理解上一条解释。请先用具体例子和较少术语讲清原问题，避免重复原文。"
+        "teaching_context": {
+            "topic_question": topic_question,
+            "attempt": len(requests),
+            "requests": requests[:3],
+            "previous_explanation": str(answer.get("text", ""))[:1200],
+        },
+        "note": "用户希望重新理解上一条解释。对照明确反馈与原解释，换一种表示讲清当前障碍。"
+        "默认沿用同一个例子，可填入具体值、比较前后状态或只拆一个步骤；用户要求换例子时遵从。"
+        "不要只是重排原文，不要推断用户能力；未明确障碍时不要宣称已经知道。"
         "历史输出仅为对话来路；项目事实需本回合取证，明确阅读目标优先。"
         f"\n上一轮问题（数据）：{str(previous['question'])[:400]}",
     }

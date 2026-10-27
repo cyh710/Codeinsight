@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from codeinsight.agent.answer import GroundedFile, Grounding, split_answer
-from codeinsight.agent.context import ContextBudget, assemble, truncate_bytes
+from codeinsight.agent.context import ContextBudget, assemble, message_bytes, truncate_bytes
 from codeinsight.agent.evidence_review import assess, record_check
 from codeinsight.agent.exploration import normalize, plain, version
 from codeinsight.agent.followup import prepare_followup
@@ -35,6 +35,7 @@ from codeinsight.agent.tool import ToolContext, ToolRegistry
 from codeinsight.cognitive.concepts.answer_policy import LEARNING_PROMPT, can_answer_from_knowledge
 from codeinsight.cognitive.concepts.integration import LearningBridge
 from codeinsight.llm.provider import ToolCall
+from codeinsight.llm.teaching import teaching_note
 from codeinsight.models import Answer
 
 Emit = Callable[["RuntimeEvent"], Awaitable[None]]
@@ -75,7 +76,8 @@ class AgentRuntime:
     ) -> None:
         self.provider = provider
         self.registry = registry
-        self.store = store or ConversationStore()
+        # 空会话容器也有身份；不能因 __len__ 为零而丢掉调用方传入的历史容器。
+        self.store = store if store is not None else ConversationStore()
         self.conn = conn
         self.repo_root = repo_root
         self.budget = budget or ContextBudget()
@@ -296,8 +298,30 @@ class AgentRuntime:
                     current.append(
                         {"role": "user", "content": "服务端阅读目标检查：" + answer.knowledge_error}
                     )
+            # 资料与选区先装配；表达参照只占剩余预算，不挤掉用户的问题或真实材料。
+            note = teaching_note(
+                question,
+                feedback=(followup or {}).get("teaching_context"),
+                max_bytes=min(
+                    1800,
+                    max(
+                        0,
+                        min(self.budget.max_message_bytes, self.budget.max_turn_bytes)
+                        - len(str(goal["content"]).encode("utf-8")),
+                    ),
+                ),
+            )
             for _turn in range(self.config.max_model_turns):
                 messages, _dropped = assemble(prior, current, goal, self.budget)
+                if (
+                    note
+                    and sum(message_bytes(m) for m in messages) + len(note.encode("utf-8"))
+                    <= self.budget.max_turn_bytes
+                ):
+                    # 原有资料和历史全部先选好；只在空余足够时附加，后续工具增多可自然省略。
+                    messages, _dropped = assemble(
+                        prior, current, {**goal, "content": goal["content"] + note}, self.budget
+                    )
                 text, calls = await self._one_turn(messages, emit)
 
                 if not calls:
