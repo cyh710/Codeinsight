@@ -126,27 +126,27 @@ export interface Citation {
   snippet: string
 }
 
-/** 一条可验证的代码事实。每条 fact 必须带 citation。 */
+/** 兼容字段：与有效位置对应的原文片段，不代表解释经过语义验证。 */
 export interface Fact {
   text: string
   citation: Citation
 }
 
-/** 一条模型推断。显式标注，不可与 facts 混渲染。 */
+/** 兼容旧记录的解读；新主问答不把无引用文字自动归入此字段。 */
 export interface Inference {
   text: string
   confidence: number
 }
 
-/** 检索到的一条证据。 */
+/** 检索命中或成功读取的材料；读取项无 chunk_id/score。 */
 export interface Evidence {
-  chunk_id: number
+  chunk_id?: number | null
   path: string
   lineno: number
   end_lineno: number
   qualname: string | null
   snippet: string
-  score: number
+  score?: number
   lanes: RetrievalLane[]
   concept_ids: string[]
 }
@@ -594,6 +594,7 @@ export interface QueryResponse extends KnowledgeAnswerMetadata, AnswerEvidenceMe
   inferences: Inference[]
   citations: Citation[]
   tools_used: string[]
+  /** 旧客户端兼容；新回答不因缺少引用置真，不用于整篇评级。 */
   abstained: boolean
   abstention_reason: string
   /** 尚未生成完整最终答案，不能当成正常完成；包括显式轮次限额或模型空输出。 */
@@ -645,6 +646,7 @@ export interface SseAnswerEvent extends KnowledgeAnswerMetadata, AnswerEvidenceM
   facts: Fact[]
   inferences: Inference[]
   citations: Citation[]
+  /** 旧客户端兼容；新回答不因缺少引用置真，不用于整篇评级。 */
   abstained: boolean
   reason: string
   /** 尚未生成完整最终答案；与 abstained 是两回事。 */
@@ -660,6 +662,7 @@ export interface SseErrorEvent {
 }
 
 export interface SseDoneEvent {
+  /** 旧客户端兼容；新回答不因缺少引用置真，不用于整篇评级。 */
   abstained: boolean
   reason: string
 }

@@ -259,9 +259,10 @@ class ReadFileTool(BaseTool):
                 "start_line": start,
                 "end_line": end,
                 "total_lines": total,
-                "citations": self.citations(
-                    [Citation(path, start, end, None, "\n".join(selected[:3]))]
-                ),
+                "citations": [
+                    {**citation, "snippet": "\n".join(selected[:3])}
+                    for citation in self.citations([Citation(path, start, end)])
+                ],
             },
         )
 

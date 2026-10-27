@@ -176,10 +176,10 @@ class ExplainConceptTool(BaseTool):
 
         lines = [f"## {concept.name}（{concept.category}）", explanation.summary]
         if explanation.facts:
-            lines.append("\n可验证的项目事实：")
+            lines.append("\n项目位置与索引记录：")
             lines.extend(f"- {item['text']}" for item in explanation.facts)
         if explanation.inferences:
-            lines.append("\n模型推断（未验证）：")
+            lines.append("\n相关解读与不确定关联：")
             lines.extend(f"- {item['text']}" for item in explanation.inferences)
         if explanation.error:
             lines.append(f"\n（{explanation.error}）")

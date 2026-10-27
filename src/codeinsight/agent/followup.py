@@ -72,6 +72,7 @@ def prepare_followup(
             "note": "本次是要求重新解释，但本会话没有可关联的上一轮；请简短澄清对象，不猜测项目内容。",
         }
     answer = previous["answer"]
+    locations = answer.get("citations") or answer.get("evidence") or []
     requests = [question[:160]]
     topic_question = ""
     for turn in recent:
@@ -98,7 +99,7 @@ def prepare_followup(
         "request_id": previous["request_id"],
         "code": [],
         "knowledge": None,
-        "project_based": bool(answer.get("citations")),
+        "project_based": bool(locations),
         "teaching_context": {
             "topic_question": topic_question,
             "attempt": len(requests),
@@ -111,12 +112,12 @@ def prepare_followup(
         "历史输出仅为对话来路；项目事实需本回合取证，明确阅读目标优先。"
         f"\n上一轮问题（数据）：{str(previous['question'])[:400]}",
     }
-    if answer.get("citations") and not same:
+    if locations and not same:
         result["note"] += (
             "\n上轮代码版本已变化或版本信息不足，请重新定位，不能沿用旧行号作为当前证据。"
         )
     if same:
-        for citation in answer.get("citations", []):
+        for citation in locations:
             target = code_target(
                 conn,
                 project_id,
@@ -131,7 +132,7 @@ def prepare_followup(
             if len(result["code"]) == 2:
                 break
     # 已保存的知识目标只是定位线索，prepare_goal 仍核对当前文章及版本。
-    if not answer.get("incomplete") and not answer.get("abstained"):
+    if not answer.get("incomplete"):
         source = next(iter(answer.get("knowledge_sources") or []), None)
         if source and isinstance(source.get("target"), dict):
             result["knowledge"] = {"kind": "knowledge", **source["target"]}

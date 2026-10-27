@@ -150,7 +150,7 @@ cd frontend && npm install && npm run test   # 前端测试
 | 切块 | 超大符号正确二次切分，`symbol_id` 仍指向原符号 |
 | 检索 | top-k 命中已知 ground truth |
 | 概念检测 | 每个实例有 `evidence`；人工核对准确率 ≥ 0.8 |
-| Agent | 截断不破坏 `file:line`；事实与推断分栏；无命中时明确弃答 |
+| Agent | 保留完整解释与可定位来源；缺口具体说明、不编造；旧分栏与弃答要求由 ADR 0040 替代 |
 | 增量索引 | 改一个文件后，只有相关 chunk 的 `source_sha256` 变化 |
 | 前端 | Vitest 过；SSE 解析有测试 |
 | MCP | 外部 agent 真机调通（见 `docs/mcp.md` 与 `tests/test_mcp.py`） |

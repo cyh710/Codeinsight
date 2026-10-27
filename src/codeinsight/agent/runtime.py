@@ -407,7 +407,7 @@ class AgentRuntime:
                     else "模型没有返回可显示的最终答案。查阅过程已保留，可以恢复问题后重试。"
                 )
 
-            split = split_answer(final_text, grounding, preserve_invalid=True)
+            split = split_answer(final_text, grounding)
             answer.text = split.text
             answer.facts = split.facts
             answer.inferences = split.inferences
@@ -425,20 +425,11 @@ class AgentRuntime:
                 knowledge_only = False
             if followup and followup.get("knowledge") and answer.reading_status != "ok":
                 knowledge_only = False
-            if knowledge_only:
-                answer.inferences = []
-            if not answer.citations and not knowledge_only:
-                # 缺证据不授予事实资格，但保留正文；未检索不能声称项目没有实现。
-                answer.abstained = answer.response_kind != "clarification"
-                answer.facts = []
-                answer.citations = []
             answer.evidence_review = assess(
                 answer, knowledge_only=knowledge_only, source_version=initial_version
             )
             if followup:
                 answer.evidence_review["followup_from"] = followup["request_id"]
-            if answer.abstained:
-                answer.abstention_reason = answer.evidence_review["message"]
 
             if self.learning is not None and prepared is not None:
                 projection = self.learning.finalize_answer(answer.text, prepared)
@@ -449,30 +440,13 @@ class AgentRuntime:
             if self.conn is not None:
                 try:
                     proposal = answer.exploration or {}
-                    if not proposal.get("actions"):
-                        proposal["actions"] = [
-                            {
-                                "kind": "knowledge",
-                                "label": f"理解：{t['title']}",
-                                "target": {"kind": "knowledge", **t},
-                            }
-                            for t in answer.learning_entries
-                        ]
                     answer.exploration = normalize(self.conn, project_id, proposal, self.learning)
                     visible = plain(answer.text)
                     answer.exploration["takeaways"] = [
                         s for s in answer.exploration["takeaways"] if plain(s) in visible
                     ]
-                    if not answer.exploration["takeaways"] and not answer.abstained:
+                    if not answer.exploration["takeaways"] and not answer.incomplete:
                         answer.exploration["takeaways"] = [visible[:240]]
-                    if answer.evidence_review["status"] != "knowledge":
-                        # 部分有据时也只纳入能对应到已验证事实的要点，不将整段解释升级。
-                        verified = [plain(f["text"]) for f in answer.facts if f["text"].strip()]
-                        answer.exploration["takeaways"] = [
-                            s
-                            for s in answer.exploration["takeaways"]
-                            if len(plain(s)) >= 6 and any(plain(s) in f for f in verified)
-                        ]
                 except (ValueError, TypeError, KeyError, sqlite3.Error):
                     # 附加建议不能破坏已经完成且可核查的正文。
                     answer.exploration = None
@@ -551,13 +525,8 @@ class AgentRuntime:
                     )
                 ledger.finish(task_id, status=status, reason=answer.abstention_reason)
             if answer.error is None and conversation_id:
-                history_text = answer.text
-                if answer.evidence_review and answer.evidence_review["status"] != "verified":
-                    history_text = (
-                        "[历史说明未完全核实，不可直接作为项目事实；涉及代码请重新取证]\n"
-                        + history_text
-                    )
-                self.store.record_turn(session_key, question, history_text, focus=focus)
+                if not answer.incomplete:
+                    self.store.record_turn(session_key, question, answer.text, focus=focus)
             await _emit(
                 emit,
                 RuntimeEvent(
@@ -837,6 +806,18 @@ def _collect_evidence(answer: Answer, tool_name: str, data: dict[str, Any]) -> N
     流式的 `evidence` 事件按契约 §8.3 只要 6 个字段；`chunk_id` / `score`
     是 §8.1 才有的，所以放在这里而不是事件里——事件词汇表是冻结的。
     """
+    if tool_name == "read_file":
+        seen_locations = {
+            (item.get("path"), item.get("lineno"), item.get("end_lineno"))
+            for item in answer.evidence
+        }
+        for citation in data.get("citations") or []:
+            key = (citation.get("path"), citation.get("lineno"), citation.get("end_lineno"))
+            if key in seen_locations:
+                continue
+            seen_locations.add(key)
+            answer.evidence.append({**citation, "lanes": [], "concept_ids": []})
+        return
     if tool_name != "search_code":
         return
     seen = {item.get("chunk_id") for item in answer.evidence}

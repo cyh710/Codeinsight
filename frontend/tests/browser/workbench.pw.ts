@@ -479,7 +479,7 @@ test('来源卡片携带真实行号和回答版本打开源码', async ({ page,
     await route.fulfill({ json: body })
   })
   await page.reload(); await expect(input(page)).toBeEnabled()
-  await page.getByText('来源与核查', { exact: true }).first().click()
+  await page.getByText('来源与查阅过程', { exact: true }).first().click()
   await page.getByRole('button', { name: '查看来源', exact: true }).first().click()
   await expect(reader(page).getByText('固定离线来源投影', { exact: true })).toBeVisible()
   await expect(reader(page).getByText('检索分数 4.20', { exact: true })).toBeHidden()

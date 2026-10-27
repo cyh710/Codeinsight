@@ -130,7 +130,7 @@ async def test_tool_round_trip_and_fact_extraction() -> None:
 
 
 @pytest.mark.asyncio
-async def test_abstains_when_no_grounding() -> None:
+async def test_missing_grounding_does_not_discard_or_classify_explanation() -> None:
     provider = FakeProvider(
         [
             [_tool_call()],
@@ -141,13 +141,13 @@ async def test_abstains_when_no_grounding() -> None:
 
     answer, events = await _run(runtime, "不存在的东西")
 
-    assert answer.abstained is True
-    assert answer.abstention_reason
+    assert answer.abstained is False
+    assert not answer.abstention_reason
     assert answer.facts == []
-    assert answer.inferences
+    assert not answer.inferences
     assert answer.text == answer.raw_text == "我猜入口在 main.py。"
     assert answer.evidence_review["status"] == "no_match"
-    assert events[-1].data["abstained"] is True
+    assert events[-1].data["abstained"] is False
 
 
 @pytest.mark.asyncio
@@ -163,7 +163,8 @@ async def test_fabricated_citation_cannot_become_a_fact() -> None:
     answer, _ = await _run(runtime)
 
     assert answer.facts == []
-    assert "未核实位置：b.py:777" in answer.text
+    assert "b.py:777" not in answer.text
+    assert "入口在" in answer.text
     assert answer.raw_text == "入口在 [b.py:777]。"
     assert answer.evidence_review["unverified_citations"] == ["b.py:777"]
 

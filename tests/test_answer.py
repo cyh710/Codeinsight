@@ -1,4 +1,4 @@
-"""事实 / 推断拆分（ADR 0007）。
+"""定位核对与完整解释（ADR 0040）。
 
 验收口径：**没有校验通过的位置，就不能算事实**。
 模型编行号是最贵的错误——用户没法一眼看出来，而这套系统的全部信任
@@ -26,18 +26,19 @@ def test_cited_sentence_becomes_fact() -> None:
     assert result.inferences == []
 
 
-def test_uncited_sentence_becomes_inference() -> None:
+def test_uncited_sentence_stays_explanation() -> None:
     result = split_answer("这个项目可能用了队列来解耦。", _grounding())
     assert result.facts == []
-    assert len(result.inferences) == 1
-    assert result.inferences[0]["confidence"] < 1
+    assert result.inferences == []
+    assert result.text == "这个项目可能用了队列来解耦。"
 
 
-def test_fabricated_citation_is_removed_and_demoted() -> None:
+def test_invalid_citation_moves_to_details_without_classifying_sentence() -> None:
     """编造的 file:line 必须从正文里消失，那句话降级为推断。"""
     result = split_answer("入口在 [backend/api/pet.py:9999]。", _grounding())
     assert result.facts == []
-    assert result.inferences
+    assert result.inferences == []
+    assert "入口在" in result.text
     assert "9999" not in result.text
     assert result.dropped_citations == ["backend/api/pet.py:9999"]
 
@@ -65,8 +66,8 @@ def test_fact_and_inference_are_separated_in_one_answer() -> None:
     text = "入口是 stream [backend/core/chat.py:42]。这样设计可能是为了流式输出。"
     result = split_answer(text, _grounding())
     assert len(result.facts) == 1
-    assert len(result.inferences) == 1
-    assert "流式输出" in result.inferences[0]["text"]
+    assert result.inferences == []
+    assert "这样设计可能是为了流式输出" in result.text
 
 
 def test_no_grounding_means_no_facts() -> None:
@@ -155,5 +156,20 @@ def test_table_and_soft_line_breaks_survive_citation_verification() -> None:
     result = split_answer(text, _grounding(), preserve_invalid=True)
     assert "说明第一行\n说明第二行" in result.text
     assert "| 核对对象 | 位置 |\n|---|---|\n| 入口 |" in result.text
-    assert "未核实位置：ghost.py:99" in result.text
+    assert "ghost.py:99" not in result.text
+    assert result.dropped_citations == ["ghost.py:99"]
     assert all(citation.path != "ghost.py" for citation in result.citations)
+
+
+def test_examples_are_not_citations_and_invalid_ranges_only_remove_markers():
+    example = "`[ghost.py:99]` 和 [文档](https://example.org/a.py:2)\n\n```py\n[ghost.py:99]\n```"
+    result = split_answer(example, _grounding())
+    assert result.text == example
+    assert not result.citations and not result.inferences and not result.dropped_citations
+    ranges = split_answer(
+        "实现 [backend/core/chat.py:42-60]。缺口 [backend/core/chat.py:55-999999999]。",
+        _grounding(),
+    )
+    assert "42-60" in ranges.text and "55-999999999" not in ranges.text
+    assert "缺口" in ranges.text and len(ranges.citations) == 1
+    assert ranges.dropped_citations == ["backend/core/chat.py:55-999999999"]

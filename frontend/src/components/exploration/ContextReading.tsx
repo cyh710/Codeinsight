@@ -53,13 +53,12 @@ export default function ContextReading({ projectId, conversationId, requestId, t
   return <article ref={root} className="context-reading" data-reading-ready="true">
     <header><h2>{topic.title}</h2></header>
     <div className="context-reading-tools context-reading-actions"><button className="context-reading-primary" type="button" onClick={full}><BookOpen size={18} aria-hidden="true" />阅读全文</button><button className="context-reading-return" type="button" onClick={() => { void chatStore.getState().openConversation(projectId, conversationId, requestId).then(() => { viewStore.getState().setCenterTab('chat'); layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) }) }) }}><ChevronLeft size={16} aria-hidden="true" />回到来源回答</button></div>
-    {citations.length > 0 && <div className="context-project-link">
+    {(citations.length > 0 || takeaways.length > 0) && <div className="context-project-link">
       {takeaways.length > 0 && <div className="context-excerpt"><LearningMarkdown text={takeaways.slice(0, 1).join('\n\n')} citations={citations} onCitation={c => openCode({ kind: 'code', project_id: projectId, path: c.path, lineno: c.lineno, head_commit: turn.answer.source_head_commit })} /></div>}
-      <div className="context-project-sources"><button type="button" title={citations[0].path} onClick={() => openCode({ kind: 'code', project_id: projectId, path: citations[0].path, lineno: citations[0].lineno, head_commit: turn.answer.source_head_commit })}>{citations[0].path}:{citations[0].lineno}</button>
+      {citations.length > 0 && <div className="context-project-sources"><button type="button" title={citations[0].path} onClick={() => openCode({ kind: 'code', project_id: projectId, path: citations[0].path, lineno: citations[0].lineno, head_commit: turn.answer.source_head_commit })}>{citations[0].path}:{citations[0].lineno}</button>
         {citations.length > 1 && <details><summary>另 {citations.length - 1} 处来源</summary>{citations.slice(1).map(c => <button type="button" className="block text-left" key={`${c.path}:${c.lineno}`} onClick={() => openCode({ kind: 'code', project_id: projectId, path: c.path, lineno: c.lineno, head_commit: turn.answer.source_head_commit })}>{c.path}:{c.lineno}</button>)}</details>}
-      </div>
+      </div>}
     </div>}
-    {!citations.length && <p className="exploration-muted">这次回答没有项目代码依据，下面展示相关教材章节。</p>}
     <div className="context-reading-tools"><button type="button" onPointerDown={e => e.preventDefault()} onClick={() => {
       try { workbenchStore.getState().fixReading(selectedKnowledge(root.current!, topic)); setSelectionError(''); viewStore.getState().setCenterTab('chat'); layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) }); requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.wb-center textarea')?.focus()) } catch (e) { setSelectionError(String(e)) }
     }}>问选中段落</button></div>

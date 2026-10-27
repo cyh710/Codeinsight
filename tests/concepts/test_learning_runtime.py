@@ -176,11 +176,13 @@ def test_code_selection_validates_hash_columns_and_project_snapshot(indexed_repo
 async def test_textbook_does_not_ground_project_questions_or_fabricated_code(bridge):
     runtime = AgentRuntime(provider=FakeProvider(), registry=ToolRegistry(), learning=bridge)
     answer = await runtime.run(project_id=1, question="这个项目哪里用了 SQL")
-    assert answer.abstained and not answer.facts
+    assert not answer.abstained and not answer.facts
+    assert answer.evidence_review["status"] != "knowledge"
     runtime.provider.text = "入口在 [fabricated.py:99]。"
     answer = await runtime.run(project_id=1, question="SQL 是什么")
-    assert answer.abstained and not answer.citations
-    assert "未核实位置：fabricated.py:99" in answer.text
+    assert not answer.abstained and not answer.citations
+    assert "fabricated.py:99" not in answer.text
+    assert answer.dropped_citations == ["fabricated.py:99"]
     assert answer.raw_text == "入口在 [fabricated.py:99]。"
 
 
@@ -196,7 +198,7 @@ async def test_reading_target_is_reloaded_and_old_versions_are_explicit(bridge):
     answer = await runtime.run(
         project_id=1, question="这里是什么意思", reading_context={**reading, "version": "old"}
     )
-    assert answer.reading_status == "stale" and answer.knowledge_error and answer.abstained
+    assert answer.reading_status == "stale" and answer.knowledge_error and not answer.abstained
     assert not answer.knowledge_sources
 
 
@@ -209,7 +211,7 @@ async def test_remaining_budget_does_not_claim_unseen_sources(bridge):
         budget=ContextBudget(max_message_bytes=50),
     )
     answer = await runtime.run(project_id=1, question="SQL 是什么")
-    assert answer.abstained and not answer.knowledge_sources
+    assert not answer.abstained and not answer.knowledge_sources
     assert len(provider.messages[0][0]["content"].encode()) <= 50
 
 

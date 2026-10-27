@@ -14,7 +14,8 @@ it('依据不足仍展示完整正文，原文只作文字回看，旧弃答正�
       abstained: true, evidenceReview: review, rawText: '先把它想成一个收件窗口。 [ghost.py:99]' }, onOpenCitation: () => {},
   }))
   expect(html).toContain('收件窗口')
-  expect(html).toContain('本轮尚未取得有效代码引用')
+  expect(html).not.toContain('本轮尚未取得有效代码引用')
+  expect(html).toContain('来源与查阅过程')
   expect(html).toContain('<pre')
   expect(html).not.toContain('href=')
   const legacy = renderToStaticMarkup(createElement(MessageBubble, {

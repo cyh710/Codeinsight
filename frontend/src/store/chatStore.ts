@@ -83,6 +83,7 @@ export function applySseEvent(
         facts: event.data.facts,
         inferences: event.data.inferences,
         citations: event.data.citations,
+        evidence: event.data.evidence?.map(item => ({ ...item, concepts: item.concept_ids ?? [], lanes: item.lanes ?? [] })) ?? m.evidence,
         abstained: event.data.abstained,
         incomplete: event.data.incomplete,
         abstentionReason: event.data.reason,

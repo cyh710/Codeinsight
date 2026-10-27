@@ -159,18 +159,16 @@ class Citation:
 
 @dataclass
 class Answer:
-    """Agent 的回答。
+    """完整正文是主要解释，来源只提供位置（ADR 0040）。
 
-    事实与推断**分开存放**（源文档 §2.3-6「区分可验证的代码事实与模型推断」）：
-    `facts` 里的每一条都必须有 citation；`inferences` 里的明确标注为推断。
-
-    `facts[].citation` 不是模型自报的——运行时拿本回合工具**真正读到过**的位置
-    去校验，对不上的引用删掉并把那句降级成推断（见 `agent/answer.py`）。
+    facts/inferences/abstained 保留旧字段形状，不作为理解质量评级。
+    facts 仅对应有效位置的原文片段，无引用文字不自动归为推断。
+    普通新回答不因缺引用弃答；故障与未完成由 error/incomplete 表达。
     """
 
     text: str = ""
     raw_text: str = ""
-    """最终生成原文，仅供回看；引用未校验，不可当作结构化事实或模型记忆。"""
+    """最终生成原文，仅供回看；未核对位置不可作为可点击来源。"""
     response_kind: str = "answer"
     evidence_review: dict[str, Any] | None = None
     facts: list[dict[str, Any]] = field(default_factory=list)
@@ -183,7 +181,7 @@ class Answer:
     """尚未生成完整最终答案；包括显式轮次限额或模型空输出，不硬编答案。"""
 
     evidence: list[dict[str, Any]] = field(default_factory=list)
-    """本回合检索到的证据（`chunk_id` / 路径 / 分数 / 命中通道），前端右栏用。"""
+    """本回合检索命中及成功读取的材料；读取项没有检索分数，不等于正文全部结论的依据。"""
 
     knowledge_sources: list[dict[str, Any]] = field(default_factory=list)
     learning_entries: list[dict[str, Any]] = field(default_factory=list)

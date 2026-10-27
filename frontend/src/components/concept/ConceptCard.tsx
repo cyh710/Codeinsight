@@ -3,7 +3,7 @@
  * 人工策展的 YAML，不是模型生成的）+ 三级深度解释（quick 不调 LLM）。
  *
  * `quick` 直接读本体的 summary；`project`/`deep` 走 explain 端点。
- * 解释的 facts 与 inferences 也分栏渲染（ADR 0007）。
+ * 解释保持连贯，旧分类中的独有内容也需保留（ADR 0040）。
  */
 import { useEffect, useState } from 'react'
 import { Ban, BookOpen } from 'lucide-react'
@@ -21,6 +21,7 @@ import { viewStore } from '../../store/viewStore'
 import { layoutStore } from '../../store/layoutStore'
 import { useStore } from 'zustand'
 import LearningMarkdown from '../learning/LearningMarkdown'
+import { additionalExplanation } from '../learning/explanation'
 
 const DEPTHS: Array<{ id: ConceptDepth; label: string; hint: string }> = [
   { id: 'quick', label: '快速理解', hint: '读本体的 summary，瞬时' },
@@ -142,6 +143,7 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
   const loadedExplanation = explanation?.for === `${conceptId}:${depth}` ? explanation.data : null
   const summaryText =
     depth === 'quick' ? detail.summary : (loadedExplanation?.summary ?? detail.summary)
+  const extraExplanation = additionalExplanation(summaryText, loadedExplanation?.inferences ?? [])
   const reliable = instances?.for === conceptId ? instances.items.filter(i => i.confidence >= 0.8 && i.evidence) : []
   const exact = origin?.kind === 'code' ? reliable.find(i => i.path === origin.path && i.lineno >= origin.lineno && i.lineno <= (origin.end_lineno ?? origin.lineno)) : undefined
   const nearby = origin?.kind === 'code' ? reliable.find(i => i.path === origin.path) : undefined
@@ -189,7 +191,7 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
 
       <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-xs leading-relaxed text-slate-700">
         <LearningMarkdown
-          text={summaryText || '（本体未写 summary）'}
+          text={[summaryText || '（本体未写 summary）', ...extraExplanation].join('\n\n')}
           targets={loadedExplanation?.learning_targets ?? detail.learning_targets}
         />
       </div>
@@ -221,47 +223,15 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
             </p>
           )}
           {loadedExplanation.facts.length > 0 && (
-            <section className="rounded-xl border border-success/25 bg-success/[0.04] px-3 py-2">
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-success">
-                事实（带代码出处）
-              </h4>
-              <ul className="mt-1 space-y-1.5">
-                {loadedExplanation.facts.map((f, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-700"
-                  >
-                    <span className="shrink-0 rounded bg-accent-soft/70 px-1.5 py-px font-mono text-[10px] text-accent">
-                      {f.citation.path}:{f.citation.lineno}
-                    </span>
-                    <span className="min-w-0">{f.text}</span>
-                  </li>
-                ))}
+            <details className="text-xs leading-7 text-slate-600">
+              <summary className="cursor-pointer">项目位置</summary>
+              <ul className="mt-2 space-y-2">
+                {loadedExplanation.facts.map((f, i) => <li key={i}>
+                  <button type="button" className="text-left text-accent hover:underline" onClick={() => workbenchStore.getState().selectFile(f.citation.path, f.citation.lineno)}>{f.citation.path}:{f.citation.lineno}</button>
+                  <p>{f.text}</p>
+                </li>)}
               </ul>
-            </section>
-          )}
-          {loadedExplanation.inferences.length > 0 && (
-            <section className="rounded-xl border border-warning/25 bg-warning/[0.04] px-3 py-2">
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-warning">
-                推断（模型判断）
-              </h4>
-              <ul className="mt-1 space-y-1.5">
-                {loadedExplanation.inferences.map((inf, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-600"
-                  >
-                    <span className="shrink-0 rounded bg-warning/10 px-1 py-px font-mono text-[10px] text-warning">
-                      {Math.round(inf.confidence * 100)}%
-                    </span>
-                    <span className="min-w-0">{inf.text}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          {loadedExplanation.llm_used && (
-            <p className="text-[10px] text-slate-400">本层解释由模型生成，事实栏均可回代码验证。</p>
+            </details>
           )}
         </>
       )}
@@ -290,9 +260,9 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
                     {inst.path}:{inst.lineno}
                   </span>
                   <span className="min-w-0 truncate text-slate-600">{inst.evidence}</span>
-                  {inst.confidence < 1 && (
+                  {inst.confidence < 0.8 && (
                     <span className="ml-auto shrink-0 text-[10px] text-warning">
-                      {Math.round(inst.confidence * 100)}%
+                      静态关联，需结合调用方式判断
                     </span>
                   )}
                 </button>

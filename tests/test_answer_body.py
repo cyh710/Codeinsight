@@ -101,7 +101,9 @@ async def test_failed_metadata_does_not_discard_body_or_validate_fake_citation()
     )
     answer = await runtime.run(project_id=1, question="解释")
     assert BODY in answer.raw_text and "ghost.py:99" in answer.raw_text
-    assert "未核实位置：ghost.py:99" in answer.text
+    assert "ghost.py:99" not in answer.text
+    assert "猜测的位置" in answer.text
+    assert answer.dropped_citations == ["ghost.py:99"]
     assert all(citation.path != "ghost.py" for citation in answer.citations)
     assert "草稿中还不能确定" not in answer.raw_text
     assert not answer.exploration

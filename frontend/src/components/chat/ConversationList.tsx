@@ -48,7 +48,7 @@ export default function ConversationList() {
         <div className="sidebar-conversation-main">
           <button className="sidebar-chat-open" title={`${c.title}\n${updatedLabel(c.updated_at)}`} type="button" onClick={() => void open(c.project_id, c.id, state.search ? c.match_request_id : undefined)}>
             <span className="sidebar-chat-heading"><span className="sidebar-chat-title">{c.pinned && <span className="sidebar-pin" aria-label="已置顶">◆</span>}{c.title}</span>
-              {c.status === 'running' ? <span className="sidebar-chat-status" title="生成中" aria-label="生成中"><Loader2 size={12} className="animate-spin" /></span> : c.status === 'interrupted' || c.status === 'failed' || c.status === 'abstained' ? <span className="sidebar-chat-status">{c.status === 'interrupted' ? '中断' : c.status === 'failed' ? '失败' : '待核实'}</span> : null}
+              {c.status === 'running' ? <span className="sidebar-chat-status" title="生成中" aria-label="生成中"><Loader2 size={12} className="animate-spin" /></span> : c.status === 'interrupted' || c.status === 'failed' ? <span className="sidebar-chat-status">{c.status === 'interrupted' ? '中断' : '失败'}</span> : null}
               {c.unread && c.status !== 'running' && <span className="sidebar-unread" aria-label="有新结果" />}
             </span>
             {state.allProjects && <span className="sidebar-chat-meta">{c.project_name}</span>}

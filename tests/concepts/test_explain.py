@@ -111,3 +111,20 @@ async def test_provider_timeout_does_not_hang_the_learning_service(concepts):
         concepts["jwt"], depth=ConceptDepth.DEEP, provider=Slow(), timeout_s=0.001
     )
     assert result.error and "TimeoutError" in result.error
+
+
+async def test_deep_can_explain_project_role_in_one_body_without_classification(concepts):
+    provider = FakeProvider(
+        response={
+            "summary": "这里已有 jwt.decode 的检测记录。签名验证检查声明是否被改动；还需核对调用参数，才能判断是否检查过期时间。"
+        }
+    )
+    result = await explain(
+        concepts["jwt"],
+        depth=ConceptDepth.DEEP,
+        instances=[ConceptInstance("jwt", "a.py", 3, evidence="call jwt.decode")],
+        provider=provider,
+    )
+    assert result.llm_used and not result.error and provider.calls == 1
+    assert "还需核对调用参数" in result.summary
+    assert result.facts and not result.inferences

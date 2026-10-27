@@ -28,7 +28,7 @@ class ReviewProvider:
         question = messages[start]["content"].splitlines()[0]
         current = messages[start:]
         read = any(m["role"] == "tool" for m in current)
-        if "核对入口" in question and not read:
+        if ("核对入口" in question or "策略与成绩" in question) and not read:
             yield StreamChunk(
                 tool_calls=[
                     ToolCall(
@@ -43,7 +43,9 @@ class ReviewProvider:
                 ]
             )
             return
-        if "核对入口" in question:
+        if "策略与成绩" in question:
+            text = "已读到保存函数，它接收一个值并返回该值。当前材料没有可比较的实验成绩，暂时不能排高低。"
+        elif "核对入口" in question:
             text = "入口把值交给保存函数。 [app.py:2]"
         elif "听不懂" in question or "简单一点" in question:
             text = (
@@ -88,15 +90,14 @@ def test_unchecked_answer_keeps_body_raw_and_survives_restart(reviewed):
         answer = client.post("/query", json=body).json()
         assert "收件窗口" in answer["text"] == answer["raw_text"]
         assert answer["evidence_review"]["status"] == "unverified"
-        assert not answer["facts"] and answer["inferences"]
+        assert not answer["facts"] and not answer["inferences"]
+        assert not answer["abstained"]
     with TestClient(create_app()) as client:
         turn = client.get(f"/projects/1/conversations/{cid}/turns/unchecked").json()
         assert turn["answer"]["text"] == answer["text"]
         assert turn["answer"]["raw_text"] == answer["raw_text"]
         assert (
-            not client.get(f"/projects/1/conversations/{cid}")
-            .json()["exploration_state"]
-            .get("items")
+            client.get(f"/projects/1/conversations/{cid}").json()["exploration_state"].get("items")
         )
         assert (
             client.post("/query", json=body).json()["evidence_review"] == answer["evidence_review"]
@@ -116,7 +117,8 @@ def test_invalid_and_partial_references_keep_text_without_fact_promotion(reviewe
         ]
         answer = frames[0]
         assert answer["raw_text"] == "我猜入口在 [ghost.py:99]，需要再核对。"
-        assert "未核实位置：ghost.py:99" in answer["text"]
+        assert "ghost.py:99" not in answer["text"]
+        assert "需要再核对" in answer["text"]
         assert not answer["citations"] and not answer["facts"]
         assert answer["evidence_review"]["unverified_citations"] == ["ghost.py:99"]
         mixed = client.post(
@@ -124,10 +126,12 @@ def test_invalid_and_partial_references_keep_text_without_fact_promotion(reviewe
         ).json()
         assert mixed["evidence_review"]["status"] == "partial"
         assert len(mixed["facts"]) == len(mixed["citations"]) == 1
-        assert "未核实位置：ghost.py:99" in mixed["text"]
+        assert "ghost.py:99" not in mixed["text"]
+        assert "另一个入口可能在" in mixed["text"]
         with open_sqlite(db_path(data_dir), row_factory=True) as conn:
             history = PersistentConversationStore(conn).history(f"1:{cid}")
-            assert "未完全核实" in history[-1]["content"]
+            assert "未完全核实" not in history[-1]["content"]
+            assert history[-1]["content"] == mixed["text"]
             assert "[ghost.py:99]" not in str(history)
 
 
@@ -222,12 +226,37 @@ def test_citation_after_chinese_period_belongs_to_the_statement():
     grounding.add(GroundedFile("app.py", 1, 9))
     split = split_answer("入口接收值。 [app.py:2]\n\n它可能是一个边界。", grounding)
     assert split.facts[0]["text"] == "入口接收值。"
-    assert split.inferences[0]["text"] == "它可能是一个边界。"
+    assert not split.inferences
+    assert "它可能是一个边界。" in split.text
     mixed = split_answer(
         "入口接收值 [app.py:2]，还会写入其他文件 [ghost.py:99]。", grounding, preserve_invalid=True
     )
-    assert not mixed.facts and mixed.inferences
+    assert mixed.facts and not mixed.inferences
+    assert mixed.dropped_citations == ["ghost.py:99"]
     assert mixed.citations[0].path == "app.py"
+
+
+def test_sparse_references_preserve_read_material_history_and_discussion(reviewed, data_dir):
+    with TestClient(create_app()) as client:
+        cid = client.post("/projects/1/conversations").json()["id"]
+        body = {"project_id": 1, "conversation_id": cid}
+        answer = client.post(
+            "/query", json={**body, "request_id": "sparse", "question": "策略与成绩"}
+        ).json()
+        assert not answer["abstained"] and not answer["inferences"] and not answer["citations"]
+        assert "没有可比较的实验成绩" in answer["text"]
+        assert answer["evidence"][0]["path"] == "app.py"
+        assert answer["evidence"][0]["snippet"]
+        assert "score" not in answer["evidence"][0]
+        assert answer["exploration"]["takeaways"] and not answer["exploration"]["actions"]
+        state = client.get(f"/projects/1/conversations/{cid}").json()["exploration_state"]
+        assert state["items"][0]["request_id"] == "sparse"
+        with open_sqlite(db_path(data_dir), row_factory=True) as conn:
+            history = PersistentConversationStore(conn).history(f"1:{cid}")
+            assert history[-1]["content"] == answer["text"]
+        rephrase = client.post("/query", json={**body, "question": "听不懂"}).json()
+        assert rephrase["tools_used"] == ["read_file"]
+        assert rephrase["evidence_review"]["followup_from"] == "sparse"
 
 
 @pytest.mark.asyncio

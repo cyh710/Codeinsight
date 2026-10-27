@@ -236,11 +236,6 @@ class ConversationRepository:
                 status == "completed"
                 and not answer.get("incomplete")
                 and isinstance(answer.get("exploration"), dict)
-                and (
-                    not answer.get("evidence_review")
-                    or answer["evidence_review"].get("status")
-                    in {"verified", "partial", "knowledge"}
-                )
             ):
                 proposal = answer["exploration"]
                 previous = self.get(project_id, cid).get("exploration_state", {})
@@ -341,7 +336,9 @@ class PersistentConversationStore:
         pid, cid = key.split(":", 1)
         rows = self.conn.execute(
             "SELECT question,answer_json FROM conversation_turn WHERE project_id=? AND conversation_id=? "
-            "AND status IN ('completed','abstained') ORDER BY created_at DESC,rowid DESC LIMIT 6",
+            "AND status IN ('completed','abstained') "
+            "AND COALESCE(json_extract(answer_json,'$.incomplete'),0)=0 "
+            "ORDER BY created_at DESC,rowid DESC LIMIT 6",
             (int(pid), cid),
         ).fetchall()
         current = self.conn.execute(
@@ -354,17 +351,11 @@ class PersistentConversationStore:
             v = review.get("source_version") or answer.get("exploration") or {}
             stale = current and (
                 (v and v.get("index_epoch") != current[1])
-                or answer.get("source_head_commit") != current[0]
+                or v.get("head_commit", answer.get("source_head_commit")) != current[0]
             )
             return (
-                ("[历史解释来自旧索引，只作对话来路，当前代码须重新取证]\n" if stale else "")
-                + (
-                    "[历史说明未完全核实，不可直接作为项目事实；涉及代码请重新取证]\n"
-                    if (review and review.get("status") != "verified") or answer.get("abstained")
-                    else ""
-                )
-                + answer.get("text", "")
-            )
+                "[历史解释来自旧索引，只作对话来路，当前代码须重新取证]\n" if stale else ""
+            ) + answer.get("text", "")
 
         return [
             message

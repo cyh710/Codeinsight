@@ -1,22 +1,4 @@
-"""答案的追溯化：把模型正文拆成**事实**与**推断**（ADR 0007）。
-
-规则只有一条，但它是硬的：
-
-    一句话里带**校验通过**的 `file:line` → 事实
-    否则 → 推断
-
-「校验通过」的意思是：这个位置在本回合**真的被工具读过或检索到过**。
-模型很会编行号——`backend/api/pet.py:1209` 看起来和真的没区别。
-所以不是「格式对就算」，而是拿本回合的 grounded 集合去对：
-
-- 工具返回的检索证据（`Evidence` 的 lineno..end_lineno）；
-- `read_file` 读过的行窗口；
-- 概念实例的位置；
-- 流程步骤、调用点、设计说明证据的位置。
-
-对不上的 `file:line` 会**从正文里删掉**——宁可让用户看到一句没有出处的
-推断，也不能让他看到一个编出来的「证据」。删掉之后那句话自然落到推断栏。
-"""
+"""保留连贯正文，核对可定位引用；旧 facts 字段不提供语义认证（ADR 0040）。"""
 
 from __future__ import annotations
 
@@ -28,9 +10,6 @@ from typing import Any
 from codeinsight.models import Citation, ConceptInstance, Evidence
 
 _CITATION = re.compile(r"\[([\w./\\-]+\.(?:py|pyi|tsx?|jsx?|sql|md|toml|ya?ml)):(\d+)(?:-(\d+))?\]")
-
-DEFAULT_INFERENCE_CONFIDENCE = 0.5
-"""模型没给置信度时的默认值：明确低于 1，提醒这是推断。"""
 
 _SENTENCE_END = re.compile(r"[。！？!?]+|\n+")
 
@@ -175,6 +154,20 @@ class Grounding:
     def covers(self, path: str, lineno: int) -> bool:
         return any(item.covers(path, lineno) for item in self._by_path.get(path, ()))
 
+    def covers_range(self, path: str, start: int, end: int) -> bool:
+        """范围内每行都须可定位；不按模型提供的巨大行号逐行遍历。"""
+        if start < 1 or end < start:
+            return False
+        cursor = start
+        for item in sorted(self._by_path.get(path, ()), key=lambda item: item.lineno):
+            if item.lineno > cursor:
+                break
+            if item.end_lineno >= cursor:
+                cursor = item.end_lineno + 1
+            if cursor > end:
+                return True
+        return False
+
     def nearest(self, path: str, lineno: int) -> GroundedFile | None:
         """给一句事实挑引用：覆盖该行的那条；否则同文件里最近的一条。"""
         candidates = self._by_path.get(path)
@@ -208,10 +201,9 @@ class SplitAnswer:
 
 
 def split_answer(text: str, grounding: Grounding, *, preserve_invalid: bool = False) -> SplitAnswer:
-    """按句子拆事实/推断；preserve_invalid 时保留无效位置但标明未核实。
+    """仅提取对应有效位置的原文片段，无引用解释不作自动分类。
 
-    事实/推断的判定在**块内**做，但 markdown 的块结构原样保留——
-    前端是 markdown 渲染器，代码块和列表被逐句切开就会糊成一段。
+    preserve_invalid 是旧调用兼容参数；无效位置统一进入详情，不插入正文告警。
     """
     result = SplitAnswer(text="")
     seen_citations: set[tuple[str, int]] = set()
@@ -272,7 +264,7 @@ def _record(
     *,
     invalid: bool = False,
 ) -> None:
-    """把一句归到事实或推断。引用落到**模型说的那一行**，不是窗口起点。"""
+    """旧 facts 仅保存对应位置的原文，不把无引用解释自动判为推断。"""
     if not cleaned.strip():
         return
     if cited:
@@ -290,12 +282,7 @@ def _record(
                 "snippet": anchor.snippet,
             },
         }
-        if invalid:
-            result.inferences.append(
-                {"text": statement["text"], "confidence": DEFAULT_INFERENCE_CONFIDENCE}
-            )
-        else:
-            result.facts.append(statement)
+        result.facts.append(statement)
         for path, lineno in cited:
             key = (path, lineno)
             if key in seen_citations:
@@ -306,11 +293,6 @@ def _record(
                 result.citations.append(
                     Citation(path, lineno, lineno, match.qualname, match.snippet)
                 )
-    elif not _looks_like_heading(cleaned):
-        plain = _plain_text(_strip_markers(cleaned))
-        if not plain:
-            return  # 只剩排版符号（比如一个孤零零的 `**`），不是主张
-        result.inferences.append({"text": plain, "confidence": DEFAULT_INFERENCE_CONFIDENCE})
 
 
 def _sentences(text: str) -> list[str]:
@@ -354,16 +336,23 @@ def _sentences(text: str) -> list[str]:
 def _verify(
     sentence: str, grounding: Grounding, dropped: list[str], preserve_invalid: bool = False
 ) -> tuple[str, list[tuple[str, int]]]:
-    """把句子里的引用分成「通过」与「编造」；编造的从文本里删掉。"""
+    """核对正文位置；无效引用移入详情，句子与示例原样保留。"""
     accepted: list[tuple[str, int]] = []
+    protected = [
+        (m.start(), m.end())
+        for m in re.finditer(r"(`+)[\s\S]*?\1|\[[^\]\n]*\]\([^\)\n]*\)", sentence)
+    ]
 
     def replace(match: re.Match[str]) -> str:
         path, start = match.group(1), int(match.group(2))
-        if grounding.covers(path, start):
+        if any(lo <= match.start() < hi for lo, hi in protected):
+            return match.group(0)
+        end = int(match.group(3) or start)
+        if grounding.covers_range(path, start, end):
             accepted.append((path, start))
             return match.group(0)
-        dropped.append(f"{path}:{start}")
-        return f"`未核实位置：{path}:{start}`" if preserve_invalid else ""
+        dropped.append(f"{path}:{start}" + (f"-{end}" if end != start else ""))
+        return ""
 
     cleaned = _CITATION.sub(replace, sentence)
     # 删掉引用后可能留下多余空格或空括号，收拾一下。

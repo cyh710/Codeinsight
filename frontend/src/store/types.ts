@@ -50,12 +50,12 @@ export interface ChatMessage {
   sourceHeadCommit?: string | null
   /** 出错时渲染错误卡而不是气泡（code 见契约 §0.3）。 */
   error?: { code: string; title: string; hint: string }
-  /** 以下三项只在 assistant 落定后有值（ADR 0007：facts 与 inferences 分栏）。 */
+  /** 旧分类字段保持可读，正文不依赖其分类结果（ADR 0040）。 */
   facts?: Fact[]
   inferences?: Inference[]
   citations?: Citation[]
   abstained?: boolean
-  /** 走满轮次上限未完成（契约 §8.3 新增）——与 abstained「没找到」是两回事。 */
+  /** 尚未完成；独立于旧 abstained 字段，不表示检索无命中。 */
   incomplete?: boolean
   abstentionReason?: string
   /** 本轮的工具时间线（边流边长）。 */

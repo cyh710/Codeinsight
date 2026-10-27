@@ -95,7 +95,8 @@ async def test_style_sample_does_not_ground_invented_project_location():
     )
     assert "携带声明和签名" in provider.calls[0][1][0]["content"]
     assert not answer.facts and not answer.citations
-    assert answer.dropped_citations and "未核实位置" in answer.text
+    assert answer.dropped_citations and "ghost.py:999" not in answer.text
+    assert "验证 JWT" in answer.text and not answer.abstained
 
 
 async def test_optional_sample_yields_to_current_tool_result_in_turn_budget():

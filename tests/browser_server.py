@@ -36,6 +36,23 @@ class BrowserProvider:
         recent = messages[
             next(i for i in range(len(messages) - 1, -1, -1) if messages[i]["role"] == "user") :
         ]
+        if "__fixture_understanding_sparse__" in original_question:
+            if not any(message["role"] == "tool" for message in recent):
+                yield StreamChunk(
+                    tool_calls=[
+                        ToolCall(
+                            "sparse",
+                            "read_file",
+                            {"path": "store.py", "start_line": 1, "end_line": 6},
+                        )
+                    ]
+                )
+            else:
+                yield StreamChunk(
+                    text="保存操作接收一个值，再交给数据库写入。\n\n先理解这个值怎样流动，再比较实现的取舍。当前材料没有可比较的实验成绩，暂时不能排高低。",
+                    finish_reason="stop",
+                )
+            return
         if "__fixture_reply_rendering__" in original_question:
             path = "wattbot-nlp/src/dense/hybrid.py"
             if not any(message["role"] == "tool" for message in recent):

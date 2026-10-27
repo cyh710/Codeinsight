@@ -1,15 +1,11 @@
-/**
- * 消息气泡。用户消息是普通气泡；assistant 消息按 ADR 0007 分栏：
- * 正文（markdown）→ 工具时间线 → **事实**（每条带 file:line）→ **推断**
- * （带置信度）。核查信息按需展开，正文始终可读。
- */
+/** 连贯正文为主，来源与实际查阅按需打开；兼容旧回答记录。 */
 import { memo, useState } from 'react'
 import { chatStore } from '../../store/chatStore'
 import LearningMarkdown from '../learning/LearningMarkdown'
 import { workbenchStore } from '../../store/workbenchStore'
 import { AlertTriangle, CheckCircle2, Copy, Hourglass, Loader2, MoreHorizontal, Wrench } from 'lucide-react'
 import type { ChatMessage } from '../../store/types'
-import type { Citation, Inference } from '../../api/types'
+import type { Citation, LearningTarget } from '../../api/types'
 import ConfirmDialog from '../common/ConfirmDialog'
 import ActionMenu from '../common/ActionMenu'
 import { useStore } from 'zustand'
@@ -17,68 +13,8 @@ import { projectStore } from '../../store/projectStore'
 import ExplorationActions from '../exploration/ExplorationActions'
 import ExplorationFlow from '../exploration/ExplorationFlow'
 import { openRelated } from '../exploration/actions'
-import { AnswerReviewDetails, AnswerReviewNotice } from './AnswerReview'
+import { AnswerReviewDetails } from './AnswerReview'
 import ExecutionCard from '../execution/ExecutionCard'
-
-function CitationLine({ citation, onOpen }: { citation: Citation; onOpen: (c: Citation) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(citation)}
-      className="mt-0.5 shrink-0 rounded bg-accent-soft/70 px-1.5 py-px font-mono text-[10px] text-accent transition-colors hover:bg-accent-soft"
-      title="点击在右栏查看"
-    >
-      {citation.path}:{citation.lineno}
-    </button>
-  )
-}
-
-function FactList({
-  facts,
-  onOpenCitation,
-}: {
-  facts: NonNullable<ChatMessage['facts']>
-  onOpenCitation: (c: Citation) => void
-}) {
-  return (
-    <details className="mt-2 rounded-lg border border-slate-200/70 px-3 py-2" aria-label="事实">
-      <summary className="cursor-pointer text-[11px] text-slate-500">
-        代码事实 · {facts.length} 条
-      </summary>
-      <ul className="mt-3 space-y-1.5">
-        {facts.map((fact, i) => (
-          <li
-            key={i}
-            className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs leading-relaxed text-slate-700"
-          >
-            <CitationLine citation={fact.citation} onOpen={onOpenCitation} />
-            <span className="min-w-0">{fact.text}</span>
-          </li>
-        ))}
-      </ul>
-    </details>
-  )
-}
-
-function InferenceList({ inferences }: { inferences: Inference[] }) {
-  return (
-    <details className="mt-2 rounded-lg border border-slate-200/70 px-3 py-2" aria-label="推断">
-      <summary className="cursor-pointer text-[11px] text-slate-500">
-        推断（待核对） · {inferences.length} 条
-      </summary>
-      <ul className="mt-3 space-y-1.5">
-        {inferences.map((inf, i) => (
-          <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-slate-600">
-            <span className="shrink-0 rounded bg-warning/10 px-1 py-px font-mono text-[10px] text-warning">
-              {Math.round(inf.confidence * 100)}%
-            </span>
-            <span className="min-w-0">{inf.text}</span>
-          </li>
-        ))}
-      </ul>
-    </details>
-  )
-}
 
 function ToolTimeline({ tools }: { tools: NonNullable<ChatMessage['tools']> }) {
   const rows = (
@@ -138,6 +74,12 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
   const detail = useStore(projectStore, s => s.currentDetail)
   const pid = useStore(projectStore, s => s.currentProjectId)
   const cid = useStore(chatStore, s => s.conversationId)
+  const openKnowledge = (target: LearningTarget) => {
+    const related = message.citations?.length || message.exploration?.actions.some(action =>
+      action.kind === 'knowledge' && action.target?.kind === 'knowledge' && action.target.topic_id === target.topic_id)
+    if (related && message.exploration && pid !== null && message.requestId) openRelated(target, pid, cid, message.requestId)
+    else workbenchStore.getState().openKnowledge(target)
+  }
   const onOpenCitation = (citation: Citation) => originalOpen({ ...citation, head_commit: message.sourceHeadCommit ?? citation.head_commit })
   if (message.role === 'user') {
     return (
@@ -172,7 +114,6 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
   return (
     <div className="flex justify-start">
       <div className="assistant-answer min-w-0 max-w-full">
-        <AnswerReviewNotice message={message} />
         <div
           className={`text-sm leading-relaxed text-slate-800 ${message.streaming ? 'reply-text-in' : settled ? 'reply-settled' : ''}`}
         >
@@ -189,7 +130,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
               const material = { mode: 'file', path: citation.path, lineno: citation.lineno, ...(version ? { version } : {}) }
               return `/?${new URLSearchParams({ project: String(pid), conversation: cid, view: 'chat', material: JSON.stringify(material) })}`
             }}
-            onKnowledge={message.exploration && message.citations?.length && pid !== null && message.requestId ? target => openRelated(target, pid, cid, message.requestId) : undefined}
+            onKnowledge={openKnowledge}
           />
           {message.streaming && (
             <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-accent/60 align-middle" />
@@ -232,7 +173,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
         {message.streaming && message.tools && message.tools.length > 0 && <ToolTimeline tools={message.tools} />}
         {settled && <div className="answer-footer">
           <details className="answer-details">
-            <summary>来源与核查</summary>
+            <summary>来源与查阅过程</summary>
             <div className="answer-metadata">
               <button type="button" className="wb-button" onClick={() => workbenchStore.getState().openEvidence(message.id)}>查看来源</button>
               {message.knowledgeSources && message.knowledgeSources.length > 0 && (
@@ -244,7 +185,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
                     <button
                       type="button"
                       key={s.target.href}
-                      onClick={() => message.exploration && message.citations?.length && pid !== null && message.requestId ? openRelated(s.target, pid, cid, message.requestId) : workbenchStore.getState().openKnowledge(s.target)}
+                      onClick={() => openKnowledge(s.target)}
                       className="block text-left text-accent hover:underline"
                     >
                       {s.target.title}
@@ -254,12 +195,6 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
                 </details>
               )}
               {message.tools && message.tools.length > 0 && <ToolTimeline tools={message.tools} />}
-              {message.facts && message.facts.length > 0 && (
-                <FactList facts={message.facts} onOpenCitation={onOpenCitation} />
-              )}
-              {message.inferences && message.inferences.length > 0 && (
-                <InferenceList inferences={message.inferences} />
-              )}
               <AnswerReviewDetails message={message} />
             </div>
           </details>

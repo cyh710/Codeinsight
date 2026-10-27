@@ -38,8 +38,8 @@ export default function ExplorationActions({ actions, version, requestId, overvi
     {stale && <p role="status" className="exploration-muted">入口来自旧索引，请刷新项目导览；历史正文仍可阅读。</p>}
     {actions.slice(0, overview ? 4 : 3).map(action => <button key={action.id} type="button"
       disabled={stale || loading || (action.kind === 'follow_up' && streaming)} onClick={() => activate(action)}>
-      <span className="exploration-action-kind">{{ follow_up: '追问', code: '代码', knowledge: '理解', graph: '关系', timeline: '变更' }[action.kind]}</span>
-      <span><strong>{action.label}</strong>{action.reason && <small>{action.reason}</small>}</span>
+      <span className="exploration-action-kind">{{ follow_up: '追问', code: '代码', knowledge: '知识', graph: '关系', timeline: '变更' }[action.kind]}</span>
+      <span><strong>{action.kind === 'knowledge' ? action.label.replace(/^(?:理解[:：]\s*)+/, '') : action.label}</strong>{action.reason && <small>{action.reason}</small>}</span>
       <span aria-hidden="true">↗</span>
     </button>)}
   </nav>

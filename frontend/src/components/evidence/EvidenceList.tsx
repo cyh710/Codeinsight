@@ -69,24 +69,29 @@ function EvidenceCard({ item, version }: { item: PanelEvidence; version?: string
 export default function EvidenceList({ messageId }: { messageId?: string }) {
   const messages = useStore(chatStore, (s) => s.messages)
   const last = messageId ? messages.find(m => m.id === messageId) : [...messages].reverse().find((m) => m.role === 'assistant')
-  const items = [...(last?.evidence ?? [])]
-  for (const citation of last?.citations ?? []) {
-    if (!items.some(item => item.path === citation.path && item.lineno === citation.lineno)) items.push({ ...citation, lanes: [], concepts: [] })
-  }
+  const cited: PanelEvidence[] = (last?.citations ?? []).map(c => ({ ...c, lanes: [], concepts: [] }))
+  const consulted = (last?.evidence ?? []).filter(item => !cited.some(c => c.path === item.path && c.lineno === item.lineno && c.end_lineno === item.end_lineno))
+  const groups = [{ title: '正文引用', items: cited }, { title: '本轮查阅', items: consulted }]
 
   return (
     <div className="space-y-2">
-      {last?.knowledgeSources?.map(hit => <article key={hit.target.href} className="rounded-xl border border-sky-100 bg-sky-50/40 p-3">
-        <button className="text-left text-xs font-medium text-accent" onClick={() => workbenchStore.getState().openKnowledge(hit.target)}>教材 · {hit.target.title}{hit.target.section_title ? ` · ${hit.target.section_title}` : ''}</button>
-        <p className="mt-1 line-clamp-3 text-xs leading-6 text-slate-500">{hit.summary || hit.snippet}</p>
-      </article>)}
-      {items.length === 0 ? !last?.knowledgeSources?.length && (
+      {!cited.length && !consulted.length ? !last?.knowledgeSources?.length && (
         <p className="px-1 py-6 text-center text-xs leading-relaxed text-slate-400">
           提问后，这里会显示找到的代码位置。
         </p>
       ) : (
-        items.map((item, i) => <EvidenceCard key={`${item.path}:${item.lineno}:${i}`} item={item} version={last?.sourceHeadCommit ?? last?.citations?.find(c => c.path === item.path && c.lineno === item.lineno)?.head_commit} />)
+        groups.filter(group => group.items.length > 0).map(group => <section key={group.title} className="space-y-2">
+          <h3 className="pt-2 text-xs font-medium text-slate-500">{group.title}</h3>
+          {group.items.map((item, i) => <EvidenceCard key={`${item.path}:${item.lineno}:${i}`} item={item} version={last?.sourceHeadCommit ?? last?.citations?.find(c => c.path === item.path && c.lineno === item.lineno)?.head_commit} />)}
+        </section>)
       )}
+      {!!last?.knowledgeSources?.length && <details className="pt-2 text-xs text-slate-500">
+        <summary className="cursor-pointer py-1">查阅的教材</summary>
+        <div className="space-y-2 py-2">{last.knowledgeSources.map(hit => <article key={hit.target.href} className="rounded-lg bg-slate-50 px-3 py-2">
+          <button className="text-left text-xs font-medium text-accent hover:underline" onClick={() => workbenchStore.getState().openKnowledge(hit.target)}>{hit.target.title}{hit.target.section_title ? ` · ${hit.target.section_title}` : ''}</button>
+          <p className="mt-1 line-clamp-3 text-xs leading-6 text-slate-500">{hit.summary || hit.snippet}</p>
+        </article>)}</div>
+      </details>}
     </div>
   )
 }
