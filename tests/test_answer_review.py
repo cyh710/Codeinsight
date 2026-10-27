@@ -187,8 +187,9 @@ def test_rephrase_does_not_rebind_old_index_or_unavailable_source(reviewed, data
             conn.execute("UPDATE project SET root_path='unavailable' WHERE id=1")
             conn.commit()
         failed = client.post("/query", json={**body, "question": "听不懂"}).json()
-        assert failed["text"] and not failed["citations"]
-        assert failed["evidence_review"]["status"] == "unavailable"
+        # 源目录不可用时，已经保存的索引源码仍可用于续讲。
+        assert failed["text"] and failed["citations"]
+        assert failed["evidence_review"]["status"] == "verified"
         with open_sqlite(db_path(data_dir)) as conn:
             conn.execute("UPDATE repo_state SET index_epoch=index_epoch+1 WHERE project_id=1")
             conn.commit()

@@ -365,6 +365,7 @@ CREATE TABLE IF NOT EXISTS index_run (
 );
 CREATE INDEX IF NOT EXISTS ix_index_run_project ON index_run(project_id, id DESC);
 
+-- 请求 0024：commit_sha 另保留 source:<hash> 归属及 epoch:<n> 阅读映射，不改变表结构。
 CREATE TABLE IF NOT EXISTS file_snapshot (
     project_id     INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
     commit_sha     TEXT NOT NULL,

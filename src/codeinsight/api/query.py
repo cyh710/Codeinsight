@@ -251,6 +251,9 @@ async def query(body: QueryBody) -> dict[str, Any]:
         "citations": [
             {
                 "path": item.path,
+                "index_epoch": ((answer.evidence_review or {}).get("source_version") or {}).get(
+                    "index_epoch"
+                ),
                 "lineno": item.lineno,
                 "end_lineno": item.end_lineno or item.lineno,
                 "qualname": item.qualname,

@@ -52,6 +52,7 @@ from codeinsight.cognitive.indexing.scanner import (
     module_qualname,
     read_blobs,
 )
+from codeinsight.cognitive.indexing.source_store import preserve_index, register_source, store_bytes
 from codeinsight.cognitive.indexing.symbols import (
     SymbolIndex,
     write_module,
@@ -211,17 +212,22 @@ def run_index(
     # 一次 `git cat-file --batch` 管道读全部内容：算 sha256（过期判定用）、
     # 算行数、给解析器喂源码。分多次读就是分多次进程创建，慢一个量级。
     blobs = read_blobs(root, ref, [f.path for f in indexed])
+    for raw in blobs.values():
+        store_bytes(conn, raw)
     to_parse = [f for f in indexed if parser.supports(f.path)]
 
     with nullcontext(conn) as conn:
-        _clear_project_data(conn, project_id, commit=commit)
+        _clear_project_data(conn, project_id, commit=False)
 
         file_ids: dict[str, int] = {}
         file_sha: dict[str, str] = {}
         role_by_path: dict[str, str] = {}
         for f in indexed:
-            raw = blobs.get(f.path, b"")
+            raw = blobs.get(f.path)
+            if raw is None:
+                continue
             digest = hashlib.sha256(raw).hexdigest()
+            register_source(conn, project_id, f.path, digest)
             file_sha[f.path] = digest
             role_by_path[f.path] = f.role
             file_ids[f.path] = _write_file(
@@ -407,6 +413,12 @@ def run_index(
             (project_id, head_commit, head_branch, PARSER_VERSION, next_epoch, concept_version),
         )
 
+        conn.execute(
+            "INSERT OR IGNORE INTO file_snapshot(project_id,commit_sha,path,content_sha256) "
+            "SELECT project_id,?,path,content_sha256 FROM file WHERE project_id=?",
+            (f"epoch:{next_epoch}", project_id),
+        )
+
         if commit:
             conn.commit()
 
@@ -556,6 +568,7 @@ def _clear_project_data(conn: sqlite3.Connection, project_id: int, *, commit: bo
     删除顺序照顾外键：`file` 的 CASCADE 会带走 module/symbol/edge/chunk/flow。
     不在级联范围内的表显式删。
     """
+    preserve_index(conn, project_id)
     conn.execute("DELETE FROM dependency WHERE project_id = ?", (project_id,))
     conn.execute("DELETE FROM entry_point WHERE project_id = ?", (project_id,))
     conn.execute(

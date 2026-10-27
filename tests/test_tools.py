@@ -78,6 +78,7 @@ def conn() -> sqlite3.Connection:
 
 
 def _services(conn, tmp_path: Path) -> ToolServices:
+    conn.execute("UPDATE project SET root_path=? WHERE id=1", (str(tmp_path),))
     return ToolServices(conn=conn, project_id=1, repo_root=str(tmp_path))
 
 
@@ -146,6 +147,12 @@ async def test_read_file_numbers_lines(conn, tmp_path) -> None:
 
 
 async def test_read_file_does_not_cite_changed_unindexed_source(conn, tmp_path) -> None:
+    import hashlib
+
+    conn.execute(
+        "UPDATE file SET content_sha256=? WHERE path='a.py'",
+        (hashlib.sha256(SOURCE_A.encode()).hexdigest(),),
+    )
     (tmp_path / "a.py").write_text("changed source", encoding="utf-8")
     result = await ReadFileTool(_services(conn, tmp_path)).run({"path": "a.py"}, _ctx())
     assert result.error == "stale_source" and not result.data.get("citations")

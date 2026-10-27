@@ -138,7 +138,9 @@ class BrowserProvider:
                         ToolCall(
                             f"long-read-{count}",
                             "read_file",
-                            {"path": "store.py", "start_line": 1, "end_line": 6},
+                            {"path": "store.py", "start_line": 1, "end_line": 6}
+                            if count == 0
+                            else {"path": "large.py", "start_line": count, "end_line": count},
                         )
                     ]
                 )

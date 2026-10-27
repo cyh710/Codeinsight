@@ -86,6 +86,16 @@ def _tool_call(query: str = "入口") -> StreamChunk:
     )
 
 
+class AdvancingSearchTool(FakeSearchTool):
+    async def run(self, arguments, ctx):
+        result = await super().run(arguments, ctx)
+        if len(self.calls) > 1:
+            path = f"module-{len(self.calls)}.py"
+            result.data["citations"][0]["path"] = path
+            result.data["items"][0]["path"] = path
+        return result
+
+
 async def _run(runtime: AgentRuntime, question: str = "入口在哪") -> tuple[Any, list]:
     events: list = []
 
@@ -198,7 +208,7 @@ async def test_default_analysis_continues_past_old_limit_with_bounded_context(to
     )
     runtime = AgentRuntime(
         provider=provider,
-        registry=ToolRegistry([FakeSearchTool(hits=[{}])]),
+        registry=ToolRegistry([AdvancingSearchTool(hits=[{}])]),
         budget=ContextBudget(max_turn_bytes=1000, max_message_bytes=1000),
     )
     assert runtime.config.max_model_turns == Settings(_env_file=None).max_model_turns == 0
@@ -231,7 +241,9 @@ async def test_unlimited_analysis_can_be_cancelled_after_old_limit() -> None:
                 await asyncio.Future()
             yield _tool_call()
 
-    runtime = AgentRuntime(provider=Continuous([]), registry=ToolRegistry([FakeSearchTool()]))
+    runtime = AgentRuntime(
+        provider=Continuous([]), registry=ToolRegistry([AdvancingSearchTool(hits=[{}])])
+    )
     events = []
 
     async def emit(event):

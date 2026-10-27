@@ -21,6 +21,7 @@ import { restoreLocation, startNavigation } from './store/navigation'
 import SplitHandle from './components/common/SplitHandle'
 import WorkspacePanel from './components/common/WorkspacePanel'
 import ProjectIndexNotice from './components/tree/ProjectIndexNotice'
+import BackendVersionNotice from './components/common/BackendVersionNotice'
 import './workbench.css'
 import './workbench-density.css'
 import './workbench-motion.css'
@@ -29,7 +30,8 @@ import './sidebar.css'
 
 // 引用点击 → 右栏符号详情（无 qualname 时退回文件选中）。
 function openCitation(c: Citation) {
-  if (c.qualname) workbenchStore.getState().selectSymbol(c.qualname, c.path, c.lineno, c.head_commit)
+  if (c.index_epoch != null) workbenchStore.getState().selectFile(c.path, c.lineno, c.head_commit, c.index_epoch)
+  else if (c.qualname) workbenchStore.getState().selectSymbol(c.qualname, c.path, c.lineno, c.head_commit)
   else workbenchStore.getState().selectFile(c.path, c.lineno, c.head_commit)
 }
 
@@ -58,6 +60,7 @@ export default function App() {
 
   return (
     <div className="wb-app flex h-screen flex-col overflow-hidden bg-bg text-slate-800" style={styles} data-resizing={layout.resizing || undefined}>
+      <BackendVersionNotice />
       <header className="workbench-header shrink-0 border-b border-slate-200/80 bg-bg-elevated">
         <div className="flex min-w-0 items-center gap-3">
           <h1 className="text-sm font-semibold tracking-tight text-slate-700">CodeInsight</h1>

@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from codeinsight import __version__
 from codeinsight.config import settings
+from codeinsight.runtime_version import runtime_status
 from codeinsight.storage.sqlite import db_path, open_sqlite
 
 router = APIRouter(tags=["health"])
@@ -37,6 +38,7 @@ def health() -> dict[str, object]:
         "db_exists": path.exists(),
         "schema_applied": indexed,
         "projects": projects,
+        **runtime_status(),
     }
 
 

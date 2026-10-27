@@ -118,6 +118,7 @@ export interface ListResponse<T> {
 
 /** 一条指向代码的引用。`path:lineno` 是本项目的核心承诺。 */
 export interface Citation {
+  index_epoch?: number | null
   head_commit?: string | null
   path: string
   lineno: number
@@ -166,6 +167,8 @@ export interface RelationRef {
 // ─────────────────────────────────────────────────────────────
 
 export interface HealthResponse {
+  runtime_revision?: string
+  restart_required?: boolean
   status: string
   version: string
   db_path: string
@@ -704,6 +707,7 @@ export interface KnowledgeReadingContext {
   preview?: string
 }
 export interface CodeReadingContext {
+  index_epoch?: number
   kind: 'code'
   project_id: number
   path: string

@@ -6,13 +6,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import sqlite3
 from typing import Any
 
 from codeinsight.agent.tool import ToolContext, ToolResult
 from codeinsight.agent.tools import BaseTool
-from codeinsight.cognitive.indexing.scanner import read_blobs
+from codeinsight.cognitive.indexing.source_store import SourceError, read_source
 from codeinsight.models import Citation, Evidence
 
 MAX_READ_LINES = 200
@@ -241,10 +240,10 @@ class ReadFileTool(BaseTool):
         end = int(arguments.get("end_line") or start + MAX_READ_LINES - 1)
         end = min(end, start + MAX_READ_LINES - 1, max(total, start))
         try:
-            blobs = read_blobs(self.services.root, self.services.ref, [path])
-            if hashlib.sha256(blobs[path]).hexdigest() != row["content_sha256"]:
-                return self.result("源码与索引不一致，请重建索引。", error="stale_source")
-            body = blobs[path].decode("utf-8", "replace")
+            source = read_source(self.services.conn, self.services.project_id, path)
+            body = source.raw.decode("utf-8", "replace")
+        except SourceError as exc:
+            return self.result(str(exc), error=exc.code)
         except Exception as exc:  # noqa: BLE001 —— 工具不能抛
             return self.result(f"读取失败：{exc}", error="read_failed")
 
@@ -252,6 +251,8 @@ class ReadFileTool(BaseTool):
         selected = lines[start - 1 : end]
         numbered = "\n".join(f"{start + offset:>6}  {text}" for offset, text in enumerate(selected))
         header = f"{path}:{start}-{end}（共 {total} 行）"
+        if source.workspace_changed:
+            header += "（正在读取已索引快照，磁盘文件已有修改；本回合不切换版本）"
         return self.result(
             f"{header}\n{numbered}",
             data={

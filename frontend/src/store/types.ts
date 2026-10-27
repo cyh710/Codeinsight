@@ -172,7 +172,7 @@ export type RightPanel =
   | { mode: 'concept'; conceptId: string }
   | { mode: 'knowledge-tree' }
   | { mode: 'knowledge'; target: LearningTarget }
-  | { mode: 'file'; path: string; lineno: number; version?: string }
+  | { mode: 'file'; path: string; lineno: number; version?: string; indexEpoch?: number }
 
 export interface WorkbenchStore {
   tabs: Array<{ id: string; panel: RightPanel; title: string }>
@@ -213,7 +213,8 @@ export interface WorkbenchStore {
   directoryQuery: string
   setDirectoryQuery: (query: string) => void
 
-  selectFile: (path: string, lineno?: number, version?: string | null) => void
+  selectFile: (path: string, lineno?: number, version?: string | null, indexEpoch?: number) => void
+  bindFileVersion: (path: string, lineno: number, version: string | null, indexEpoch?: number) => void
   /** `lineno` 定位到符号在文件里的确切行（教材/证据跳回代码时用）。 */
   selectSymbol: (qualname: string, path: string, lineno?: number, version?: string | null) => void
   openConcept: (conceptId: string) => void

@@ -26,6 +26,7 @@ from codeinsight.api.query import router as query_router
 from codeinsight.api.relocation import recover_relocations
 from codeinsight.api.structure import router as structure_router
 from codeinsight.config import settings
+from codeinsight.runtime_version import runtime_status
 from codeinsight.storage.conversations import ConversationRepository
 from codeinsight.storage.sqlite import db_path, ensure_schema, open_sqlite
 
@@ -64,11 +65,12 @@ def create_app() -> FastAPI:
     app.include_router(executions_router)
 
     @app.get("/")
-    def root() -> dict[str, str]:
+    def root() -> dict[str, str | bool]:
         return {
             "name": "CodeInsight",
             "version": __version__,
             "data_dir": str(settings.data_dir),
+            **runtime_status(),
         }
 
     install_error_handlers(app)

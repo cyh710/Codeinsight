@@ -62,6 +62,7 @@ def code_target(conn: sqlite3.Connection, pid: int, raw: dict) -> dict | None:
     return {
         "kind": "code",
         "project_id": pid,
+        "index_epoch": version(conn, pid)["index_epoch"],
         "path": path,
         "lineno": line,
         "end_lineno": min(

@@ -57,6 +57,17 @@ def backend_ready(url: str, data_dir: Path) -> bool:
     )
 
 
+def require_current_backend(url: str) -> None:
+    """同数据目录不代表代码一致；不静默复用旧进程，也不代用户杀进程。"""
+    from codeinsight.runtime_version import current_revision
+
+    info = read_json(url + "/")
+    if info.get("runtime_revision") != current_revision() or info.get("restart_required"):
+        raise RuntimeError(
+            "后端代码已更新或已有服务版本无法确认。请在原启动窗口按 Ctrl+C 停止旧服务，再重新运行启动器；旧服务不会被自动结束。"
+        )
+
+
 def select_backend_port(
     preferred: int, data_dir: Path, *, automatic: bool, excluded_port: int | None = None
 ) -> tuple[int, bool]:
@@ -68,6 +79,7 @@ def select_backend_port(
         if not port_busy(port):
             return port, False
         if backend_ready(f"http://127.0.0.1:{port}", data_dir):
+            require_current_backend(f"http://127.0.0.1:{port}")
             return port, True
         if not automatic:
             raise RuntimeError(
@@ -216,6 +228,8 @@ def main() -> int:
     log_dir.mkdir(parents=True, exist_ok=True)
     with ExitStack() as stack:
         if not lock_launcher(stack, log_dir / f"{preferred_backend}-{args.frontend_port}.lock"):
+            if frontend_ready(frontend_url, data_dir):
+                require_current_backend(frontend_url + "/api")
             print(f"启动器已在另一个窗口运行。工作台：{frontend_url}")
             if not args.no_browser and frontend_ready(frontend_url, data_dir):
                 webbrowser.open(frontend_url)
@@ -305,10 +319,22 @@ def main() -> int:
             if not webbrowser.open(frontend_url):
                 print("未能自动打开浏览器，请手动打开上方地址。")
         deadline = time.monotonic() + args.run_seconds if args.run_seconds else None
+        from codeinsight.runtime_version import current_revision
+
+        started_revision = current_revision()
+        warned_restart = False
+        next_check = time.monotonic() + 5
         while processes and (deadline is None or time.monotonic() < deadline):
             for process in processes:
                 if process.poll() is not None:
                     raise RuntimeError(f"服务意外退出，请查看日志：{log_dir}")
+            if not warned_restart and time.monotonic() >= next_check:
+                next_check = time.monotonic() + 5
+                if current_revision() != started_revision:
+                    print(
+                        "\n后端代码已更新。当前回答不会自动中断；完成后请按 Ctrl+C，再重新运行启动器加载新版。"
+                    )
+                    warned_restart = True
             time.sleep(0.3)
     return 0
 

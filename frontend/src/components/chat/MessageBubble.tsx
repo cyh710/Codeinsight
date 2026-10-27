@@ -80,7 +80,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
     if (related && message.exploration && pid !== null && message.requestId) openRelated(target, pid, cid, message.requestId)
     else workbenchStore.getState().openKnowledge(target)
   }
-  const onOpenCitation = (citation: Citation) => originalOpen({ ...citation, head_commit: message.sourceHeadCommit ?? citation.head_commit })
+  const onOpenCitation = (citation: Citation) => originalOpen({ ...citation, head_commit: message.sourceHeadCommit ?? citation.head_commit, index_epoch: citation.index_epoch ?? message.evidenceReview?.source_version?.index_epoch })
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
@@ -127,7 +127,8 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
             citationHref={citation => {
               if (pid === null) return undefined
               const version = message.sourceHeadCommit ?? citation.head_commit
-              const material = { mode: 'file', path: citation.path, lineno: citation.lineno, ...(version ? { version } : {}) }
+              const epoch = citation.index_epoch ?? message.evidenceReview?.source_version?.index_epoch
+              const material = { mode: 'file', path: citation.path, lineno: citation.lineno, ...(version ? { version } : {}), ...(epoch == null ? {} : { indexEpoch: epoch }) }
               return `/?${new URLSearchParams({ project: String(pid), conversation: cid, view: 'chat', material: JSON.stringify(material) })}`
             }}
             onKnowledge={openKnowledge}

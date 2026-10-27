@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import hashlib
 import sqlite3
-from pathlib import Path
 from typing import Any
 
-from codeinsight.cognitive.indexing.scanner import read_blobs
+from codeinsight.cognitive.indexing.source_store import SourceError, read_source
 
 
 class SelectionError(ValueError):
@@ -50,12 +48,18 @@ def code_selection(
         or raw.get("content_sha256") != row["content_sha256"]
     ):
         raise SelectionError("代码版本已更新，请重新打开后选择。", "stale")
+    if raw.get("index_epoch") is not None:
+        epoch = conn.execute(
+            "SELECT index_epoch FROM repo_state WHERE project_id=?", (project_id,)
+        ).fetchone()
+        if epoch is None or epoch[0] != raw["index_epoch"]:
+            raise SelectionError("选区来自旧索引，请打开当前版本后重新选择。", "stale")
     try:
-        blob = read_blobs(Path(row["root_path"]), row["head_commit"], [raw["path"]])[raw["path"]]
-    except (OSError, ValueError, KeyError) as exc:
-        raise SelectionError("无法读取选中的源码快照。", "not_found") from exc
-    if hashlib.sha256(blob).hexdigest() != raw["content_sha256"]:
-        raise SelectionError("源码与索引版本不一致。", "stale")
+        blob = read_source(conn, project_id, raw["path"], expected_sha=raw["content_sha256"]).raw
+    except SourceError as exc:
+        raise SelectionError(
+            str(exc), "stale" if exc.code == "stale_source" else "not_found"
+        ) from exc
     lines = blob.decode("utf-8", "replace").splitlines()
     start, end = raw.get("lineno"), raw.get("end_lineno")
     if (

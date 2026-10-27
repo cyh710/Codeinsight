@@ -37,6 +37,7 @@ def test_default_backend_reuses_matching_service_without_starting_another(
     select = runpy.run_path(str(LAUNCHER))["select_backend_port"]
     monkeypatch.setitem(select.__globals__, "port_busy", lambda port: port in (8020, 8021))
     monkeypatch.setitem(select.__globals__, "backend_ready", lambda url, _: url.endswith(":8021"))
+    monkeypatch.setitem(select.__globals__, "require_current_backend", lambda _: None)
     assert select(8020, tmp_path, automatic=True) == (8021, True)
 
 
@@ -46,6 +47,26 @@ def test_backend_fallback_stops_after_bounded_range(tmp_path: Path, monkeypatch)
     monkeypatch.setitem(select.__globals__, "backend_ready", lambda *_: False)
     with pytest.raises(RuntimeError, match="未找到"):
         select(8020, tmp_path, automatic=True)
+
+
+def test_old_or_unknown_runtime_requires_restart_without_reusing_or_killing(tmp_path, monkeypatch):
+    require = runpy.run_path(str(LAUNCHER))["require_current_backend"]
+    from codeinsight.runtime_version import current_revision
+
+    for info in (
+        {},
+        {"runtime_revision": "old"},
+        {"runtime_revision": current_revision(), "restart_required": True},
+    ):
+        monkeypatch.setitem(require.__globals__, "read_json", lambda _, info=info: info)
+        with pytest.raises(RuntimeError, match="重启|停止旧服务"):
+            require("http://127.0.0.1:1")
+    monkeypatch.setitem(
+        require.__globals__,
+        "read_json",
+        lambda _: {"runtime_revision": current_revision(), "restart_required": False},
+    )
+    require("http://127.0.0.1:1")
 
 
 @contextmanager

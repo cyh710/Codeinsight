@@ -54,6 +54,7 @@ from codeinsight.cognitive.indexing.indexer import (
     _write_flows,
 )
 from codeinsight.cognitive.indexing.scanner import list_repo_files, module_qualname, read_blobs
+from codeinsight.cognitive.indexing.source_store import preserve_index, register_source, store_bytes
 from codeinsight.cognitive.indexing.symbols import (
     SymbolIndex,
     sha256_text,
@@ -146,6 +147,7 @@ def run_incremental(
         return _stats(conn, project_id, plan, changes=[])
 
     files_now = {f.path: f for f in list_repo_files(root, ref=ref)}
+    preserve_index(conn, project_id)
     touched = [p for p in (*plan.added, *plan.modified) if p in files_now]
 
     # **必须最先取**：删符号会 CASCADE 掉 design_decision_evidence，
@@ -175,6 +177,8 @@ def run_incremental(
             skipped += 1
             continue
         digest = hashlib.sha256(raw).hexdigest()
+        store_bytes(conn, raw)
+        register_source(conn, project_id, path, digest)
         line_count = raw.count(b"\n") + (1 if raw and not raw.endswith(b"\n") else 0)
         file_id = _upsert_file(conn, project_id, repo_file, digest, line_count)
 
@@ -329,6 +333,12 @@ def run_incremental(
         """,
         (project_id, plan.new_commit, plan.branch, PARSER_VERSION, next_epoch),
     )
+    conn.execute(
+        "INSERT OR IGNORE INTO file_snapshot(project_id,commit_sha,path,content_sha256) "
+        "SELECT project_id,?,path,content_sha256 FROM file WHERE project_id=?",
+        (f"epoch:{next_epoch}", project_id),
+    )
+
     conn.commit()
 
     stats = _stats(conn, project_id, plan, changes=symbol_changes)

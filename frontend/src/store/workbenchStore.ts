@@ -11,7 +11,7 @@ export function panelKey(panel: RightPanel): string { return JSON.stringify(pane
 export function materialKey(panel: RightPanel): string {
   if (panel.mode === 'exploration') return `exploration:${panel.projectId}:${panel.conversationId}:${panel.requestId}:${panel.target.topic_id}:${panel.target.section_id}:${panel.target.version}`
   if (panel.mode === 'knowledge') return `knowledge:${panel.target.topic_id}:${panel.target.version}`
-  if (panel.mode === 'file') return `file:${panel.path}:${panel.version ?? ''}`
+  if (panel.mode === 'file') return `file:${panel.path}:${panel.version ?? ''}${panel.indexEpoch === undefined ? '' : `:epoch:${panel.indexEpoch}`}`
   if (panel.mode === 'symbol') return `symbol:${panel.qualname}:${panel.version ?? ''}`
   if (panel.mode === 'concept') return `concept:${panel.conceptId}`
   return panelKey(panel)
@@ -69,9 +69,19 @@ const workspace = hotState(import.meta.hot, 'workspace', () => {
       ...empty(),
       setDirectoryQuery: directoryQuery => set({ directoryQuery }),
       setIndexVersion: indexVersion => set({ indexVersion }),
+      bindFileVersion: (path, lineno, version, indexEpoch) => {
+        const s = get(), panel = s.rightPanel
+        if (panel.mode !== 'file' || panel.path !== path || panel.lineno !== lineno || panel.indexEpoch !== undefined || indexEpoch === undefined) return
+        const resolved: RightPanel = { ...panel, ...(version ? { version } : {}), indexEpoch }
+        const oldId = materialKey(panel), id = materialKey(resolved)
+        set({ rightPanel: resolved, activeTab: id,
+          tabs: s.tabs.filter(t => t.id !== id || t.id === oldId).map(t => t.id === oldId ? { ...t, id, panel: resolved } : t),
+          history: s.history.map(h => panelKey(h.panel) === panelKey(panel) ? { ...h, panel: resolved } : h),
+          scrollPositions: { ...s.scrollPositions, [panelKey(resolved)]: s.scrollPositions[panelKey(panel)] ?? 0 } })
+      },
       setChatScroll: chatScroll => set({ chatScroll }),
       saveCodePosition: (key, value) => set(s => ({ codePositions: { ...s.codePositions, [key]: value } })),
-      selectFile: (path, lineno = 1, version = get().indexVersion) => navigate({ mode: 'file', path, lineno, ...(version ? { version } : {}) }, path),
+      selectFile: (path, lineno = 1, version = get().indexVersion, indexEpoch) => navigate({ mode: 'file', path, lineno, ...(version ? { version } : {}), ...(indexEpoch === undefined ? {} : { indexEpoch }) }, path),
       selectSymbol: (qualname, path, lineno, version = get().indexVersion) => navigate({ mode: 'symbol', qualname, lineno, ...(version ? { version } : {}) }, path),
       openConcept: conceptId => navigate({ mode: 'concept', conceptId }),
       openMaterial: panel => navigate(panel, panel.mode === 'file' ? panel.path : get().selectedPath),
