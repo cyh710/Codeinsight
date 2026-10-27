@@ -180,7 +180,7 @@ class Answer:
     abstained: bool = False
     abstention_reason: str = ""
     incomplete: bool = False
-    """走满轮次/调用上限仍未收尾——明确说「没做完」，不硬编答案。"""
+    """尚未生成完整最终答案；包括显式轮次限额或模型空输出，不硬编答案。"""
 
     evidence: list[dict[str, Any]] = field(default_factory=list)
     """本回合检索到的证据（`chunk_id` / 路径 / 分数 / 命中通道），前端右栏用。"""

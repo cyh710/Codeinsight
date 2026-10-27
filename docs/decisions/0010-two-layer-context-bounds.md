@@ -30,7 +30,7 @@
 | 模型 | `max_context_bytes` | 64,000 | 单轮序列化上下文**总**上限 |
 | 模型 | `max_context_message_bytes` | 24,000 | 单条模型消息上限 |
 | 模型 | `max_tool_calls_per_turn` | 16 | 每轮工具调用次数 |
-| 模型 | `max_model_turns` | 10 | 每轮模型循环次数 |
+| 模型 | `max_model_turns` | 0 | 默认不限总轮次，正数主动限额（请求 0020 / ADR 0037 修订） |
 
 加上织忆那边验证过的两个：单工具结果 12,000、单组工具调用 32,000。
 

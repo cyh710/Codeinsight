@@ -31,6 +31,7 @@ export type SseHandler = (event: SseEvent) => void
 export async function readSseBody(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   onEvent: SseHandler,
+  onActivity?: () => void,
 ): Promise<void> {
   const decoder = new TextDecoder()
   let buffer = ''
@@ -54,6 +55,7 @@ export async function readSseBody(
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
+    if (value.byteLength) onActivity?.()
     buffer += decoder.decode(value, { stream: true })
     const lines = buffer.split('\n')
     buffer = lines.pop() ?? ''
@@ -117,7 +119,7 @@ export async function streamQuery(
       touch()
       if (event.event === 'done') completed = true
       onEvent(event)
-    })
+    }, touch)
     return completed ? { aborted: false } : { aborted: true, error: { code: 'network', title: '连接提前结束', hint: '这次回答未完成；已收到的内容保留，可以恢复问题后重试。' } }
   } catch (e) {
     const err = e as Error

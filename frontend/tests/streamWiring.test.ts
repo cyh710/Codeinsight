@@ -17,9 +17,68 @@ const FULL_STREAM = [
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
+function controlledStream() {
+  let wire!: ReadableStreamDefaultController<Uint8Array>
+  let signal!: AbortSignal
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((_url, init) => {
+    signal = init.signal
+    const body = new ReadableStream<Uint8Array>({ start(controller) {
+      wire = controller
+      signal.addEventListener('abort', () => controller.error(new DOMException('Aborted', 'AbortError')), { once: true })
+    } })
+    return Promise.resolve({ ok: true, status: 200, body })
+  }))
+  return {
+    write: (text: string) => wire.enqueue(new TextEncoder().encode(text)),
+    close: () => wire.close(),
+    aborted: () => signal.aborted,
+  }
+}
+
 describe('streamQuery 接线', () => {
+  it('90 秒无正文但持续收到心跳时连接保持，心跳不生成消息', async () => {
+    vi.useFakeTimers()
+    const wire = controlledStream(), names: string[] = []
+    const pending = streamQuery({ project_id: 1, question: '分析策略与成绩' }, event => names.push(event.event))
+    await vi.advanceTimersByTimeAsync(0)
+    wire.write(FULL_STREAM[0])
+    for (let i = 0; i < 6; i++) {
+      await vi.advanceTimersByTimeAsync(15_000)
+      wire.write(': keep-alive\n\n')
+      await vi.advanceTimersByTimeAsync(0)
+      expect(wire.aborted()).toBe(false)
+    }
+    wire.write(FULL_STREAM[4] + FULL_STREAM[5]); wire.close()
+    expect(await pending).toEqual({ aborted: false })
+    expect(names).toEqual(['meta', 'answer', 'done'])
+  })
+
+  it('连接真正静默时仍结束并返回可恢复的错误', async () => {
+    vi.useFakeTimers()
+    const wire = controlledStream()
+    const pending = streamQuery({ project_id: 1, question: 'q' }, () => {})
+    await vi.advanceTimersByTimeAsync(0)
+    wire.write(FULL_STREAM[0])
+    await vi.advanceTimersByTimeAsync(35_001)
+    const result = await pending
+    expect(result.aborted).toBe(true)
+    expect(result.error?.code).toBe('timeout')
+  })
+
+  it('持续收到心跳时用户仍可主动停止', async () => {
+    vi.useFakeTimers()
+    const wire = controlledStream(), controller = new AbortController()
+    const pending = streamQuery({ project_id: 1, question: 'q' }, () => {}, controller.signal)
+    await vi.advanceTimersByTimeAsync(0)
+    wire.write(': keep-alive\n\n')
+    await vi.advanceTimersByTimeAsync(0)
+    controller.abort()
+    expect(await pending).toEqual({ aborted: true })
+  })
+
   it('完整流：事件按序送达，正常收尾 aborted=false', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(sseResponse(FULL_STREAM)))
     const names: string[] = []

@@ -33,6 +33,7 @@ from codeinsight.storage.conversations import ConversationRepository, Persistent
 from codeinsight.storage.sqlite import db_path
 
 router = APIRouter(tags=["query"])
+_HEARTBEAT_INTERVAL_S = 15.0
 
 _PROVIDER_FACTORY: Callable[[], Any] | None = None
 """测试注入点：默认按 `.env` 建 provider；测试里换成脚本化的假模型。
@@ -330,7 +331,12 @@ async def query_stream(body: QueryBody) -> StreamingResponse:
     async def frames():
         try:
             while True:
-                event = await queue.get()
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=_HEARTBEAT_INTERVAL_S)
+                except TimeoutError:
+                    # 只证明连接仍在；不伪造工具进度，也不写进对话或账本。
+                    yield ": keep-alive\n\n"
+                    continue
                 if event is None:
                     break
                 yield _sse(event)

@@ -235,7 +235,7 @@ def db_path(data_dir, name="codeinsight.db") -> Path
 | 模型 | `max_context_bytes` | 64,000 |
 | 模型 | `max_context_message_bytes` | 24,000 |
 | 模型 | `max_tool_calls_per_turn` | 16 |
-| 模型 | `max_model_turns` | 10 |
+| 模型 | `max_model_turns` | 0（默认不限总轮次，正数主动限额） |
 
 **约定**：截断用**同一个对象**写"事件记录"与"模型上下文"，
 保证账本和模型看到的永远一致（源文档 §3.1 第四层末句的精神）。

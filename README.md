@@ -146,7 +146,7 @@ git tree ──▶ 解析(ast) ──▶ 符号/边/块 ──▶ SQLite(FTS5 + 
                    概念检测(B 线本体)         四路检索 + RRF
                               └────────┬──────────┘
                                        ▼
-                       Agent Runtime（≤10 轮 · 有界上下文 · 工具循环）
+                       Agent Runtime（持续分析 · 有界上下文 · 工具循环）
                           │ 事实校验：引用必须命中本回合读过的位置
                           ├──▶ SSE（/query/stream）──▶ React 工作台
                           └──▶ MCP（stdio）──────────▶ Claude Code / Codex

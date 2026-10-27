@@ -36,6 +36,23 @@ class BrowserProvider:
         recent = messages[
             next(i for i in range(len(messages) - 1, -1, -1) if messages[i]["role"] == "user") :
         ]
+        if "__fixture_long_analysis__" in original_question:
+            count = sum(message["role"] == "tool" for message in recent)
+            if count < 12:
+                yield StreamChunk(
+                    tool_calls=[
+                        ToolCall(
+                            f"long-read-{count}",
+                            "read_file",
+                            {"path": "store.py", "start_line": 1, "end_line": 6},
+                        )
+                    ]
+                )
+            else:
+                yield StreamChunk(
+                    text="核对已完成：保存操作从 save 进入。 [store.py:3]", finish_reason="stop"
+                )
+            return
         if "__fixture_review_unchecked__" in original_question:
             yield StreamChunk(text="先把它想成一个收件窗口，具体实现还需要核对。")
             await asyncio.sleep(0.3)

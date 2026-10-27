@@ -1,0 +1,26 @@
+import { expect, test } from '@playwright/test'
+
+test('真实运行时超过旧十轮后生成带来源答案，并可刷新恢复', async ({ page, request }) => {
+  const conversation = await (await request.post('/api/projects/1/conversations')).json()
+  await page.addInitScript(cid => {
+    localStorage.setItem('ci.projectId', '1')
+    localStorage.setItem('ci.activeConversation.1', cid)
+  }, conversation.id)
+  await page.goto('/')
+  const input = page.locator('.wb-center textarea')
+  await expect(input).toBeEnabled()
+  await input.fill('我想了解已有策略和成绩 __fixture_long_analysis__')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+  await expect(page.locator('.assistant-answer')).toContainText('核对已完成')
+  await expect(page.getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0)
+  const response = await request.get(`/api/projects/1/conversations/${conversation.id}/turns`)
+  const turn = (await response.json()).items.at(-1)
+  expect(turn.answer.tools_used).toEqual(['read_file'])
+  expect(turn.answer.tools).toHaveLength(12)
+  expect(turn.answer.incomplete).toBe(false)
+  expect(turn.answer.citations[0].path).toBe('store.py')
+  expect(turn.status).toBe('completed')
+  await page.reload()
+  await expect(page.locator('.assistant-answer')).toContainText('核对已完成')
+  await expect(page.locator('.assistant-answer')).not.toContainText('模型轮次达到上限')
+})

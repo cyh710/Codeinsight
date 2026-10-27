@@ -271,11 +271,11 @@ class AgentRuntime:
                   provider: LLMProvider, registry: ToolRegistry) -> Answer
 ```
 
-- 循环 ≤ `max_model_turns`（10）；每轮**重新装配上下文**。
+- 总轮次默认不限（请求 0020；`max_model_turns=0`），每轮**重新装配上下文**。
 - 上下文装配：目标（钉在原始位置）+ 最近 N 个完整交互组 + 工具目录（作为独立参数，不进 messages）。
 - 工具结果**先落 `agent_event`，再由装配折回 messages**——同一份对象（ADR 0010）。
 - 无 tool_calls → 生成 `Answer`（facts/inferences 分离，ADR 0007）。
-- 走满 turn 上限 → 返回"未完成"，**不硬编答案**。
+- 正数轮次上限仅在调用方主动配置时生效；空输出或主动限额仍如实返回“未完成”。
 - 检索无命中 → `abstained=True` + 原因，**不允许编造 `file:line`**。
 
 #### A13 12 个只读工具（`agent/tools_*.py`）

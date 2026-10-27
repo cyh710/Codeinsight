@@ -2,8 +2,8 @@
 
 循环很短，但它要同时守住四件事：
 
-1. **有界**：≤10 次模型轮次、每轮 ≤16 次工具调用、两层字节预算
-   （`context.py`）。超了就明确说「没做完」，不硬编答案。
+1. **上下文有界**：每轮 ≤16 次工具调用、两层字节预算（`context.py`）；
+   总轮次默认不限，持续到模型完成、用户停止或真实错误。
 2. **可追溯**：每条证据都进 grounded 集合；对不上的 `file:line` 标为未核实，
    不授予跳转或事实资格；原文与可读解释仍保留（请求 0013）。
 3. **可复现**：每一步先落 `agent_event`，再由同一份记录折回 messages。
@@ -54,7 +54,7 @@ class RuntimeEvent:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    max_model_turns: int = 10
+    max_model_turns: int = 0
     max_tool_calls_per_turn: int = 16
     max_tokens: int = 2000
     temperature: float = 0.0
@@ -338,7 +338,9 @@ class AgentRuntime:
                     ),
                 ),
             )
-            for _turn in range(self.config.max_model_turns):
+            turn = 0
+            while self.config.max_model_turns <= 0 or turn < self.config.max_model_turns:
+                turn += 1
                 messages, _dropped = assemble(prior, current, goal, self.budget)
                 if (
                     note
@@ -393,7 +395,11 @@ class AgentRuntime:
             if not final_text:
                 answer.incomplete = True
                 final_text = (
-                    "这个问题在允许的轮次内没有分析完。可以把问题缩小到具体模块或符号再问。"
+                    "本次运行主动配置了模型轮次上限，分析尚未完成。"
+                    if self.config.max_model_turns > 0
+                    and turn >= self.config.max_model_turns
+                    and calls
+                    else "模型没有返回可显示的最终答案。查阅过程已保留，可以恢复问题后重试。"
                 )
 
             split = split_answer(final_text, grounding, preserve_invalid=True)

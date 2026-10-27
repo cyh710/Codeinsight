@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     max_context_bytes: int = 64_000  # 模型层
     max_context_message_bytes: int = 24_000
     max_tool_calls_per_turn: int = 16
-    max_model_turns: int = 10
+    max_model_turns: int = 0  # 0 表示不限总轮次；正数仅用于主动启用的限额。
 
     # ── 编排执行（请求 0018 / ADR 0035）────────────────────
     executor: str = "claude-code"

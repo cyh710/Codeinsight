@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 
 import pytest
@@ -191,6 +192,8 @@ def _parse_sse(text: str) -> list[tuple[str, dict]]:
     frames = []
     for block in text.strip().split("\n\n"):
         lines = block.splitlines()
+        if not any(line.startswith("event: ") for line in lines):
+            continue
         event = next(line[len("event: ") :] for line in lines if line.startswith("event: "))
         data = next(line[len("data: ") :] for line in lines if line.startswith("data: "))
         frames.append((event, json.loads(data)))
@@ -223,3 +226,26 @@ def test_stream_data_is_single_line_json(client, fake) -> None:
     for block in text.strip().split("\n\n"):
         data_lines = [line for line in block.splitlines() if line.startswith("data: ")]
         assert len(data_lines) == 1
+
+
+def test_stream_heartbeat_preserves_event_order_and_is_not_saved(
+    client, fake, monkeypatch, data_dir
+):
+    class DelayedRuntime(FakeRuntime):
+        async def run(self, *, emit, **kwargs):
+            await emit(self.events[0])
+            await asyncio.sleep(0.04)
+            for event in self.events[1:]:
+                await emit(event)
+            return self.answer
+
+    fake.runtime = DelayedRuntime(_events(), _answer())
+    monkeypatch.setattr(query_module, "_HEARTBEAT_INTERVAL_S", 0.005)
+    response = client.post("/query/stream", json={"project_id": 1, "question": "持续分析"})
+    assert ": keep-alive\n\n" in response.text
+    names = [name for name, _ in _parse_sse(response.text)]
+    assert names == [event.type for event in _events()]
+    assert fake.closed
+    with open_sqlite(db_path(data_dir)) as conn:
+        stored = conn.execute("SELECT answer_json FROM conversation_turn").fetchone()[0]
+        assert "keep-alive" not in stored

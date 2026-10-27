@@ -267,7 +267,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
             role="status"
           >
             <Hourglass size={12} strokeWidth={1.8} className="mt-0.5 shrink-0" />
-            回答未完成——模型轮次达到上限。已有的内容仍然可用；继续追问或换个问法可以推进。
+            回答尚未完成，已有内容和查阅过程已保留。可以恢复问题后重试。
           </p>
         )}
       </div>

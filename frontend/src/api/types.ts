@@ -596,7 +596,7 @@ export interface QueryResponse extends KnowledgeAnswerMetadata, AnswerEvidenceMe
   tools_used: string[]
   abstained: boolean
   abstention_reason: string
-  /** 走满轮次/工具上限仍未收尾。true 时要提示「没分析完」，不能当成正常答案。 */
+  /** 尚未生成完整最终答案，不能当成正常完成；包括显式轮次限额或模型空输出。 */
   incomplete: boolean
   evidence: Evidence[]
   /** 编排执行元数据（契约 §16.2）。仅识别为开发任务时有值。 */
@@ -647,7 +647,7 @@ export interface SseAnswerEvent extends KnowledgeAnswerMetadata, AnswerEvidenceM
   citations: Citation[]
   abstained: boolean
   reason: string
-  /** 未收尾（轮次/工具上限）。与 abstained 是两回事。 */
+  /** 尚未生成完整最终答案；与 abstained 是两回事。 */
   incomplete: boolean
   /** 编排执行元数据（契约 §16.2）。仅识别为开发任务时有值。 */
   execution?: ExecutionMetadata | null
