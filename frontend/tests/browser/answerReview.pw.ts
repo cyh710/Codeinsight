@@ -17,7 +17,7 @@ test('无依据回答在流结束、刷新后仍完整可读，原文可查看�
   await expect(page.getByRole('button', { name: '停止生成', exact: true })).toHaveCount(0)
   await expect(answer).toContainText('本轮尚未取得有效代码引用')
   await expect(answer).toContainText('未核实位置：ghost.py:99')
-  await expect(answer.getByRole('button', { name: '[1]', exact: true })).toHaveCount(0)
+  await expect(answer.locator('.reply-citation')).toHaveCount(0)
   await answer.getByText('来源与核查', { exact: true }).click()
   await answer.getByText('核查与生成原文', { exact: true }).click()
   await expect(answer.locator('pre')).toContainText('[ghost.py:99]')

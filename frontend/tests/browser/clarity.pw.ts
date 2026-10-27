@@ -47,7 +47,7 @@ test('辅助信息统一展开，局部教材和新来源提示在窄屏仍可�
   const answer = page.locator('.assistant-answer').last()
   await expect(answer.getByText('来源与核查', { exact: true })).toBeVisible()
   await expect(answer.getByText('代码事实 · 2 条', { exact: true })).toBeHidden()
-  await answer.getByRole('button', { name: '[1]', exact: true }).click()
+  await answer.locator('.reply-citation').first().click()
   await expect(page.locator('#workspace-materials').getByRole('spinbutton', { name: '跳到行号', exact: true })).toBeVisible()
   await expect(page.locator('#workspace-materials .monaco-editor')).toBeVisible()
   await page.screenshot({ path: resolve('..', '.ci/browser/clarity-answer.png'), animations: 'disabled' })

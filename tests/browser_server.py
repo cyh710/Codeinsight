@@ -36,6 +36,40 @@ class BrowserProvider:
         recent = messages[
             next(i for i in range(len(messages) - 1, -1, -1) if messages[i]["role"] == "user") :
         ]
+        if "__fixture_reply_rendering__" in original_question:
+            path = "wattbot-nlp/src/dense/hybrid.py"
+            if not any(message["role"] == "tool" for message in recent):
+                yield StreamChunk(
+                    tool_calls=[
+                        ToolCall(
+                            "render-read",
+                            "read_file",
+                            {
+                                "path": path,
+                                "start_line": 19,
+                                "end_line": 23,
+                            },
+                        )
+                    ]
+                )
+            else:
+                yield StreamChunk(
+                    text=(
+                        "## 先看一次查询怎样流动\n\n"
+                        "这个演示函数先拆分问题，再按分数排序。"
+                        f" [{path}:19-23]\n\n"
+                        "它把一次查询拆成三个动作：\n\n"
+                        "1. 读取输入，把文本分成词。\n2. 组装两组演示分数。\n3. 按分数排序并返回名称。\n\n"
+                        "### 输入和输出放在一起看\n\n"
+                        "| 步骤 | 输入 | 输出 |\n|---|---|---|\n"
+                        "| 拆分 | 保存 结果 | 两个词 |\n| 排序 | 演示分数 | 名称列表 |\n\n"
+                        "下面这段代码可以逐行阅读：\n\n"
+                        '```python\nquery = "保存 结果"\nterms = query.split()\nprint(terms)\n```\n\n'
+                        "> 这些分数只用来演示数据流动，不是检索性能成绩。"
+                    ),
+                    finish_reason="stop",
+                )
+            return
         if "__fixture_preserve_body__" in original_question:
             if not any(message["role"] == "tool" for message in recent):
                 yield StreamChunk(
@@ -249,6 +283,19 @@ def main() -> None:
             )
             (root / "large.py").write_text(
                 "# 分页阅读夹具\n" * 450 + 'message = "中文😀"\n', encoding="utf-8"
+            )
+            nested = root / "wattbot-nlp/src/dense/hybrid.py"
+            nested.parent.mkdir(parents=True)
+            nested.write_text(
+                "# 引用跳转夹具\n" * 18
+                + (
+                    "def hybrid_search(query):\n"
+                    "    terms = query.split()\n"
+                    "    scores = {'bm25': len(terms), 'dense': 0.8}\n"
+                    "    ranking = sorted(scores, key=scores.get, reverse=True)\n"
+                    "    return ranking\n"
+                ),
+                encoding="utf-8",
             )
             subprocess.run(["git", "init", str(root)], check=True, capture_output=True)
             subprocess.run(["git", "-C", str(root), "add", "."], check=True, capture_output=True)

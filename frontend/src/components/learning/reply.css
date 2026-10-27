@@ -1,0 +1,72 @@
+/* 回答以连续正文为主，教材保留原排版与选区映射。 */
+.learning-prose--answer {
+  font-size: 16px;
+  line-height: 1.85;
+  color: #273444;
+  letter-spacing: 0.01em;
+}
+
+.learning-prose--answer :where(p, ul, ol, blockquote) { margin-block: 0.95em; }
+.learning-prose--answer :where(h1, h2, h3, h4) {
+  color: #182432;
+  line-height: 1.45;
+  font-weight: 620;
+  letter-spacing: -0.015em;
+  margin-block: 1.65em 0.65em;
+}
+.learning-prose--answer h1 { font-size: 1.6em; }
+.learning-prose--answer h2 { font-size: 1.3em; }
+.learning-prose--answer h3 { font-size: 1.12em; }
+.learning-prose--answer strong { font-weight: 620; color: #1c2939; }
+.learning-prose--answer li { margin-block: 0.45em; padding-inline-start: 0.15em; }
+.learning-prose--answer li > :where(ul, ol) { margin-block: 0.35em; }
+.learning-prose--answer li::marker { color: #657487; }
+.learning-prose--answer :not(pre) > code {
+  padding: 0.16em 0.38em;
+  border-radius: 5px;
+  background: #f0f2f5;
+  color: #334155;
+  font-size: 0.86em;
+}
+.learning-prose--answer blockquote {
+  border-color: #cbd5e1;
+  border-radius: 0;
+  background: transparent;
+  padding: 2px 0 2px 16px;
+  color: #657487;
+}
+.learning-prose--answer table { font-size: 14px; margin: 0; }
+.learning-prose--answer :where(th, td) {
+  border: 0;
+  border-bottom: 1px solid #e7ebef;
+  padding: 10px 14px;
+  line-height: 1.75;
+}
+.learning-prose--answer th { background: transparent; font-weight: 600; color: #243244; }
+.learning-prose--answer td { vertical-align: top; }
+.learning-prose--answer hr { border-color: #e7ebef; margin-block: 1.6em; }
+.learning-prose--answer .reply-citation {
+  display: inline;
+  color: var(--color-accent);
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.84em;
+  font-weight: 500;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  text-underline-offset: 3px;
+  margin-inline: 0.15em;
+}
+.learning-prose--answer .reply-citation:hover { text-decoration-color: currentColor; }
+.reply-code-block { min-width: 0; margin-block: 1.15em; border-radius: 12px; overflow: hidden; background: #f6f8fa; }
+.reply-code-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px 0; color: #687689; font: 12px/1.6 'Cascadia Code', 'Consolas', monospace; }
+.reply-code-toolbar button { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 2px 5px; margin-right: -5px; border-radius: 5px; font-family: inherit; cursor: pointer; }
+.reply-code-toolbar button:hover { color: #243244; background: #e9edf2; }
+.reply-code-toolbar button:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.learning-prose--answer .reply-code-block pre { margin: 0; padding: 9px 16px 16px; border-radius: 0; background: transparent; line-height: 1.7; }
+.learning-prose--answer .reply-code-block pre code { font-size: 13.5px; letter-spacing: 0; }
+@media (max-width: 600px) {
+  .learning-prose--answer { font-size: 15px; line-height: 1.85; }
+  .learning-prose--answer :where(th, td) { padding: 8px 10px; }
+}

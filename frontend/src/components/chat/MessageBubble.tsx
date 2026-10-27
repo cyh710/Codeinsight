@@ -177,11 +177,18 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
           className={`text-sm leading-relaxed text-slate-800 ${message.streaming ? 'reply-text-in' : settled ? 'reply-settled' : ''}`}
         >
           <LearningMarkdown
+            variant="answer"
             text={message.text}
             targets={message.learningTargets}
             streaming={message.streaming}
-            citations={message.exploration ? message.citations : undefined}
+            citations={message.citations}
             onCitation={onOpenCitation}
+            citationHref={citation => {
+              if (pid === null) return undefined
+              const version = message.sourceHeadCommit ?? citation.head_commit
+              const material = { mode: 'file', path: citation.path, lineno: citation.lineno, ...(version ? { version } : {}) }
+              return `/?${new URLSearchParams({ project: String(pid), conversation: cid, view: 'chat', material: JSON.stringify(material) })}`
+            }}
             onKnowledge={message.exploration && message.citations?.length && pid !== null && message.requestId ? target => openRelated(target, pid, cid, message.requestId) : undefined}
           />
           {message.streaming && (
