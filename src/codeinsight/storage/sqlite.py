@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 BUSY_TIMEOUT_MS = 5_000
@@ -84,7 +85,8 @@ def apply_schema(conn: sqlite3.Connection) -> None:
     schema.sql 里全部是 `IF NOT EXISTS`，所以重复执行安全。
     FTS5 虚表和触发器也在里面，增量更新时不需要额外维护。
 
-    **只建对象，不改已有对象**——它不是迁移函数。
+    项目身份高水位也会在脚本中幂等初始化，因此此函数需要写锁，不能用于普通读取。
+    **只建对象，不改已有列**——它不是迁移函数。
     版本不一致时走 `ensure_schema()`。
     """
     conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
@@ -98,22 +100,22 @@ def ensure_schema(path: str | Path) -> str:
 
     升级是**原地**的：跑 `MIGRATIONS` 里的 SQL，再补建新表，最后更新 `user_version`。
     已有的索引数据（符号、边、块）不会丢——schema 演进不该让用户重新索引一次。
+    当前版本只读校验，不补建对象；新增索引或触发器也必须通过版本升级交付。
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     if not path.exists():
-        with open_sqlite(path) as conn:
+        with closing(open_sqlite(path)) as conn, conn:
             apply_schema(conn)
             conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
             conn.commit()
         return "created"
 
-    with open_sqlite(path) as conn:
+    with closing(open_sqlite(path)) as conn, conn:
         version = conn.execute("PRAGMA user_version").fetchone()[0]
         if version == SCHEMA_VERSION:
-            # 已是当前版：再跑一遍 apply_schema 补上新增的索引/触发器（幂等）。
-            apply_schema(conn)
+            # 正常 GET 只核对版本，避免初始化脚本的 UPSERT 与索引争抢写锁。
             return "current"
 
         if version > SCHEMA_VERSION:

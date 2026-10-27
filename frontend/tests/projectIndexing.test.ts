@@ -29,6 +29,41 @@ beforeEach(() => {
 })
 
 describe('索引任务反馈', () => {
+  it('暂时失败后同一次检查恢复，清除旧警告并同步最新详情', async () => {
+    mocks.poll.mockImplementationOnce(async (_get, _id, options) => {
+      options.onError(new TypeError('离线'))
+      expect(projectStore.getState().indexActivities[1].phase).toBe('unavailable')
+      expect(projectStore.getState().indexActivities[1].message).toContain('自动重试')
+      options.onTick(detail())
+      expect(projectStore.getState().currentDetail?.status).toBe('ready')
+      expect(projectStore.getState().indexActivities[1].message).toBeUndefined()
+      return detail()
+    })
+    await projectStore.getState().importProject('/repo')
+    await vi.waitFor(() => expect(projectStore.getState().indexActivities[1].phase).toBe('ready'))
+    expect(mocks.poll).toHaveBeenCalledTimes(1)
+    expect(mocks.create).toHaveBeenCalledTimes(1)
+  })
+
+  it('关闭不可读提示会取消重试，迟到结果不恢复提示或覆盖其他项目', async () => {
+    let finish!: (value: ProjectDetail) => void
+    let signal!: AbortSignal
+    mocks.poll.mockImplementationOnce((_get, _id, options) => {
+      signal = options.signal
+      options.onError(new TypeError('离线'))
+      return new Promise<ProjectDetail>(resolve => { finish = resolve })
+    })
+    await projectStore.getState().importProject('/repo')
+    projectStore.getState().dismissIndexActivity(1)
+    expect(signal.aborted).toBe(true)
+    projectStore.setState({ currentProjectId: 2, currentDetail: detail('ready', 2) })
+    finish(detail())
+    await Promise.resolve()
+    expect(projectStore.getState().indexActivities[1]).toBeUndefined()
+    expect(projectStore.getState().currentDetail?.id).toBe(2)
+    expect(mocks.files).not.toHaveBeenCalled()
+  })
+
   it('受理后立即显示运行状态，完成同步后显示真实计数，并可关闭', async () => {
     let finish!: (value: ProjectDetail) => void
     mocks.poll.mockReturnValue(new Promise<ProjectDetail>(resolve => { finish = resolve }))

@@ -262,6 +262,9 @@ function NodeRow({ node, depth, symbolsByPath, searching }: {
 export default function LeftPanel() {
   const sidebar = useStore(layoutStore, s => s.sidebar)
   const projectsState = useStore(projectStore)
+  const currentActivity = projectsState.currentProjectId === null ? undefined : projectsState.indexActivities[projectsState.currentProjectId]
+  const showIndexing = projectsState.currentDetail?.status === 'indexing'
+    && currentActivity?.phase !== 'unavailable' && currentActivity?.phase !== 'paused'
   const treeFilter = useStore(workbenchStore, (s) => s.treeFilter)
   const [importOpen, setImportOpen] = useState(false)
   const [relocateProject, setRelocateProject] = useState<ProjectSummary | null>(null)
@@ -357,7 +360,7 @@ export default function LeftPanel() {
           {projectsState.projects.length === 0 && <option value="">（无项目）</option>}
           {projectsState.projects.map((p) => (
             <option key={p.id} value={String(p.id)}>
-              {p.name}{p.id === projectsState.currentProjectId && projectsState.currentDetail?.status === 'indexing' ? ' · 索引中' : ''}
+              {p.name}{p.id === projectsState.currentProjectId && showIndexing ? ' · 索引中' : ''}
             </option>
           ))}
         </Select>{projectsState.currentProjectId !== null && projectsState.projects.find(p => p.id === projectsState.currentProjectId) && <ProjectActions

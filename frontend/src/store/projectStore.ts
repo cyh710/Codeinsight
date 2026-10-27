@@ -14,7 +14,7 @@ import { hotState } from './hotState'
 import { removeProjectLocal } from './persistence'
 
 const STORAGE_KEY = 'ci.projectId'
-const indexMonitors = new Map<number, symbol>()
+const indexMonitors = new Map<number, AbortController>()
 
 function errorText(error: unknown): string {
   return error instanceof ApiError ? `${error.title}。${error.hint}` : error instanceof Error ? error.message : String(error)
@@ -41,17 +41,25 @@ function observeIndex(detail: ProjectDetail) {
 
 function monitorIndex(id: number) {
   if (indexMonitors.has(id) || !projectStore.getState().indexActivities[id]) return
-  const token = Symbol()
+  const token = new AbortController()
   indexMonitors.set(id, token)
   updateActivity(id, { phase: 'indexing', message: undefined })
   void (async () => {
     try {
       const detail = await waitForIndexing(projectId => api.getProject(projectId), id, {
+        signal: token.signal,
+        onError: error => {
+          if (indexMonitors.get(id) !== token) return
+          updateActivity(id, { phase: 'unavailable', message: `${errorText(error)} 正在自动重试检查。` })
+        },
         onTick: current => {
-          updateActivity(id, { detail: current, name: current.name })
+          if (indexMonitors.get(id) !== token) return
+          updateActivity(id, { detail: current, name: current.name,
+            phase: current.status === 'indexing' ? 'indexing' : current.status === 'failed' ? 'failed' : 'syncing', message: undefined })
           if (projectStore.getState().currentProjectId === id) projectStore.setState({ currentDetail: current, loading: false })
         },
       })
+      if (indexMonitors.get(id) !== token) return
       if (detail.status === 'indexing') {
         updateActivity(id, { phase: 'paused', message: '索引仍未完成，自动检查已暂停。可继续检查，不会重复建立索引。' })
       } else if (detail.status === 'failed') {
@@ -66,6 +74,7 @@ function monitorIndex(id: number) {
         updateActivity(id, { phase: 'ready', detail, message: detail.status === 'stale' ? '索引已建立，但仓库又有新提交；当前结果仍对应已索引版本。' : undefined })
       }
     } catch (error) {
+      if (indexMonitors.get(id) !== token || token.signal.aborted) return
       updateActivity(id, { phase: 'unavailable', message: errorText(error) })
     } finally {
       if (indexMonitors.get(id) === token) indexMonitors.delete(id)
@@ -143,7 +152,9 @@ export const projectStore = hotState(import.meta.hot, 'projects', () => createSt
   indexActivities: {},
   resumeIndexing: id => monitorIndex(id),
   dismissIndexActivity: id => {
-    if (indexMonitors.has(id)) return
+    if (indexMonitors.has(id) && ['indexing', 'syncing'].includes(get().indexActivities[id]?.phase)) return
+    indexMonitors.get(id)?.abort()
+    indexMonitors.delete(id)
     set(state => {
       const next = { ...state.indexActivities }; delete next[id]
       return { indexActivities: next }
@@ -187,6 +198,7 @@ export const projectStore = hotState(import.meta.hot, 'projects', () => createSt
 
   removeProject: async (id: number) => {
     await api.removeProject(id)
+    indexMonitors.get(id)?.abort()
     indexMonitors.delete(id)
     chatStore.getState().forgetProject(id)
     // 确认框卸载前完成缓存清理，避免切换项目后仍残留旧项目的本地记录。

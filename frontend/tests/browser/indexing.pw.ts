@@ -69,9 +69,10 @@ test('提交有反馈，后台索引可刷新恢复，状态检查断线不重�
     expect(state.posts).toBe(1)
     state.phase = 'offline'
     await expect(notice(page)).toContainText('状态暂不可读')
+    await expect(page.locator('.sidebar-project-select')).not.toContainText('索引中')
     expect(state.posts).toBe(1)
     state.phase = 'ready'
-    await notice(page).getByRole('button', { name: '继续检查' }).click()
+    // 网络恢复后由原检查自动继续，不依赖用户再点一次，也不重复导入。
     await expect(notice(page)).toContainText('索引已就绪')
     await expect(notice(page)).toContainText(`${project.files.toLocaleString()} 个文件`)
     await expect(notice(page)).toContainText(`${project.symbols.toLocaleString()} 个符号`)

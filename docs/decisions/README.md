@@ -62,5 +62,6 @@ NNNN-简短英文短语.md
 | [0033](0033-learning-reply-strategies.md) | 讲解围绕困惑选择表示方式 | 已接受 |
 | [0034](0034-executor-mainline-integration.md) | 执行分支与学习分支的历史兼容 | 已接受 |
 | [0035](0035-orchestrated-execution.md) | 编排执行：驱动器 Protocol + worktree 隔离 + 双重审批 | 已接受 |
+| [0036](0036-index-read-recovery.md) | 当前 schema 的校验只读，索引检查可恢复 | 已接受 |
 
 <!-- 0021–0031 的记录已随各功能合入，可按文件名查看；本索引待补齐对应行。 -->
