@@ -41,3 +41,8 @@ frontend/.vite/
 *.swp
 Thumbs.db
 .DS_Store
+
+# 0015 真机验收夹具（本地临时）
+e2e/
+e2e_*.txt
+e2e_*.log

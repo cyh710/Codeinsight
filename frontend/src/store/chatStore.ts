@@ -95,6 +95,7 @@ export function applySseEvent(
         rawText: event.data.raw_text,
         responseKind: event.data.response_kind,
         evidenceReview: event.data.evidence_review,
+        execution: event.data.execution ?? null,
       }))
     case 'error':
       // 只记录，不中断：契约保证 done 仍会来，由 done 统一收尾。
@@ -156,6 +157,13 @@ export function createChatActions(set: Set, get: Get) {
     }
   }
   return {
+    updateExecution: (pid: number, cid: string, messageId: string, next: import('../api/types').ExecutionMetadata) => {
+      const client = clients.get(key(pid, cid))
+      if (!client) return
+      client.messages = client.messages.map(message => message.id === messageId && message.execution?.task_id === next.task_id
+        ? { ...message, execution: next } : message)
+      sync(client)
+    },
     forgetProject: (pid: number) => {
       for (const [id, client] of clients) if (client.pid === pid) { client.controller?.abort(); clients.delete(id) }
       if (active?.pid === pid) {

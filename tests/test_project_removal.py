@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from codeinsight.api.app import create_app
 from codeinsight.cognitive.indexing.indexer import index_project
 from codeinsight.storage.conversations import ConversationRepository
-from codeinsight.storage.sqlite import db_path, ensure_schema, open_sqlite
+from codeinsight.storage.sqlite import SCHEMA_VERSION, db_path, ensure_schema, open_sqlite
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ def test_remove_cascades_only_its_data_and_keeps_source_and_other_project(remova
         assert not conn.execute("PRAGMA foreign_key_check").fetchall()
 
 
-@pytest.mark.parametrize("kind", ["index", "answer", "agent"])
+@pytest.mark.parametrize("kind", ["index", "answer", "agent", "planned", "executing", "review"])
 def test_busy_project_is_not_removed(removable, data_dir, kind):
     # 启动恢复完成后再模拟当前进程正在运行的任务。
     with TestClient(create_app()) as client:
@@ -66,9 +66,15 @@ def test_busy_project_is_not_removed(removable, data_dir, kind):
                 )
             elif kind == "answer":
                 ConversationRepository(conn).reserve(2, "busy", "r", "正在生成", None)
-            else:
+            elif kind == "agent":
                 conn.execute(
                     "INSERT INTO agent_task(id,project_id,conversation_id,question,status) VALUES('running',2,'c','q','running')"
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO execution_task(id,project_id,question,plan_json,status) "
+                    "VALUES('exec-busy',2,'q','{}',?)",
+                    (kind,),
                 )
             conn.commit()
         response = client.delete("/projects/2")
@@ -103,4 +109,4 @@ def test_migration_4_to_5_preserves_index_and_reserves_existing_ids(removable, d
     with open_sqlite(db_path(data_dir)) as conn:
         assert conn.execute("SELECT COUNT(*) FROM symbol").fetchone()[0] == count
         assert conn.execute("SELECT last_id FROM project_id_counter").fetchone()[0] == 2
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION

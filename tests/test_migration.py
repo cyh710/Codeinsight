@@ -9,6 +9,8 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import pytest
+
 from codeinsight.storage.sqlite import SCHEMA_VERSION, ensure_schema, open_sqlite
 
 
@@ -117,3 +119,53 @@ def test_migration_keeps_project_rows(tmp_path: Path) -> None:
         project = conn.execute("SELECT name, root_path FROM project").fetchone()
         assert project["name"] == "tapestry"
         assert project["root_path"] == "D:/demo"
+
+
+@pytest.mark.parametrize("branch", ["execution-v4", "learning-v5"])
+def test_integrated_schema_preserves_both_branch_histories(tmp_path: Path, branch: str) -> None:
+    """两支曾使用不同的版本 4；按真实结构升级，不能损失索引或执行记录。"""
+    path = tmp_path / f"{branch}.db"
+    ensure_schema(path)
+    with open_sqlite(path) as conn:
+        conn.execute("INSERT INTO project(id,name,root_path) VALUES(7,'keep','/fixture')")
+        conn.execute(
+            "INSERT INTO file(project_id,path,language,content_sha256) "
+            "VALUES(7,'app.py','python','unchanged')"
+        )
+        conn.execute("INSERT INTO conversation(project_id,id,title) VALUES(7,'c','历史对话')")
+        conn.execute(
+            "INSERT INTO conversation_turn(project_id,conversation_id,request_id,question,"
+            "answer_json,status) VALUES(7,'c','r','旧问题','{\"text\":\"旧回答\"}','completed')"
+        )
+        if branch == "execution-v4":
+            conn.execute("ALTER TABLE conversation DROP COLUMN exploration_json")
+            conn.execute("DROP TABLE project_id_counter")
+            conn.execute(
+                "INSERT INTO execution_task(id,project_id,question,plan_json,status) "
+                "VALUES('exec-keep',7,'旧任务','{}','review')"
+            )
+            conn.execute("PRAGMA user_version=4")
+        else:
+            conn.execute("UPDATE conversation SET exploration_json='{\"items\":[]}'")
+            conn.execute("UPDATE project_id_counter SET last_id=20")
+            conn.execute("DROP TABLE execution_task")
+            conn.execute("PRAGMA user_version=5")
+        conn.commit()
+
+    assert ensure_schema(path) == "migrated"
+    assert ensure_schema(path) == "current"
+    with open_sqlite(path) as conn:
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+        assert conn.execute("SELECT content_sha256 FROM file").fetchone()[0] == "unchanged"
+        assert conn.execute("SELECT answer_json FROM conversation_turn").fetchone()[0] == (
+            '{"text":"旧回答"}'
+        )
+        state = conn.execute("SELECT exploration_json FROM conversation").fetchone()[0]
+        high_water = conn.execute("SELECT last_id FROM project_id_counter").fetchone()[0]
+        if branch == "execution-v4":
+            assert state == "{}" and high_water == 7
+            assert conn.execute("SELECT status FROM execution_task").fetchone()[0] == "review"
+        else:
+            assert state == '{"items":[]}' and high_water == 20
+            assert conn.execute("SELECT COUNT(*) FROM execution_task").fetchone()[0] == 0
+        assert not conn.execute("PRAGMA foreign_key_check").fetchall()

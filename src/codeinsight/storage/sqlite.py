@@ -18,7 +18,7 @@ BUSY_TIMEOUT_MS = 5_000
 
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 """schema 版本号，写进 `PRAGMA user_version`。
 
 改 `schema.sql` 的表结构时**必须**把这里 +1 并补一条迁移，
@@ -30,6 +30,7 @@ SCHEMA_VERSION = 5
 # 键是**旧版本号**，值是升级到该键+1 的步骤序列。
 # 迁移是**原地**的，不删库、不重建——用户的索引数据不能因为 schema 演进而丢。
 MIGRATIONS: dict[int, tuple[str, ...]] = {
+    5: (),  # 执行表由 apply_schema 创建；执行分支历史库另补探索列（请求 0017）。
     4: (),  # 身份高水位表由 apply_schema 原地创建，不重建项目或索引。
     3: ("ALTER TABLE conversation ADD COLUMN exploration_json TEXT NOT NULL DEFAULT '{}'",),
     2: (),  # 新会话表由 apply_schema 原地创建，账本回填由会话仓储幂等执行。
@@ -123,6 +124,13 @@ def ensure_schema(path: str | Path) -> str:
             )
 
         for old in range(version, SCHEMA_VERSION):
+            if old == 5:
+                # 执行分支独立使用过版本 4，尚无探索列；不能仅按数字判断已做过该迁移。
+                apply_schema(conn)
+                if "exploration_json" not in {
+                    row[1] for row in conn.execute("PRAGMA table_info(conversation)")
+                }:
+                    conn.execute(MIGRATIONS[3][0])
             if old == 3:
                 # 更早版本还没有会话表；先幂等补表，再判断是否需要加列。
                 apply_schema(conn)

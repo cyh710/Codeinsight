@@ -66,10 +66,13 @@ export interface ChatMessage {
   learningEntries?: LearningTarget[]
   learningTargets?: LearningTarget[]
   knowledgeError?: string | null
+  /** 编排执行元数据（契约 §16.2）。识别为开发任务时非空，渲染 ExecutionCard。 */
+  execution?: import('../api/types').ExecutionMetadata | null
 }
 
 export interface ChatStore {
   forgetProject: (pid: number) => void
+  updateExecution: (pid: number, cid: string, messageId: string, next: import('../api/types').ExecutionMetadata) => void
   projectId: number | null
   currentTitle: string
   currentArchived: boolean

@@ -211,6 +211,8 @@ def remove_project(project_id: int) -> dict[str, Any]:
                 "SELECT 1 FROM index_run WHERE project_id=? AND finished_at IS NULL",
                 "SELECT 1 FROM conversation_turn WHERE project_id=? AND status='running'",
                 "SELECT 1 FROM agent_task WHERE project_id=? AND status='running'",
+                "SELECT 1 FROM execution_task WHERE project_id=? "
+                "AND status IN ('planned','executing','review')",
             )
         )
         if busy:
@@ -218,7 +220,7 @@ def remove_project(project_id: int) -> dict[str, Any]:
                 status_code=409,
                 code="index_running",
                 title="项目正在处理任务",
-                hint="请等待索引和所有回答结束，或先停止回答，再移除项目。",
+                hint="请等待索引和回答结束，并完成或放弃开发任务，再移除项目。",
             )
         # 保留所有曾用过的项目身份；同名重新导入也必须得到新 ID。
         conn.execute(

@@ -200,3 +200,7 @@ class Answer:
     model_id: str = ""
     error: dict[str, Any] | None = None
     """上游/运行错误（契约 §0.3 的 `{code,title,hint}`），不是给用户看的正文。"""
+
+    execution: dict[str, Any] | None = None
+    """编排执行元数据（请求 0015 / 契约 §16.2）：识别为开发任务时非空——
+    计划、进度、diff 摘要与学习卡都从这里出，正文只做引子说明。"""

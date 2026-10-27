@@ -18,6 +18,7 @@ import ExplorationActions from '../exploration/ExplorationActions'
 import ExplorationFlow from '../exploration/ExplorationFlow'
 import { openRelated } from '../exploration/actions'
 import { AnswerReviewDetails, AnswerReviewNotice } from './AnswerReview'
+import ExecutionCard from '../execution/ExecutionCard'
 
 function CitationLine({ citation, onOpen }: { citation: Citation; onOpen: (c: Citation) => void }) {
   return (
@@ -257,6 +258,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
           </details>
           <MessageActions message={message} />
         </div>}
+        {message.execution && <ExecutionCard message={message} />}
         {settled && message.incomplete && (
           // 未完成≠没找到（契约 §8.3 新增字段）：内容照常显示，追加提示条，
           // 不能和上面的 abstained 弃答卡合并成同一种提示。
