@@ -242,6 +242,9 @@ def split_answer(text: str, grounding: Grounding, *, preserve_invalid: bool = Fa
                 )
             continue
         for sentence in _sentences(block):
+            if not sentence.strip():
+                paragraphs.append(sentence)
+                continue
             before = len(result.dropped_citations)
             cleaned, cited = _verify(
                 sentence, grounding, result.dropped_citations, preserve_invalid

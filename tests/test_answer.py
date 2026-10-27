@@ -144,3 +144,16 @@ def test_code_block_is_not_treated_as_a_claim() -> None:
     result = split_answer(md, _grounding())
     assert result.inferences == []
     assert "x = 1" in result.text
+
+
+def test_table_and_soft_line_breaks_survive_citation_verification() -> None:
+    text = (
+        "说明第一行\n说明第二行\n\n"
+        "| 核对对象 | 位置 |\n|---|---|\n"
+        "| 入口 | [backend/core/chat.py:42] |\n| 未知 | [ghost.py:99] |"
+    )
+    result = split_answer(text, _grounding(), preserve_invalid=True)
+    assert "说明第一行\n说明第二行" in result.text
+    assert "| 核对对象 | 位置 |\n|---|---|\n| 入口 |" in result.text
+    assert "未核实位置：ghost.py:99" in result.text
+    assert all(citation.path != "ghost.py" for citation in result.citations)

@@ -64,5 +64,6 @@ NNNN-简短英文短语.md
 | [0035](0035-orchestrated-execution.md) | 编排执行：驱动器 Protocol + worktree 隔离 + 双重审批 | 已接受 |
 | [0036](0036-index-read-recovery.md) | 当前 schema 的校验只读，索引检查可恢复 | 已接受 |
 | [0037](0037-continuous-analysis.md) | 分析总轮次由完成或停止决定 | 已接受 |
+| [0038](0038-preserve-answer-body.md) | 探索附加工具不能隐式撤回正文 | 已接受 |
 
 <!-- 0021–0031 的记录已随各功能合入，可按文件名查看；本索引待补齐对应行。 -->

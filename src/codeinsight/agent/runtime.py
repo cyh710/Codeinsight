@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from codeinsight.agent.answer import GroundedFile, Grounding, split_answer
+from codeinsight.agent.answer_body import is_answer_attachment, merge_answer_body
 from codeinsight.agent.context import ContextBudget, assemble, message_bytes, truncate_bytes
 from codeinsight.agent.evidence_review import assess, record_check
 from codeinsight.agent.exploration import normalize, plain, version
@@ -138,6 +139,7 @@ class AgentRuntime:
         grounding = Grounding()
         focus = self.store.focus(session_key) if conversation_id else Focus()
         final_text = ""
+        body_parts: list[str] = []
         prepared = None
 
         try:
@@ -354,8 +356,11 @@ class AgentRuntime:
                 text, calls = await self._one_turn(messages, emit)
 
                 if not calls:
-                    final_text = text
+                    final_text = merge_answer_body(body_parts, text)
                     break
+
+                if is_answer_attachment([call.name for call in calls]):
+                    body_parts.append(text)
 
                 current.append(_assistant_message(text, calls))
                 if ledger is not None:
@@ -389,7 +394,7 @@ class AgentRuntime:
                     )
             else:
                 answer.incomplete = True
-                final_text = ""
+                final_text = merge_answer_body(body_parts, "")
 
             answer.raw_text = final_text
             if not final_text:

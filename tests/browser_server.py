@@ -36,6 +36,49 @@ class BrowserProvider:
         recent = messages[
             next(i for i in range(len(messages) - 1, -1, -1) if messages[i]["role"] == "user") :
         ]
+        if "__fixture_preserve_body__" in original_question:
+            if not any(message["role"] == "tool" for message in recent):
+                yield StreamChunk(
+                    text="我先查资料。",
+                    tool_calls=[
+                        ToolCall(
+                            "body-read",
+                            "read_file",
+                            {"path": "store.py", "start_line": 1, "end_line": 6},
+                        )
+                    ],
+                )
+            elif not any(
+                call.get("function", {}).get("name") == "propose_exploration"
+                for message in recent
+                for call in message.get("tool_calls", [])
+            ):
+                yield StreamChunk(
+                    text="## 已有策略\n\n保存操作从 save 进入。 [store.py:3]\n\n"
+                    "| 核对对象 | 位置 |\n|---|---|\n| 保存 | save |\n\n"
+                    "```py\nvalue = 1\n```",
+                    tool_calls=[
+                        ToolCall(
+                            "body-action",
+                            "propose_exploration",
+                            {
+                                "takeaways": ["保存操作从 save 进入。"],
+                                "actions": [
+                                    {
+                                        "kind": "follow_up",
+                                        "label": "继续比较保存方式",
+                                        "question": "怎样比较保存方式？",
+                                        "reason": "核对不同实现",
+                                        "target": {"kind": "code", "path": "store.py", "lineno": 3},
+                                    }
+                                ],
+                            },
+                        )
+                    ],
+                )
+            else:
+                yield StreamChunk(text="补充：还可以对比另一种实现。", finish_reason="stop")
+            return
         if "__fixture_long_analysis__" in original_question:
             count = sum(message["role"] == "tool" for message in recent)
             if count < 12:
