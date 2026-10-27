@@ -148,7 +148,7 @@ def test_approve_runs_to_review_with_user_repo_untouched(
     assert public["summary"] == "改完了"
     assert public["diff_summary"]["files_changed"] == 1
     assert public["progress"][0]["tool"] == "Edit"
-    # 用户检出零影响（ADR 0032 核心不变量）
+    # 用户检出零影响（ADR 0035 核心不变量）
     assert (mini_repo_indexed["repo"] / "app.py").read_text(encoding="utf-8") == "print('v1')\n"
     assert worktree.repo_is_clean(mini_repo_indexed["repo"])
 

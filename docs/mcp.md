@@ -72,7 +72,7 @@ uv run ci mcp --project tapestry     # stdio
 - **教材与项目证据永远分开**：知识工具的 `structured_content` 里没有
   `citations`，模型没法把「SQL 是什么」当成「这个项目用了 SQL」。
 - **只读**：`tool.mutating` 为真时直接拒绝。写操作走另一条路——编排执行
-  （ADR 0008 修订 / ADR 0032）：对话内识别开发任务后由 CodeInsight 驱动
+  （ADR 0008 修订 / ADR 0035）：对话内识别开发任务后由 CodeInsight 驱动
   外部 agent 在隔离分支上干活，经双重审批合入；MCP 工具本身保持只读。
 
 ## 已验证

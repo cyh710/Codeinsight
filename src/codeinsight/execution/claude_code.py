@@ -1,4 +1,4 @@
-"""Claude Code 驱动器：以无头子进程执行任务（请求 0015 / ADR 0032）。
+"""Claude Code 驱动器：以无头子进程执行任务（请求 0018 / ADR 0035）。
 
 调用形态：`claude -p <prompt> --output-format stream-json --verbose
 --permission-mode acceptEdits`，cwd 指向**隔离 worktree**。

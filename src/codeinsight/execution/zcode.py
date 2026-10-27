@@ -1,4 +1,4 @@
-"""Zcode 驱动器：`zcode -p` 无头模式（请求 0015 第二驱动器 / ADR 0032）。
+"""Zcode 驱动器：`zcode -p` 无头模式（请求 0018 第二驱动器 / ADR 0035）。
 
 调用形态：`<command> <extra_args…> -p <prompt> --output-format stream-json --mode yolo`，
 cwd 指向隔离 worktree、stdin 接 DEVNULL。

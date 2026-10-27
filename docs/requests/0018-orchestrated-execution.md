@@ -1,11 +1,13 @@
-# 0015. 编排执行：对话内驱动 Claude Code 完成开发任务
+# 0018. 编排执行：对话内驱动 Claude Code 完成开发任务
+
+主线集成时从独立分支原编号 0015 顺延，避免与工作台精简请求重号；审批与验收记录保持原意。
 
 - 日期：2026-10-26；状态：用户已批准完整计划（四项决策：Claude Code 先行、
   worktree 隔离 + 双重审批、对话内自动识别、自动变更学习卡）。
 - 基线：`main@997b90d`；分支 `feat/orchestrated-execution`；独立 worktree
   `D:\yy2\CodeInsight-exec`（主工作区有 0014 在飞改动，不共用）。
   本地提交、不合并、不推送。
-- 架构决策：[ADR 0032](../decisions/0032-orchestrated-execution.md)；
+- 架构决策：[ADR 0035](../decisions/0035-orchestrated-execution.md)；
   [ADR 0008](../decisions/0008-understanding-via-external-agents.md) 已原地修订。
 
 ## 主线集成补记（2026-10-27，请求 0017）
@@ -39,7 +41,7 @@
 
 - 识别为 dev_task 但执行器关闭/未装 claude/非 git 仓库：**降级为普通问答**，
   answer 不带 execution 字段，正文说明原因——不报错不白屏。
-- 执行 agent 只在隔离 worktree 分支上工作（ADR 0032）；两次人工确认
+- 执行 agent 只在隔离 worktree 分支上工作（ADR 0035）；两次人工确认
   （计划批准、验收合入）之间 CodeInsight 不碰用户分支；拒绝/放弃即删
   worktree，仓库回原样。
 - 合入后自动增量索引（复用 `index_project(incremental=True)`）+ 学习卡

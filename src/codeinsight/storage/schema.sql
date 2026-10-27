@@ -494,7 +494,7 @@ CREATE TABLE IF NOT EXISTS eval_result (
 CREATE INDEX IF NOT EXISTS ix_eval_result_run ON eval_result(run_id, arm);
 
 -- ─────────────────────────────────────────────────────────────
--- 编排执行（请求 0015 / ADR 0032）
+-- 编排执行（请求 0018 / ADR 0035）
 -- ─────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS execution_task (

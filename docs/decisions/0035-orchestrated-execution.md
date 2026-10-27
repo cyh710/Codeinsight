@@ -1,10 +1,12 @@
-# 0032. 编排执行：驱动器 Protocol + worktree 隔离 + 双重审批
+# 0035. 编排执行：驱动器 Protocol + worktree 隔离 + 双重审批
+
+独立执行分支原编号 0032；主线集成时顺延，避免与工作台按需展开决策重号（请求 0017）。
 
 - **状态**：已接受
 - **日期**：2026-10-26
 - **影响范围**：`src/codeinsight/execution/`（新）、`api/executions.py`（新）、
   `agent/runtime.py`（对话内识别挂 `execution` 元数据）、schema 5→6（集成请求 0017；独立分支曾为 3→4）
-- **关联**：[ADR 0008](0008-understanding-via-external-agents.md)（2026-10-26 修订）、请求 0015
+- **关联**：[ADR 0008](0008-understanding-via-external-agents.md)（2026-10-26 修订）、请求 0018
 
 ## 背景
 

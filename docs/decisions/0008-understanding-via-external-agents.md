@@ -1,6 +1,6 @@
 # 0008. 执行侧交给外部 agent，CodeInsight 只做理解层
 
-- **状态**：已接受（2026-10-26 修订：补入"主动编排"方向，见文末修订节与 [ADR 0032](0032-orchestrated-execution.md)）
+- **状态**：已接受（2026-10-26 修订：补入"主动编排"方向，见文末修订节与 [ADR 0035](0035-orchestrated-execution.md)）
 - **日期**：2026-10-23（修订 2026-10-26）
 - **影响范围**：`execution/`（驱动器接口，原先只留 Protocol 不实现）、`agent/tool.py`（Agent 工具全部只读）、
   M7 的 MCP Server、0015 的编排执行
@@ -88,7 +88,7 @@ codeinsight.get_module_overview(path)
 ## 修订（2026-10-26）：从"被动被调"补齐为"双向"
 
 M7 落地的形态是**被动方向**：外部 agent 经 MCP 来查我们的认知。
-用户方向（请求 0015）要求补上**主动方向**：用户把开发需求交给 CodeInsight，
+用户方向（请求 0018）要求补上**主动方向**：用户把开发需求交给 CodeInsight，
 由我们带着项目认知**编排**外部执行 agent（Claude Code 先行）完成任务，
 再回到理解-学习主线。
 
@@ -97,7 +97,7 @@ M7 落地的形态是**被动方向**：外部 agent 经 MCP 来查我们的认�
 
 - `execution/` 从"只留 Protocol"变为实现**驱动器**（`ExecutorDriver`），
   它以子进程方式调用外部 agent 的无头模式（`claude -p`），编排与状态机见
-  [ADR 0032](0032-orchestrated-execution.md)。
+  [ADR 0035](0035-orchestrated-execution.md)。
 - 沙箱/审批/diff/测试集成仍由外部 agent 自带；CodeInsight 额外加的
   worktree 分支隔离与双重审批是**编排层防线**，不是自建沙箱。
 - MCP Server 原样保留，两个方向组合成完整闭环：
@@ -110,4 +110,4 @@ M7 落地的形态是**被动方向**：外部 agent 经 MCP 来查我们的认�
   （如"只跑 pytest"）。
 - 当外部 agent 的 MCP 生态出现更好的标准时，重评 MCP Server 的接口形态。
 - 当编排执行暴露出外部 agent 无头模式的可靠性问题（进度流断裂、Windows
-  子进程行为差异）时，重评驱动器实现（ADR 0032 的重评条件）。
+  子进程行为差异）时，重评驱动器实现（ADR 0035 的重评条件）。

@@ -1,4 +1,4 @@
-"""git worktree 隔离（ADR 0032）：执行 agent 与用户检出互不可见。
+"""git worktree 隔离（ADR 0035）：执行 agent 与用户检出互不可见。
 
 只开任务分支不开 worktree 是**不可接受**的——切分支会动用户当前检出的
 内容与暂存区。worktree 给执行 agent 一份独立检出，用户侧零影响；

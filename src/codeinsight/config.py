@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     max_tool_calls_per_turn: int = 16
     max_model_turns: int = 10
 
-    # ── 编排执行（请求 0015 / ADR 0032）────────────────────
+    # ── 编排执行（请求 0018 / ADR 0035）────────────────────
     executor: str = "claude-code"
     """执行驱动器：`claude-code` / `zcode` / `off`（关闭后对话识别退回普通问答）。"""
     executor_command: str = ""

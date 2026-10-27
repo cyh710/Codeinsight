@@ -1009,8 +1009,8 @@ done                                ← 恰好一次，最后
 | 2026-10-24 | 请求 0001/0003/0005 落地：§8.4 知识扩展——`reading_context` 入参、`knowledge_sources` / `learning_*` / `reading_status` / `knowledge_error` 出参、`answer` 事件带最终 `text`；新增 `/knowledge/*` 三个端点。教材来源与项目 `citations` **永不混用** |
 | 2026-10-24 | M8：新增 §4.5 `/projects/{id}/graph`（BFS 邻域、概念标签、`truncated`）与 §7.2 `/projects/{id}/timeline`。`index_run.started_at` 改存墙钟 ISO 时间（此前误存 `time.monotonic()`） |
 | 2026-10-24 | 左栏按需拉符号：`/projects/{id}/symbols` 的 `path` / `q` 过滤转义 LIKE 通配符（`_` 是普通字符），`path` 同时支持精确路径 OR 目录前缀 |
-| 2026-10-26 | 请求 0015 落地：新增 §16 编排执行——`meta.execution_enabled`、answer 可选 `execution` 元数据、`/projects/{id}/executions/*` 五个端点、`execution_task` 表（schema 3→4）、`CI_EXECUTOR*` 配置。执行经双重审批与 worktree 隔离（ADR 0032） |
-| 2026-10-26 | 0015 增补：第二执行器 `zcode`（node + zcode.cjs 无头模式）；`CI_EXECUTOR_COMMAND` 改空缺省按执行器取值，新增 `CI_EXECUTOR_EXTRA_ARGS`。两驱动器真机验收通过 |
+| 2026-10-26 | 请求 0018 落地：新增 §16 编排执行——`meta.execution_enabled`、answer 可选 `execution` 元数据、`/projects/{id}/executions/*` 五个端点、`execution_task` 表（schema 3→4）、`CI_EXECUTOR*` 配置。执行经双重审批与 worktree 隔离（ADR 0035） |
+| 2026-10-26 | 执行请求增补（主线编号 0018，独立分支原编号 0015）：第二执行器 `zcode`（node + zcode.cjs 无头模式）；`CI_EXECUTOR_COMMAND` 改空缺省按执行器取值，新增 `CI_EXECUTOR_EXTRA_ARGS`。两驱动器真机验收通过 |
 
 ## 11. 内置知识与阅读上下文
 
@@ -1282,12 +1282,12 @@ API 与 CLI 一致，移除后即使同名导入也不复用旧 ID，避免旧 U
 当前项目移除后选择剩余项目；无项目时清空项目上下文并提供导入入口。缓存清理失败明确提示，
 不把服务端移除失败表现为成功，也不因为移除当前项目清掉其他项目草稿。
 
-## 16. 编排执行（请求 0015，ADR 0032）
+## 16. 编排执行（请求 0018，ADR 0035）
 
 对话内识别为开发任务（`dev_task`）时，CodeInsight 编排外部执行 agent
 （Claude Code 先行）完成：**计划 → 用户批准 → 隔离 worktree 执行 →
 用户验收 → 合入 + 增量索引 + 变更学习卡**。两道审批之间 CodeInsight
-不碰用户分支（ADR 0032）。
+不碰用户分支（ADR 0035）。
 
 ### 16.1 可用性与降级
 

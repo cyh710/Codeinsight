@@ -1,5 +1,5 @@
 /**
- * 编排执行三态卡（契约 §16.2 / ADR 0032）。
+ * 编排执行三态卡（契约 §16.2 / ADR 0035）。
  *
  * planned：计划卡 + 批准/拒绝/转为普通问答；executing：进度时间线 + 中止；
  * review：diff 摘要 + 合入/放弃；merged/rejected/aborted/failed：终态摘要，
