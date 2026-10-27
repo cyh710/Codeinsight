@@ -36,6 +36,23 @@ class BrowserProvider:
         recent = messages[
             next(i for i in range(len(messages) - 1, -1, -1) if messages[i]["role"] == "user") :
         ]
+        if "__fixture_workspace__" in original_question:
+            if not any(message["role"] == "tool" for message in recent):
+                yield StreamChunk(
+                    tool_calls=[
+                        ToolCall(
+                            "workspace-search",
+                            "search_files",
+                            {"query": "MRR", "path": "experiments"},
+                        )
+                    ]
+                )
+            else:
+                yield StreamChunk(
+                    text="新增实验记录的MRR为0.75 [experiments/score_output.txt:1]。这次直接阅读当前文件，无需更新索引。",
+                    finish_reason="stop",
+                )
+            return
         if "__fixture_understanding_sparse__" in original_question:
             if not any(message["role"] == "tool" for message in recent):
                 yield StreamChunk(

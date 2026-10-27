@@ -1,7 +1,6 @@
 """代码侧工具：检索、定位、读源码、调用关系、模块概览。
 
-这些工具直接吃索引，不碰工作区——索引绑定在一个 commit 上，
-工具给出的 `file:line` 必须和索引里的那棵树一致，否则「可追溯」是假的。
+符号与关系来自索引；read_file 默认读取工作区，历史来源显式绑定对应版本。
 """
 
 from __future__ import annotations
@@ -12,6 +11,7 @@ from typing import Any
 from codeinsight.agent.tool import ToolContext, ToolResult
 from codeinsight.agent.tools import BaseTool
 from codeinsight.cognitive.indexing.source_store import SourceError, read_source
+from codeinsight.cognitive.workspace import read_workspace
 from codeinsight.models import Citation, Evidence
 
 MAX_READ_LINES = 200
@@ -86,15 +86,24 @@ class SearchCodeTool(BaseTool):
             return self.result("缺少 query 参数：请给出要检索的标识符或问题。", error="bad_request")
         top_k = int(arguments.get("top_k") or 8)
         if self.services.retriever is None:
-            return self.result("检索器未配置。", error="not_indexed")
+            return self.result(
+                "语义检索器未配置，可用list_files/search_files直接查当前工作区。",
+                error="not_indexed",
+            )
 
-        evidence: list[Evidence] = self.services.retriever.retrieve(
-            query, k=top_k, project_id=self.services.project_id
-        )
+        try:
+            evidence: list[Evidence] = self.services.retriever.retrieve(
+                query, k=top_k, project_id=self.services.project_id
+            )
+        except Exception:  # noqa: BLE001 —— 索引通道失败不应阻断工作区查阅
+            return self.result(
+                "索引检索暂不可用，请用list_files/search_files直接查当前工作区。",
+                error="search_failed",
+            )
         if not evidence:
             return self.result(
                 f"在索引里没有检索到「{query}」相关的代码。"
-                "可以换一个标识符，或用 find_symbol 精确找名字。",
+                "这不代表当前工作区没有实现；请用list_files/search_files查当前文件，再用read_file阅读。",
                 data={"query": query, "items": [], "citations": []},
             )
 
@@ -205,42 +214,59 @@ class FindSymbolTool(BaseTool):
 
 class ReadFileTool(BaseTool):
     name = "read_file"
-    description = (
-        "读取索引版本（某个 commit）里的源码片段，带行号。需要看具体实现细节时用；一次最多 200 行。"
-    )
+    description = "默认读取当前工作区文件，不要求索引或提交，支持代码/配置/实验文本。一次最多200行。同文件在本回合保持首次读取版本；历史阅读可显式指定source_kind和版本。"
     parameters = {
         "type": "object",
         "properties": {
             "path": {"type": "string", "description": "仓库相对路径，如 backend/api/pet.py"},
             "start_line": {"type": "integer", "description": "起始行（从 1 开始），默认 1"},
             "end_line": {"type": "integer", "description": "结束行（含），默认 start+200"},
+            "source_kind": {"type": "string", "enum": ["workspace", "index"]},
+            "content_sha256": {"type": "string"},
+            "index_epoch": {"type": "integer"},
+            "head_commit": {"type": "string"},
         },
         "required": ["path"],
     }
 
     async def run(self, arguments: dict[str, Any], ctx: ToolContext) -> ToolResult:
-        path = str(arguments.get("path") or "").strip().lstrip("/")
+        path = str(arguments.get("path") or "").strip()
         if not path:
             return self.result("缺少 path 参数。", error="bad_request")
-        row = self.services.conn.execute(
-            "SELECT path, line_count, content_sha256 FROM file WHERE project_id = ? AND path = ?",
-            (self.services.project_id, path),
-        ).fetchone()
-        if row is None:
-            return self.result(
-                f"索引里没有「{path}」这个文件。路径是仓库相对的，先确认目录拼写。",
-                data={"items": [], "citations": []},
-                error="not_found",
-            )
-
-        total = int(row["line_count"] or 0)
-        start = max(1, int(arguments.get("start_line") or 1))
-        if start > total:
-            return self.result("起始行超出文件范围。", error="bad_request")
-        end = int(arguments.get("end_line") or start + MAX_READ_LINES - 1)
-        end = min(end, start + MAX_READ_LINES - 1, max(total, start))
+        kind = arguments.get("source_kind") or (
+            "index"
+            if arguments.get("index_epoch")
+            or arguments.get("head_commit")
+            or arguments.get("content_sha256")
+            else "workspace"
+        )
+        if kind not in {"workspace", "index"}:
+            return self.result("未知源码类型。", error="bad_request")
         try:
-            source = read_source(self.services.conn, self.services.project_id, path)
+            start = max(1, int(arguments.get("start_line") or 1))
+            end = int(arguments.get("end_line") or start + MAX_READ_LINES - 1)
+        except (ValueError, TypeError):
+            return self.result("行号必须是整数。", error="bad_request")
+        if end < start:
+            return self.result("结束行不能早于起始行。", error="bad_request")
+        try:
+            if kind == "workspace":
+                expected = arguments.get("content_sha256") or self.services.workspace_versions.get(
+                    path
+                )
+                source = read_workspace(
+                    self.services.conn, self.services.project_id, path, expected
+                )
+                self.services.workspace_versions[path] = source.sha256
+            else:
+                source = read_source(
+                    self.services.conn,
+                    self.services.project_id,
+                    path,
+                    expected_sha=arguments.get("content_sha256"),
+                    index_epoch=arguments.get("index_epoch"),
+                    head_commit=arguments.get("head_commit"),
+                )
             body = source.raw.decode("utf-8", "replace")
         except SourceError as exc:
             return self.result(str(exc), error=exc.code)
@@ -248,9 +274,13 @@ class ReadFileTool(BaseTool):
             return self.result(f"读取失败：{exc}", error="read_failed")
 
         lines = body.splitlines()
+        total = len(lines)
+        if start > max(1, total):
+            return self.result("起始行超出文件范围。", error="bad_request")
+        end = min(end, start + MAX_READ_LINES - 1, max(total, start))
         selected = lines[start - 1 : end]
         numbered = "\n".join(f"{start + offset:>6}  {text}" for offset, text in enumerate(selected))
-        header = f"{path}:{start}-{end}（共 {total} 行）"
+        header = f"{path}:{start}-{end}（共 {total} 行；{'当前工作区' if kind == 'workspace' else '索引快照'}；{source.sha256[:12]}）"
         if source.workspace_changed:
             header += "（正在读取已索引快照，磁盘文件已有修改；本回合不切换版本）"
         return self.result(
@@ -262,7 +292,19 @@ class ReadFileTool(BaseTool):
                 "total_lines": total,
                 "citations": [
                     {**citation, "snippet": "\n".join(selected[:3])}
-                    for citation in self.citations([Citation(path, start, end)])
+                    for citation in self.citations(
+                        [
+                            Citation(
+                                path,
+                                start,
+                                end,
+                                source_kind=kind,
+                                content_sha256=source.sha256,
+                                index_epoch=source.index_epoch,
+                                head_commit=source.head_commit,
+                            )
+                        ]
+                    )
                 ],
             },
         )

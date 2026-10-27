@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test'
 import { resolve } from 'node:path'
 
 test('回复排版、范围引用、旧回答和右侧版本定位', async ({ page, request, context }) => {
-  const project = await (await request.get('/api/projects/1')).json()
   const conversation = await (await request.post('/api/projects/1/conversations')).json()
   await page.addInitScript(cid => {
     localStorage.setItem('ci.projectId', '1')
@@ -25,7 +24,7 @@ test('回复排版、范围引用、旧回答和右侧版本定位', async ({ pa
   expect(address.searchParams.get('project')).toBe('1')
   expect(address.searchParams.get('conversation')).toBe(conversation.id)
   expect(JSON.parse(address.searchParams.get('material')!)).toMatchObject({
-    mode: 'file', path: 'wattbot-nlp/src/dense/hybrid.py', lineno: 19, version: project.head_commit,
+    mode: 'file', path: 'wattbot-nlp/src/dense/hybrid.py', lineno: 19, sourceKind: 'workspace',
   })
   await expect(answer.locator('table')).toBeVisible()
   expect(await answer.locator('.learning-prose--answer').evaluate(el => getComputedStyle(el).fontSize)).toBe('16px')

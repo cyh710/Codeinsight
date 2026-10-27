@@ -11,7 +11,7 @@ export function citationMarkers(options: { citations: Citation[]; label?: 'numbe
       node.children = node.children.flatMap(child => {
         if (child.type !== 'text' || !child.value) { visit(child); return [child] }
         const text = child.value, parts: Node[] = []
-        const pattern = /\[([^\]\s]+):(\d+)(?:-(\d+))?\]/g
+        const pattern = /\[([^\]\n]+):(\d+)(?:-(\d+))?\]/g
         let cursor = 0
         for (const match of text.matchAll(pattern)) {
           const index = options.citations.findIndex(c => c.path === match[1] && c.lineno === Number(match[2]))

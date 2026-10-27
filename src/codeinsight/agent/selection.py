@@ -6,6 +6,7 @@ import sqlite3
 from typing import Any
 
 from codeinsight.cognitive.indexing.source_store import SourceError, read_source
+from codeinsight.cognitive.workspace import read_workspace
 
 
 class SelectionError(ValueError):
@@ -36,6 +37,19 @@ def code_selection(
     selection = raw.get("selection")
     if not isinstance(selection, dict):
         raise SelectionError("代码选区格式无效。")
+    if raw.get("source_kind") == "workspace":
+        if not raw.get("content_sha256"):
+            raise SelectionError("工作区选区缺少内容版本，请重新打开文件。", "stale")
+        try:
+            blob = read_workspace(conn, project_id, raw["path"], raw["content_sha256"]).raw
+        except SourceError as exc:
+            raise SelectionError(str(exc), "stale") from exc
+    else:
+        blob = _indexed_selection(conn, project_id, raw)
+    return _slice_selection(blob, raw, selection, max_bytes)
+
+
+def _indexed_selection(conn: sqlite3.Connection, project_id: int, raw: dict) -> bytes:
     row = conn.execute(
         "SELECT f.content_sha256,p.root_path,r.head_commit FROM file f JOIN project p ON p.id=f.project_id "
         "JOIN repo_state r ON r.project_id=p.id WHERE f.project_id=? AND f.path=?",
@@ -60,6 +74,10 @@ def code_selection(
         raise SelectionError(
             str(exc), "stale" if exc.code == "stale_source" else "not_found"
         ) from exc
+    return blob
+
+
+def _slice_selection(blob: bytes, raw: dict, selection: dict, max_bytes: int) -> str:
     lines = blob.decode("utf-8", "replace").splitlines()
     start, end = raw.get("lineno"), raw.get("end_lineno")
     if (

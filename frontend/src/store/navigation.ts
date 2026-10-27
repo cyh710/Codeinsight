@@ -55,7 +55,7 @@ export function startNavigation() {
       try {
         const prior = JSON.parse(new URL(previous, location.origin).searchParams.get('material') ?? 'null') as RightPanel | null
         // 首次读取后补齐版本身份属于同一位置，不能额外压入浏览器历史。
-        if (prior?.mode === 'file' && prior.path === panel.path && prior.lineno === panel.lineno && prior.indexEpoch === undefined) replace = true
+        if (prior?.mode === 'file' && prior.path === panel.path && prior.lineno === panel.lineno && prior.indexEpoch === undefined && !prior.contentSha) replace = true
       } catch { /* 旧地址缺少有效材料身份时，保持普通导航。 */ }
     }
     previous = next

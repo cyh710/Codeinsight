@@ -164,7 +164,7 @@ function NodeRow({ node, depth, symbolsByPath, searching }: {
           {hasSymbols ? <button type="button" aria-label={`${isOpen ? '收起' : '展开'} ${node.name} 的函数`} aria-expanded={isOpen} onClick={() => workbench.toggleFile(node.path)} className="shrink-0 rounded p-1 text-slate-400 hover:bg-accent-soft">{isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</button> : <span className="w-5 shrink-0" />}
           <button
             type="button"
-            onClick={() => workbench.selectFile(node.path)}
+            onClick={() => workbench.selectFile(node.path, 1, f.workspace_unavailable ? workbench.indexVersion : null, undefined, f.workspace_unavailable ? 'index' : 'workspace')}
             className="flex min-w-0 flex-1 items-center gap-1 rounded px-1.5 py-1 text-left text-xs transition-colors hover:bg-accent-soft/50"
             title={node.path}
             data-testid="tree-file"
@@ -392,6 +392,8 @@ export default function LeftPanel() {
       </div>
 
       <div className="sidebar-file-tree min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
+        {files.some(file => file.workspace_scan_truncated) && <p role="status" className="p-2 text-xs text-slate-500">目录展示已截断；可在对话中指定目录继续查找。</p>}
+        {files.some(file => file.workspace_unavailable) && <p role="status" className="p-2 text-xs text-slate-500">当前目录不可用，以下为已索引文件。</p>}
         {q.length >= 2 && !currentHits && <p role="status" className="p-2 text-xs text-slate-400">正在查找文件和函数…</p>}
         {currentHits && symbolHits.error && <p role="alert" className="p-2 text-xs text-danger">函数搜索失败：{symbolHits.error} <button onClick={() => setSearchRetry(value => value + 1)}>重试</button></p>}
         {projectsState.loading && <p className="px-2 py-4 text-xs text-slate-400">加载索引中…</p>}

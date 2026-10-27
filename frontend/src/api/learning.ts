@@ -13,7 +13,7 @@ export const getTopicInstances = (projectId: number, topicId: string) =>
   jsonRequest<{ items: ConceptInstance[]; status: string; limit: number }>(
     `/projects/${projectId}/knowledge/topics/${encodeURIComponent(topicId)}/instances`,
   )
-export const readProjectCode = (projectId: number, path: string, line = 1, indexEpoch?: number, headCommit?: string) =>
-  jsonRequest<{ path: string; start_line: number; end_line: number; content: string; total_lines: number; head_commit: string | null; content_sha256: string; index_epoch?: number; workspace_changed?: boolean }>(
-    `/projects/${projectId}/code?path=${encodeURIComponent(path)}&start_line=${line}${indexEpoch === undefined ? '' : `&index_epoch=${indexEpoch}`}${headCommit ? `&head_commit=${encodeURIComponent(headCommit)}` : ''}`,
+export const readProjectCode = (projectId: number, path: string, line = 1, indexEpoch?: number, headCommit?: string, sourceKind?: 'workspace' | 'index', contentSha?: string) =>
+  jsonRequest<{ path: string; start_line: number; end_line: number; content: string; total_lines: number; head_commit: string | null; content_sha256: string; index_epoch?: number; workspace_changed?: boolean; source_kind?: 'workspace' | 'index' }>(
+    `/projects/${projectId}/code?path=${encodeURIComponent(path)}&start_line=${line}${indexEpoch === undefined ? '' : `&index_epoch=${indexEpoch}`}${headCommit ? `&head_commit=${encodeURIComponent(headCommit)}` : ''}${sourceKind ? `&source_kind=${sourceKind}` : ''}${contentSha ? `&content_sha256=${encodeURIComponent(contentSha)}` : ''}`,
   )

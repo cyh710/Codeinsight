@@ -24,6 +24,10 @@ export interface ToolTimelineItem {
 
 /** 右栏证据面板的一格。SSE `evidence` 事件与非流式 `evidence[]` 统一到这里。 */
 export interface PanelEvidence {
+  source_kind?: 'workspace' | 'index' | null
+  content_sha256?: string | null
+  index_epoch?: number | null
+  head_commit?: string | null
   path: string
   lineno: number
   end_lineno: number
@@ -172,7 +176,7 @@ export type RightPanel =
   | { mode: 'concept'; conceptId: string }
   | { mode: 'knowledge-tree' }
   | { mode: 'knowledge'; target: LearningTarget }
-  | { mode: 'file'; path: string; lineno: number; version?: string; indexEpoch?: number }
+  | { mode: 'file'; path: string; lineno: number; version?: string; indexEpoch?: number; sourceKind?: 'workspace' | 'index'; contentSha?: string }
 
 export interface WorkbenchStore {
   tabs: Array<{ id: string; panel: RightPanel; title: string }>
@@ -213,8 +217,8 @@ export interface WorkbenchStore {
   directoryQuery: string
   setDirectoryQuery: (query: string) => void
 
-  selectFile: (path: string, lineno?: number, version?: string | null, indexEpoch?: number) => void
-  bindFileVersion: (path: string, lineno: number, version: string | null, indexEpoch?: number) => void
+  selectFile: (path: string, lineno?: number, version?: string | null, indexEpoch?: number, sourceKind?: 'workspace' | 'index', contentSha?: string | null) => void
+  bindFileVersion: (path: string, lineno: number, version: string | null, indexEpoch?: number, sourceKind?: 'workspace' | 'index', contentSha?: string) => void
   /** `lineno` 定位到符号在文件里的确切行（教材/证据跳回代码时用）。 */
   selectSymbol: (qualname: string, path: string, lineno?: number, version?: string | null) => void
   openConcept: (conceptId: string) => void

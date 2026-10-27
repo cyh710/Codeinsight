@@ -59,7 +59,7 @@ export function getProjectOverview(id: number): Promise<ProjectOverview> {
 
 export function getProjectFiles(id: number): Promise<FileEntry[]> {
   // 文件树一次拉全（契约 §0.4 例外：裸数组）。
-  return jsonRequest<FileEntry[]>(`/projects/${id}/files`)
+  return jsonRequest<FileEntry[]>(`/projects/${id}/files?source_kind=workspace`)
 }
 
 export function listProjectSymbols(id: number, query: SymbolQuery = {}): Promise<ListResponse<SymbolListItem>> {

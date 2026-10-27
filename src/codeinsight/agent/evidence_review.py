@@ -45,6 +45,8 @@ def record_check(answer: Answer, name: str, arguments: dict, data: dict, error: 
     """只登记真实定位/读取操作；结构建议工具不构成取证。"""
     if name not in {
         "search_code",
+        "search_files",
+        "list_files",
         "find_symbol",
         "read_file",
         "get_module_overview",

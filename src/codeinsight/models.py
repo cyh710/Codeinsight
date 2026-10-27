@@ -151,6 +151,10 @@ class Citation:
     end_lineno: int = 0
     qualname: str | None = None
     snippet: str = ""
+    source_kind: str | None = None
+    content_sha256: str | None = None
+    index_epoch: int | None = None
+    head_commit: str | None = None
 
     @property
     def location(self) -> str:

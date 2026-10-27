@@ -187,7 +187,7 @@ def test_rephrase_does_not_rebind_old_index_or_unavailable_source(reviewed, data
             conn.execute("UPDATE project SET root_path='unavailable' WHERE id=1")
             conn.commit()
         failed = client.post("/query", json={**body, "question": "听不懂"}).json()
-        # 源目录不可用时，已经保存的索引源码仍可用于续讲。
+        # 源目录不可用时，已经保存的工作区源码仍可用于续讲。
         assert failed["text"] and failed["citations"]
         assert failed["evidence_review"]["status"] == "verified"
         with open_sqlite(db_path(data_dir)) as conn:
@@ -196,8 +196,9 @@ def test_rephrase_does_not_rebind_old_index_or_unavailable_source(reviewed, data
         stale = client.post(
             "/query", json={**body, "conversation_id": old_cid, "question": "再简单一点"}
         ).json()
-        assert not stale["tools_used"] and not stale["citations"]
-        assert any("版本已变化" in str(m.get("content")) for m in reviewed.calls[-1])
+        assert stale["tools_used"] == ["read_file"] and stale["citations"]
+        assert stale["citations"][0]["source_kind"] == "workspace"
+        assert any("保存的工作区源码快照" in str(m.get("content")) for m in reviewed.calls[-1])
 
 
 def test_knowledge_followup_reuses_versioned_chapter_without_project_citations(reviewed):

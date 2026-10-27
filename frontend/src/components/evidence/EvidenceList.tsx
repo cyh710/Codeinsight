@@ -19,7 +19,8 @@ const LANE_LABEL: Record<string, string> = {
 
 function EvidenceCard({ item, version, indexEpoch }: { item: PanelEvidence; version?: string | null; indexEpoch?: number }) {
   const open = () => {
-    if (indexEpoch !== undefined) workbenchStore.getState().selectFile(item.path, item.lineno, version, indexEpoch)
+    if (item.source_kind === 'workspace') workbenchStore.getState().selectFile(item.path, item.lineno, null, undefined, 'workspace', item.content_sha256)
+    else if (indexEpoch !== undefined) workbenchStore.getState().selectFile(item.path, item.lineno, item.head_commit ?? version, item.index_epoch ?? indexEpoch)
     else if (item.qualname) workbenchStore.getState().selectSymbol(item.qualname, item.path, item.lineno, version ?? '')
     else workbenchStore.getState().selectFile(item.path, item.lineno, version ?? '')
   }
@@ -39,7 +40,7 @@ function EvidenceCard({ item, version, indexEpoch }: { item: PanelEvidence; vers
       {item.qualname && (
         <p className="mt-1 truncate font-mono text-[10px] text-slate-400">{item.qualname}</p>
       )}
-      {!version && indexEpoch === undefined && <p className="mt-1 text-xs text-slate-500">原版本未记录，将打开当前索引。</p>}
+      {!version && indexEpoch === undefined && item.source_kind !== 'workspace' && <p className="mt-1 text-xs text-slate-500">原版本未记录，将打开当前文件。</p>}
       <pre className="mt-1.5 max-h-28 overflow-auto rounded-md bg-slate-50 px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-slate-600">
         {item.snippet}
       </pre>

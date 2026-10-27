@@ -134,7 +134,7 @@ export default function SymbolDetailCard({
         </p>
       )}
 
-      <FilePanel path={detail.path} lineno={focusLine ?? detail.lineno} version={version} />
+      <FilePanel path={detail.path} lineno={focusLine ?? detail.lineno} version={version} sourceKind="index" />
       {detail.concept_ids.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {detail.concept_ids.map((id) => (
@@ -157,7 +157,7 @@ export default function SymbolDetailCard({
 
       <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
         <ArrowRightLeft size={12} strokeWidth={1.7} className="text-slate-400" />
-        调用关系
+        索引调用关系
       </div>
       <RelationList title={`调用者（${detail.callers.length}）`} items={detail.callers} />
       <RelationList title={`被调（${detail.callees.length}）`} items={detail.callees} />

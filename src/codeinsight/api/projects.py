@@ -329,7 +329,8 @@ def _ref_head(root_path: str, ref: str | None) -> str | None:
 
 
 @router.get("/projects/{project_id}/files")
-def list_files(project_id: int) -> list[dict[str, Any]]:
+def list_files(project_id: int, source_kind: str = "index") -> list[dict[str, Any]]:
+    """旧调用保持索引清单；工作区清单不提供未读取内容的版本身份。"""
     conn = connect_db(project_id)
     try:
         require_project(conn, project_id)
@@ -345,7 +346,49 @@ def list_files(project_id: int) -> list[dict[str, Any]]:
             """,
             (project_id,),
         ).fetchall()
-        return [dict(r) for r in rows]
+        indexed = [dict(r) for r in rows]
+        if source_kind != "workspace":
+            return indexed
+        from codeinsight.cognitive.indexing.scanner import _classify_language, _classify_role
+        from codeinsight.cognitive.indexing.source_store import SourceError
+        from codeinsight.cognitive.workspace import list_paths, resolve
+
+        root = conn.execute("SELECT root_path FROM project WHERE id=?", (project_id,)).fetchone()[0]
+        try:
+            paths, truncated = list_paths(root)
+        except SourceError:
+            return [
+                {**item, "source_kind": "index", "workspace_unavailable": True} for item in indexed
+            ]
+        known = {item["path"]: item for item in indexed}
+        result = []
+        for path in paths:
+            try:
+                size = resolve(root, path).stat().st_size
+            except (SourceError, OSError):
+                continue
+            result.append(
+                {
+                    **known.get(
+                        path,
+                        {
+                            "path": path,
+                            "language": _classify_language(path),
+                            "role": _classify_role(path),
+                            "content_sha256": "",
+                            "size_bytes": size,
+                            "line_count": 0,
+                            "symbol_count": 0,
+                        },
+                    ),
+                    "source_kind": "workspace",
+                    "workspace_scan_truncated": truncated,
+                    "size_bytes": size,
+                    "content_sha256": "",
+                    "line_count": 0,
+                }
+            )
+        return result
     finally:
         conn.close()
 

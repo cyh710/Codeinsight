@@ -112,12 +112,15 @@ def prepare_followup(
         "历史输出仅为对话来路；项目事实需本回合取证，明确阅读目标优先。"
         f"\n上一轮问题（数据）：{str(previous['question'])[:400]}",
     }
-    if locations and not same:
+    workspace_locations = any(c.get("source_kind") == "workspace" for c in locations)
+    if locations and not same and not workspace_locations:
         result["note"] += (
             "\n上轮代码版本已变化或版本信息不足，请重新定位，不能沿用旧行号作为当前证据。"
         )
-    if same:
+    if same or workspace_locations:
         for citation in locations:
+            if not same and citation.get("source_kind") != "workspace":
+                continue
             target = code_target(
                 conn,
                 project_id,
@@ -131,6 +134,10 @@ def prepare_followup(
                 result["code"].append(target)
             if len(result["code"]) == 2:
                 break
+    if workspace_locations:
+        result["note"] += (
+            "\n本次续讲重读上轮保存的工作区源码快照；不声称它等于当前磁盘版本，需要比较最新实现时重新搜索当前工作区。"
+        )
     # 已保存的知识目标只是定位线索，prepare_goal 仍核对当前文章及版本。
     if not answer.get("incomplete"):
         source = next(iter(answer.get("knowledge_sources") or []), None)

@@ -30,7 +30,8 @@ import './sidebar.css'
 
 // 引用点击 → 右栏符号详情（无 qualname 时退回文件选中）。
 function openCitation(c: Citation) {
-  if (c.index_epoch != null) workbenchStore.getState().selectFile(c.path, c.lineno, c.head_commit, c.index_epoch)
+  if (c.source_kind === 'workspace') workbenchStore.getState().selectFile(c.path, c.lineno, null, undefined, 'workspace', c.content_sha256)
+  else if (c.index_epoch != null) workbenchStore.getState().selectFile(c.path, c.lineno, c.head_commit, c.index_epoch)
   else if (c.qualname) workbenchStore.getState().selectSymbol(c.qualname, c.path, c.lineno, c.head_commit)
   else workbenchStore.getState().selectFile(c.path, c.lineno, c.head_commit)
 }

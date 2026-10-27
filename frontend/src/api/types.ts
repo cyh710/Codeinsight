@@ -118,6 +118,8 @@ export interface ListResponse<T> {
 
 /** 一条指向代码的引用。`path:lineno` 是本项目的核心承诺。 */
 export interface Citation {
+  source_kind?: 'workspace' | 'index' | null
+  content_sha256?: string | null
   index_epoch?: number | null
   head_commit?: string | null
   path: string
@@ -285,6 +287,9 @@ export interface ProjectStats {
 
 /** `GET /projects/{id}/files` 返回裸数组（契约 §3.6）。 */
 export interface FileEntry {
+  source_kind?: 'workspace' | 'index'
+  workspace_scan_truncated?: boolean
+  workspace_unavailable?: boolean
   path: string
   language: string
   role: FileRole
@@ -707,6 +712,7 @@ export interface KnowledgeReadingContext {
   preview?: string
 }
 export interface CodeReadingContext {
+  source_kind?: 'workspace' | 'index'
   index_epoch?: number
   kind: 'code'
   project_id: number

@@ -1,6 +1,6 @@
 """工具集装配（源文档 §2.7-3「调用项目理解工具辅助开发」）。
 
-12 个工具全部**只读**（ADR 0008）。写入与执行交给外部 agent 经 MCP 承担，
+基础工具全部**只读**（ADR 0008）。写入与执行交给外部 agent 经 MCP 承担，
 CodeInsight 占住理解、变更验证、认知更新三段。
 
 三条实现约束，每个工具都要守：
@@ -15,7 +15,7 @@ CodeInsight 占住理解、变更验证、认知更新三段。
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +41,9 @@ class ToolServices:
     learning: Any = None
     """B 线的教材桥（`LearningBridge`）。有它就多注册两个知识工具。"""
 
+    workspace_versions: dict[str, str] = field(default_factory=dict)
+    """每个请求首次读到的文件版本；不同会话不共享。"""
+
     @property
     def root(self) -> Path:
         return Path(self.repo_root)
@@ -64,6 +67,18 @@ class BaseTool:
         data: dict[str, Any] | None = None,
         error: str | None = None,
     ) -> ToolResult:
+        if data and data.get("citations") and self.name not in {"read_file", "search_files"}:
+            state = self.services.conn.execute(
+                "SELECT index_epoch,head_commit FROM repo_state WHERE project_id=?",
+                (self.services.project_id,),
+            ).fetchone()
+            for citation in data["citations"]:
+                citation.setdefault("source_kind", "index")
+                citation.setdefault("index_epoch", state[0] if state else 0)
+                citation.setdefault("head_commit", state[1] if state else None)
+            content = (
+                "以下来自索引快照，仅供定位；解释当前实现前请用read_file核对工作区。\n" + content
+            )
         text, truncated = self.services.budget.clamp_tool_result(content)
         return ToolResult(text, data or {}, truncated, error)
 
@@ -75,6 +90,11 @@ class BaseTool:
                 "lineno": item.lineno,
                 "end_lineno": item.end_lineno or item.lineno,
                 "qualname": item.qualname,
+                **{
+                    k: v
+                    for k in ("source_kind", "content_sha256", "index_epoch", "head_commit")
+                    if (v := getattr(item, k, None)) is not None
+                },
             }
             for item in rows
         ]
@@ -84,7 +104,7 @@ class BaseTool:
 
 
 def build_tools(services: ToolServices) -> ToolRegistry:
-    """装配 13 个基础工具。顺序即 meta 展示顺序，知识桥可追加教材工具。"""
+    """装配15个基础工具。工作区工具不依赖索引，知识桥可追加教材工具。"""
     from codeinsight.agent.tools_code import (
         FindSymbolTool,
         GetCalleesTool,
@@ -104,8 +124,11 @@ def build_tools(services: ToolServices) -> ToolRegistry:
         GetDesignDecisionsTool,
         GetFlowTool,
     )
+    from codeinsight.agent.tools_workspace import ListFilesTool, SearchFilesTool
 
     tools: list[Tool] = [
+        ListFilesTool(services),
+        SearchFilesTool(services),
         SearchCodeTool(services),
         FindSymbolTool(services),
         ReadFileTool(services),

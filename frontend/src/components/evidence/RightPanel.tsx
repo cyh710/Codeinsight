@@ -152,7 +152,7 @@ export default function RightPanel() {
           {panel.mode === 'knowledge-tree' && <KnowledgeDirectory />}
           {panel.mode === 'knowledge' && <KnowledgeArticle target={panel.target} />}
           {panel.mode === 'exploration' && <ContextReading {...panel} />}
-          {panel.mode === 'file' && <FilePanel path={panel.path} lineno={panel.lineno} version={panel.version} indexEpoch={panel.indexEpoch} />}
+          {panel.mode === 'file' && <FilePanel path={panel.path} lineno={panel.lineno} version={panel.version} indexEpoch={panel.indexEpoch} sourceKind={panel.sourceKind} contentSha={panel.contentSha} />}
         </div>
       </div>
     </aside>

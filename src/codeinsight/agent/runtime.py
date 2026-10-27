@@ -138,6 +138,10 @@ class AgentRuntime:
             if context:
                 prior = [*prior, {"role": "user", "content": context}]
         grounding = Grounding()
+        for name in self.registry.names:
+            services = getattr(self.registry.get(name), "services", None)
+            if services is not None and hasattr(services, "workspace_versions"):
+                services.workspace_versions.clear()
         focus = self.store.focus(session_key) if conversation_id else Focus()
         final_text = ""
         body_parts: list[str] = []
@@ -242,6 +246,16 @@ class AgentRuntime:
                             "path": target["path"],
                             "start_line": target["lineno"],
                             "end_line": target["end_lineno"],
+                            **{
+                                k: target[k]
+                                for k in (
+                                    "source_kind",
+                                    "content_sha256",
+                                    "index_epoch",
+                                    "head_commit",
+                                )
+                                if target.get(k) is not None
+                            },
                         },
                     )
                     current.append(_assistant_message("重新核对上轮解释的源码。", [call]))
@@ -293,7 +307,21 @@ class AgentRuntime:
                     call = ToolCall(
                         id=f"reading-{task_id}",
                         name="read_file",
-                        arguments={"path": path, "start_line": line, "end_line": end},
+                        arguments={
+                            "path": path,
+                            "start_line": line,
+                            "end_line": end,
+                            **{
+                                k: reading_context[k]
+                                for k in (
+                                    "source_kind",
+                                    "content_sha256",
+                                    "index_epoch",
+                                    "head_commit",
+                                )
+                                if reading_context.get(k) is not None
+                            },
+                        },
                     )
                     current.append(_assistant_message("读取当前代码目标。", [call]))
                     if ledger is not None:
@@ -320,7 +348,7 @@ class AgentRuntime:
                     )
                     answer.reading_status = "ok" if len(grounding) else "not_found"
                     answer.knowledge_error = (
-                        None if len(grounding) else "未能从当前项目索引读取这个代码目标。"
+                        None if len(grounding) else "未能读取这个代码目标，请查看具体文件与版本。"
                     )
                 else:
                     answer.reading_status = "invalid"
@@ -349,10 +377,10 @@ class AgentRuntime:
                     current.append(
                         {
                             "role": "user",
-                            "content": "项目索引在本轮中已更新。不要继续读取或混入新版位置；用已经取得的材料回答，并说明原版本与更新的边界。",
+                            "content": "项目索引在本轮中已更新，旧索引关系不再继续核对；仍可用list_files/search_files/read_file读取当前工作区。不要把新旧索引位置混用。",
                         }
                     )
-                    recovery.idle_turns = 3
+                    # 索引更新仅使索引工具失效，工作区工具仍可继续取证。
                 finishing = recovery.idle_turns >= 3
                 if finishing:
                     current.append(
@@ -607,8 +635,19 @@ class AgentRuntime:
         tool = self.registry.get(call.name)
         assert tool is not None
         result = recovery.blocked(call.name, call.arguments) if recovery else None
+        workspace_tool = call.name in {"list_files", "search_files"} or (
+            call.name == "read_file"
+            and call.arguments.get("source_kind", "workspace") == "workspace"
+            and not call.arguments.get("index_epoch")
+            and not call.arguments.get("head_commit")
+            and (
+                not call.arguments.get("content_sha256")
+                or call.arguments.get("source_kind") == "workspace"
+            )
+        )
         if (
             recovery
+            and not workspace_tool
             and self.conn is not None
             and recovery.version != version(self.conn, project_id)
         ):
@@ -626,11 +665,24 @@ class AgentRuntime:
                 ),
             )
         if recovery:
-            if self.conn is not None and recovery.version != version(self.conn, project_id):
+            if (
+                not workspace_tool
+                and self.conn is not None
+                and recovery.version != version(self.conn, project_id)
+            ):
                 result = ToolResult(
                     "工具执行期间索引已更新，结果未混入旧版本回答。", error="stale_source"
                 )
             recovery.observe(call.name, call.arguments, result)
+        if not result.error and self.conn is not None:
+            indexed = version(self.conn, project_id)
+            for citation in result.data.get("citations") or []:
+                if not citation.get("source_kind"):
+                    citation.update(
+                        source_kind="index",
+                        index_epoch=indexed["index_epoch"],
+                        head_commit=indexed["head_commit"],
+                    )
         if call.name not in answer.tools_used:
             answer.tools_used.append(call.name)
         focus = _update_focus(focus, call.name, result.data)
@@ -805,6 +857,10 @@ def _absorb_grounding(grounding: Grounding, data: dict[str, Any]) -> None:
                 int(item.get("end_lineno") or lineno),
                 item.get("qualname"),
                 str(item.get("snippet") or ""),
+                item.get("source_kind"),
+                item.get("content_sha256"),
+                item.get("index_epoch"),
+                item.get("head_commit"),
             )
         )
 
@@ -855,7 +911,7 @@ def _collect_evidence(answer: Answer, tool_name: str, data: dict[str, Any]) -> N
     流式的 `evidence` 事件按契约 §8.3 只要 6 个字段；`chunk_id` / `score`
     是 §8.1 才有的，所以放在这里而不是事件里——事件词汇表是冻结的。
     """
-    if tool_name == "read_file":
+    if tool_name in {"read_file", "search_files"}:
         seen_locations = {
             (item.get("path"), item.get("lineno"), item.get("end_lineno"))
             for item in answer.evidence
@@ -922,6 +978,8 @@ def _summarize(call: ToolCall) -> str:
     args = call.arguments
     label = {
         "search_code": "搜索",
+        "search_files": "搜索工作区",
+        "list_files": "浏览目录",
         "find_symbol": "查找符号",
         "read_file": "读取",
         "get_callers": "查调用者",
@@ -965,9 +1023,13 @@ def _citations_payload(answer: Answer) -> list[dict[str, Any]]:
     return [
         {
             "path": item.path,
-            "index_epoch": ((answer.evidence_review or {}).get("source_version") or {}).get(
-                "index_epoch"
-            ),
+            "source_kind": item.source_kind,
+            "content_sha256": item.content_sha256,
+            "head_commit": item.head_commit,
+            "index_epoch": None
+            if item.source_kind == "workspace"
+            else item.index_epoch
+            or ((answer.evidence_review or {}).get("source_version") or {}).get("index_epoch"),
             "lineno": item.lineno,
             "end_lineno": item.end_lineno or item.lineno,
             "qualname": item.qualname,

@@ -114,6 +114,9 @@ async def test_callers_point_at_the_call_site(conn, tmp_path) -> None:
     assert item["lineno"] == 5
     # 引用必须是「调用点所在文件那一行」，不是 a.run 的定义行。
     assert result.data["citations"][0] == {
+        "source_kind": "index",
+        "index_epoch": 0,
+        "head_commit": None,
         "path": "b.py",
         "lineno": 5,
         "end_lineno": 5,
@@ -154,11 +157,12 @@ async def test_read_file_does_not_cite_changed_unindexed_source(conn, tmp_path) 
         (hashlib.sha256(SOURCE_A.encode()).hexdigest(),),
     )
     (tmp_path / "a.py").write_text("changed source", encoding="utf-8")
-    result = await ReadFileTool(_services(conn, tmp_path)).run({"path": "a.py"}, _ctx())
+    result = await ReadFileTool(_services(conn, tmp_path)).run({"path": "a.py", "source_kind": "index"}, _ctx())
     assert result.error == "stale_source" and not result.data.get("citations")
 
 
 async def test_read_file_does_not_create_out_of_range_citation(conn, tmp_path) -> None:
+    (tmp_path / "a.py").write_text(SOURCE_A, encoding="utf-8")
     result = await ReadFileTool(_services(conn, tmp_path)).run(
         {"path": "a.py", "start_line": 10000}, _ctx()
     )
@@ -204,9 +208,9 @@ async def test_concept_uncertainty_is_in_model_text_not_only_metadata(conn, tmp_
     assert result.data["items"][0]["confidence"] == 0.4
 
 
-async def test_registry_has_thirteen_readonly_tools(conn, tmp_path) -> None:
+async def test_registry_has_fifteen_readonly_tools(conn, tmp_path) -> None:
     registry = build_tools(_services(conn, tmp_path))
-    assert len(registry) == 13
+    assert len(registry) == 15
     assert all(tool.mutating is False for tool in registry)
     assert "search_code" in registry.names
-    assert len(registry.schemas()) == 13
+    assert len(registry.schemas()) == 15

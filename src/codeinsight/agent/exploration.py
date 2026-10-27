@@ -33,6 +33,31 @@ def code_target(conn: sqlite3.Connection, pid: int, raw: dict) -> dict | None:
         return None
     if not isinstance(line, int) or isinstance(line, bool) or line < 1:
         return None
+    if raw.get("source_kind") == "workspace":
+        from codeinsight.cognitive.indexing.source_store import SourceError
+        from codeinsight.cognitive.workspace import read_workspace
+
+        if not isinstance(path, str) or not isinstance(raw.get("content_sha256"), str):
+            return None
+        try:
+            source = read_workspace(conn, pid, path, raw["content_sha256"])
+        except (SourceError, OSError):
+            return None
+        total = len(source.raw.decode("utf-8", "replace").splitlines())
+        end = raw.get("end_lineno", line)
+        if type(end) is not int or end < line or line > total:
+            return None
+        return {
+            "kind": "code",
+            "project_id": pid,
+            "path": path,
+            "lineno": line,
+            "end_lineno": min(end, line + 199, total),
+            "source_kind": "workspace",
+            "content_sha256": source.sha256,
+            "head_commit": None,
+            "qualname": None,
+        }
     if name:
         row = conn.execute(
             "SELECT f.path,s.lineno FROM symbol s JOIN file f ON f.id=s.file_id "

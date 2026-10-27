@@ -32,7 +32,7 @@ function ToolTimeline({ tools }: { tools: NonNullable<ChatMessage['tools']> }) {
             <AlertTriangle size={11} strokeWidth={1.8} className="shrink-0 text-danger" />
           )}
           <Wrench size={10} strokeWidth={1.8} className="shrink-0 text-slate-400" />
-          <span>{({ search_code: '查找代码', read_file: '读取源码', find_symbol: '定位函数', search_knowledge: '查找教材', read_knowledge: '读取教材', get_callers: '查找调用者', get_callees: '查找被调用者' } as Record<string, string>)[t.name] ?? '核对项目资料'}</span>
+          <span>{({ search_code: '索引定位', list_files: '浏览当前目录', search_files: '搜索当前文件', read_file: '读取源码', find_symbol: '定位函数', search_knowledge: '查找教材', read_knowledge: '读取教材', get_callers: '查找调用者', get_callees: '查找被调用者' } as Record<string, string>)[t.name] ?? '核对项目资料'}</span>
           <details><summary className="cursor-pointer text-[10px]">细节</summary><span className="font-mono">{t.name}</span></details>
           <span className="truncate text-slate-400">{t.summary}</span>
         </div>
@@ -80,7 +80,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
     if (related && message.exploration && pid !== null && message.requestId) openRelated(target, pid, cid, message.requestId)
     else workbenchStore.getState().openKnowledge(target)
   }
-  const onOpenCitation = (citation: Citation) => originalOpen({ ...citation, head_commit: message.sourceHeadCommit ?? citation.head_commit, index_epoch: citation.index_epoch ?? message.evidenceReview?.source_version?.index_epoch })
+  const onOpenCitation = (citation: Citation) => originalOpen(citation.source_kind === 'workspace' ? citation : { ...citation, head_commit: citation.head_commit ?? message.sourceHeadCommit, index_epoch: citation.index_epoch ?? message.evidenceReview?.source_version?.index_epoch })
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
@@ -126,9 +126,9 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
             onCitation={onOpenCitation}
             citationHref={citation => {
               if (pid === null) return undefined
-              const version = message.sourceHeadCommit ?? citation.head_commit
+              const version = citation.head_commit ?? message.sourceHeadCommit
               const epoch = citation.index_epoch ?? message.evidenceReview?.source_version?.index_epoch
-              const material = { mode: 'file', path: citation.path, lineno: citation.lineno, ...(version ? { version } : {}), ...(epoch == null ? {} : { indexEpoch: epoch }) }
+              const material = { mode: 'file', path: citation.path, lineno: citation.lineno, ...(citation.source_kind === 'workspace' ? { sourceKind: 'workspace', contentSha: citation.content_sha256 } : { ...(version ? { version } : {}), ...(epoch == null ? {} : { indexEpoch: epoch }) }) }
               return `/?${new URLSearchParams({ project: String(pid), conversation: cid, view: 'chat', material: JSON.stringify(material) })}`
             }}
             onKnowledge={openKnowledge}

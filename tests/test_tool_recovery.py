@@ -98,10 +98,17 @@ async def test_index_change_during_tool_does_not_inject_new_version_result(conn)
                 "新版内容不能混入", data={"citations": [{"path": "new.py", "lineno": 1}]}
             )
 
-    provider = RepeatProvider()
+    class IndexProvider(RepeatProvider):
+        async def stream_with_tools(self, *args, **kwargs):
+            async for chunk in super().stream_with_tools(*args, **kwargs):
+                for call in chunk.tool_calls or []:
+                    call.arguments["source_kind"] = "index"
+                yield chunk
+
+    provider = IndexProvider()
     answer = await AgentRuntime(
         provider=provider, registry=ToolRegistry([ChangedIndex()]), conn=conn
     ).run(project_id=1, question="解释")
-    assert len(provider.calls) == 2 and not answer.citations
+    assert len(provider.calls) == 4 and not answer.citations
     assert "新版内容不能混入" not in str(provider.calls[-1][0])
     assert provider.calls[-1][2]["tool_choice"] == "none"

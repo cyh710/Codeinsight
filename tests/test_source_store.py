@@ -79,7 +79,7 @@ def test_snapshot_is_shared_by_reader_selection_and_new_versions(source_project,
     root = source_project
     (root / "app.py").write_bytes(b"def save(value):\n    return value + 1\n")
     with TestClient(create_app()) as client:
-        old = client.get("/projects/1/code", params={"path": "app.py"}).json()
+        old = client.get("/projects/1/code", params={"path": "app.py", "source_kind": "index"}).json()
         assert "return value + 1" not in old["content"]
         assert old["workspace_changed"]
         with open_sqlite(db_path(data_dir), row_factory=True) as conn:
@@ -98,7 +98,7 @@ def test_snapshot_is_shared_by_reader_selection_and_new_versions(source_project,
             )
             assert text == "return value"
         index_project(db_path(data_dir), root=root, name="local", embed=False)
-        latest = client.get("/projects/1/code", params={"path": "app.py"}).json()
+        latest = client.get("/projects/1/code", params={"path": "app.py", "source_kind": "index"}).json()
         assert "return value + 1" in latest["content"] and latest["index_epoch"] == 2
         previous = client.get(
             "/projects/1/code", params={"path": "app.py", "index_epoch": 1}

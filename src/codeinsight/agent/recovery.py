@@ -18,9 +18,11 @@ class ToolRecovery:
     def blocked(self, name: str, arguments: dict) -> ToolResult | None:
         """文件版本失败与窗口无关，换行号不能再次触发实际读取。"""
         path = str(arguments.get("path") or "")
-        if name == "read_file" and path in self.blocked_files:
+        key = f"{arguments.get('source_kind') or ('index' if arguments.get('index_epoch') or arguments.get('head_commit') or arguments.get('content_sha256') else 'workspace')}:{path}"
+        if name == "read_file" and key in self.blocked_files:
             return ToolResult(
-                self.blocked_files[path] + " 本回合已确认，不再重复读取；请整理已有材料。",
+                self.blocked_files[key]
+                + " 本回合已确认，不再重复读取；可查其他来源或整理已有材料。",
                 error="stale_source",
             )
         return None
@@ -29,7 +31,14 @@ class ToolRecovery:
         """只把新增成功材料计入进展；失败消息不能通过换参数变成进展。"""
         if result.error:
             if name == "read_file" and result.error == "stale_source":
-                self.blocked_files[str(arguments.get("path") or "")] = result.content
+                kind = arguments.get("source_kind") or (
+                    "index"
+                    if arguments.get("index_epoch")
+                    or arguments.get("head_commit")
+                    or arguments.get("content_sha256")
+                    else "workspace"
+                )
+                self.blocked_files[f"{kind}:{arguments.get('path') or ''}"] = result.content
             return
         data = result.data or {}
         locations = data.get("citations") or []

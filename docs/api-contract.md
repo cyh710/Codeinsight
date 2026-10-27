@@ -1387,3 +1387,15 @@ index_running；完成或放弃后才能移除，避免删除任务记录后遗�
 - 内容哈希保持原始字节身份；换行转换只是恢复原始字节的候选，最后仍须完全命中原哈希。AI、代码 API 与代码选区共用同一读取服务。
 - `file_snapshot` 复用现有结构，内部 `commit_sha` 的 `source:<hash>` / `epoch:<n>` 命名空间分别记录项目归属及版本映射，不参与 Git 提交或过期率比较，不迁移 schema。字节快照按哈希去重并保留，不自动清理。
 - 工具确定失败按本回合文件版本记忆；连续三轮无新材料后，以 tools=[] / tool_choice=none 调用一次整理回答，未遵守工具关闭的 Provider 不继续执行工具。有新材料的分析保持总轮次不限。模型故障与取消仍走原 error/done 流程，不能把工具失败包装为项目不存在。
+
+## 当前工作区优先（请求0025 / ADR0042，2026-10-28）
+
+本节替代0024中“缺省读取当前索引”和“只能读取已索引文件”的规定；旧索引链接仍可用，无schema迁移。
+
+- `GET /projects/{id}/code` 未指定版本时读取当前工作区，不要求文件入索引或Git提交。增加可选 `source_kind=workspace|index`；显式epoch/commit或仅hash且未指定source_kind的旧请求仍按index解释。workspace历史请求使用source_kind=workspace和content_sha256，必须已登记本项目/路径的读取归属。响应增加source_kind；workspace返回head_commit=null、无index_epoch，content_sha256为真实原始字节哈希。
+- Citation和CodeReadingContext增加可选source_kind、content_sha256；索引来源保留index_epoch/head_commit，工作区来源不得由整回合索引状态补造版本。SSE和非流式来源、完整回合存储保持相同身份。旧字段source_head_commit和evidence_review.source_version仍指索引基线，不代表workspace材料的版本。
+- `GET /projects/{id}/files`默认保持旧索引裸数组；source_kind=workspace返回实际目录清单，允许未提交及未索引文本。可选字段workspace_scan_truncated表示受扫描限额影响，workspace_unavailable表示回退已索引清单；此时source_kind=index。工作区树不提供尚未读取的内容哈希/行数（空串/0），symbol_count仍指索引中的符号数量。
+- 增加只读list_files/search_files工具（可指定path子目录、pattern路径筛选），read_file默认workspace，显式source_kind=index恢复索引版本。工作区搜索不依赖Embedding；索引检索与结构工具仍可辅助定位，须明确其版本。
+- 工作区范围仅项目根内，排除缓存/密钥/二进制及符号链接。默认列举最多2000个文件、遍历10000个条目，目录工具展示100项、搜索展示20项，单文件2MB、搜索读取约8MB；截断和不可读范围显式呈现，path可缩小扫描目录。每次read_file及代码API仍最多200行。
+- 读取的workspace原始字节即时保存，使用file_snapshot中的workspace:<hash>记录项目/路径归属；索引更新不删除它。每请求同路径首次读取固定；不同文件不承诺同一时刻的原子工作区快照。保存失败不返回假来源，workspace源码API错误复用reading_invalid并给具体原因。
+- 工作区选区按已登记内容哈希重读UTF-16行列，不受无关索引更新影响；客户端preview不作证据。明确续讲重读上轮工作区快照并说明来路，新问题默认读取当前文件。索引更新只使本回合旧索引工具失效，不阻止工作区取证；失败记忆按源码类型隔离。

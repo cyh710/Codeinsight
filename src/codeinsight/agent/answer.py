@@ -9,7 +9,7 @@ from typing import Any
 
 from codeinsight.models import Citation, ConceptInstance, Evidence
 
-_CITATION = re.compile(r"\[([\w./\\-]+\.(?:py|pyi|tsx?|jsx?|sql|md|toml|ya?ml)):(\d+)(?:-(\d+))?\]")
+_CITATION = re.compile(r"\[([\w./\\ -]+\.[\w]+):(\d+)(?:-(\d+))?\]")
 
 _SENTENCE_END = re.compile(r"[。！？!?]+|\n+")
 
@@ -98,6 +98,10 @@ class GroundedFile:
     end_lineno: int
     qualname: str | None = None
     snippet: str = ""
+    source_kind: str | None = None
+    content_sha256: str | None = None
+    index_epoch: int | None = None
+    head_commit: str | None = None
 
     def covers(self, path: str, lineno: int) -> bool:
         return path == self.path and self.lineno <= lineno <= max(self.end_lineno, self.lineno)
@@ -113,7 +117,10 @@ class Grounding:
     def add(self, item: GroundedFile) -> None:
         key = (item.path, item.lineno, item.end_lineno)
         if key in self._files:
-            return
+            old = self._files[key]
+            if old.source_kind == "workspace" or item.source_kind != "workspace":
+                return
+            self._by_path[item.path].remove(old)
         self._files[key] = item
         self._by_path.setdefault(item.path, []).append(item)
 
@@ -152,14 +159,19 @@ class Grounding:
             )
 
     def covers(self, path: str, lineno: int) -> bool:
-        return any(item.covers(path, lineno) for item in self._by_path.get(path, ()))
+        return any(item.covers(path, lineno) for item in self._candidates(path))
+
+    def _candidates(self, path: str) -> list[GroundedFile]:
+        candidates = self._by_path.get(path, [])
+        workspace = [item for item in candidates if item.source_kind == "workspace"]
+        return workspace or candidates
 
     def covers_range(self, path: str, start: int, end: int) -> bool:
         """范围内每行都须可定位；不按模型提供的巨大行号逐行遍历。"""
         if start < 1 or end < start:
             return False
         cursor = start
-        for item in sorted(self._by_path.get(path, ()), key=lambda item: item.lineno):
+        for item in sorted(self._candidates(path), key=lambda item: item.lineno):
             if item.lineno > cursor:
                 break
             if item.end_lineno >= cursor:
@@ -170,9 +182,12 @@ class Grounding:
 
     def nearest(self, path: str, lineno: int) -> GroundedFile | None:
         """给一句事实挑引用：覆盖该行的那条；否则同文件里最近的一条。"""
-        candidates = self._by_path.get(path)
+        candidates = self._candidates(path)
         if not candidates:
             return None
+        for item in candidates:
+            if item.source_kind == "workspace" and item.covers(path, lineno):
+                return item
         for item in candidates:
             if item.covers(path, lineno):
                 return item
@@ -183,7 +198,17 @@ class Grounding:
 
     def citations(self) -> list[Citation]:
         return [
-            Citation(item.path, item.lineno, item.end_lineno, item.qualname, item.snippet)
+            Citation(
+                item.path,
+                item.lineno,
+                item.end_lineno,
+                item.qualname,
+                item.snippet,
+                item.source_kind,
+                item.content_sha256,
+                item.index_epoch,
+                item.head_commit,
+            )
             for item in self._files.values()
         ]
 
@@ -291,7 +316,17 @@ def _record(
             match = grounding.nearest(path, lineno)
             if match is not None:
                 result.citations.append(
-                    Citation(path, lineno, lineno, match.qualname, match.snippet)
+                    Citation(
+                        path,
+                        lineno,
+                        lineno,
+                        match.qualname,
+                        match.snippet,
+                        match.source_kind,
+                        match.content_sha256,
+                        match.index_epoch,
+                        match.head_commit,
+                    )
                 )
 
 

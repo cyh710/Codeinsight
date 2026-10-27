@@ -2,7 +2,7 @@ import type { CodeReadingContext, LearningTarget, ReadingContext } from '../../a
 import { workbenchStore } from '../../store/workbenchStore'
 
 export function openCode(target: CodeReadingContext) {
-  workbenchStore.getState().selectFile(target.path, target.lineno, target.head_commit, target.index_epoch)
+  workbenchStore.getState().selectFile(target.path, target.lineno, target.head_commit, target.index_epoch, target.source_kind, target.content_sha256)
 }
 export function knowledgeTarget(target: ReadingContext): LearningTarget | null {
   if (target.kind !== 'knowledge') return null
