@@ -1,3 +1,4 @@
+import { openSource } from '../exploration/actions'
 /**
  * 编排执行三态卡（契约 §16.2 / ADR 0035）。
  *
@@ -149,9 +150,7 @@ function ProgressList({ progress }: { progress: import('../../api/types').Execut
 
 function ChangeCard({ card }: { card: NonNullable<import('../../api/types').ExecutionMetadata['change_card']> }) {
   const onOpenCitation = (c: Citation) => {
-    const wb = workbenchStore.getState()
-    if (c.qualname) wb.selectSymbol(c.qualname, c.path, c.lineno)
-    else wb.selectFile(c.path, c.lineno)
+    openSource(c)
   }
   return (
     <section className="mt-3 border-t border-slate-200/60 pt-3" aria-label="变更学习卡">

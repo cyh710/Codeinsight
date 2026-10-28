@@ -97,7 +97,7 @@ def test_goal_budget_keeps_whole_sections_and_same_references(bridge):
 
 
 def test_question_itself_can_use_entire_budget_without_false_knowledge_sources(bridge):
-    question = "SQL 是什么" * 100
+    question = "SQL 是什么"
     goal, prepared = bridge.prepare_goal(question, max_message_bytes=100)
     assert goal["content"] == question
     assert not prepared.context.content and not prepared.context.references

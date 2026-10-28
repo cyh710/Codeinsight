@@ -110,9 +110,9 @@ class SearchFilesTool(BaseTool):
                     self.services.conn,
                     self.services.project_id,
                     path,
-                    self.services.workspace_versions.get(path),
+                    self.services.read_versions.get(path),
                 )
-                self.services.workspace_versions[path] = source.sha256
+                self.services.read_versions[path] = source.sha256
                 # 引用必须来自保存的字节；文件在扫描与保存之间变化时重新匹配。
                 matches = [
                     (i, text)

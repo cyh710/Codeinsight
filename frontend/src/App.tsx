@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react'
 import { projectStore } from './store/projectStore'
 import { workbenchStore } from './store/workbenchStore'
 import { isMockMode } from './api/dataSource'
-import type { Citation } from './api/types'
+import { openSource } from './components/exploration/actions'
 import LeftPanel from './components/tree/LeftPanel'
 import CenterPanel, { CenterNavigation } from './components/center/CenterPanel'
 import RightPanel from './components/evidence/RightPanel'
@@ -28,13 +28,7 @@ import './workbench-motion.css'
 import './components/exploration/exploration.css'
 import './sidebar.css'
 
-// 引用点击 → 右栏符号详情（无 qualname 时退回文件选中）。
-function openCitation(c: Citation) {
-  if (c.source_kind === 'workspace') workbenchStore.getState().selectFile(c.path, c.lineno, null, undefined, 'workspace', c.content_sha256)
-  else if (c.index_epoch != null) workbenchStore.getState().selectFile(c.path, c.lineno, c.head_commit, c.index_epoch)
-  else if (c.qualname) workbenchStore.getState().selectSymbol(c.qualname, c.path, c.lineno, c.head_commit)
-  else workbenchStore.getState().selectFile(c.path, c.lineno, c.head_commit)
-}
+const openCitation = openSource
 
 let initialization: Promise<void> | undefined
 const SPLIT_WIDTH = 1

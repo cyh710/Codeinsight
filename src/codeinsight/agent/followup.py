@@ -124,12 +124,37 @@ def prepare_followup(
             target = code_target(
                 conn,
                 project_id,
-                {
-                    **citation,
-                    "lineno": max(1, citation["lineno"] - 8),
-                    "end_lineno": citation["lineno"] + 28,
-                },
+                citation.get("target") or {k: v for k, v in citation.items() if k != "source_ref"},
             )
+            if target:
+                from codeinsight.cognitive.indexing.source_store import SourceError, read_source
+                from codeinsight.cognitive.workspace import read_workspace
+
+                try:
+                    source = (
+                        read_workspace(conn, project_id, target["path"], target["content_sha256"])
+                        if target.get("source_kind") == "workspace"
+                        else read_source(
+                            conn,
+                            project_id,
+                            target["path"],
+                            expected_sha=target.get("content_sha256"),
+                            head_commit=target.get("head_commit"),
+                            index_epoch=target.get("index_epoch"),
+                        )
+                    )
+                except (SourceError, OSError):
+                    target = None
+                else:
+                    # 续讲主动扩展邻近窗口，但只能在同一份已验证字节内扩展。
+                    target = {
+                        **target,
+                        "lineno": max(1, citation["lineno"] - 8),
+                        "end_lineno": min(
+                            citation["lineno"] + 28,
+                            max(1, len(source.raw.decode("utf-8", "replace").splitlines())),
+                        ),
+                    }
             if target and not any(t["path"] == target["path"] for t in result["code"]):
                 result["code"].append(target)
             if len(result["code"]) == 2:

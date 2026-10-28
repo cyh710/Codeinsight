@@ -87,7 +87,7 @@ def discover(conn: sqlite3.Connection, pid: int) -> dict:
                 "kind": "follow_up",
                 "label": "最近这次变更影响了什么",
                 "reason": "沿已记录的索引变更核对影响",
-                "question": "请解释这个项目最近一次索引变更解决了什么、哪些位置受影响，并区分已验证事实与推断。",
+                "question": "请解释这个项目最近一次索引变更解决了什么、哪些位置受影响，说明实现依据和仍需确认的部分。",
             }
         )
     row = conn.execute(

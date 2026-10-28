@@ -73,6 +73,10 @@ class Retriever:
         self._config = config or RetrievalConfig()
         self._db_path = str(db_path)
 
+    def with_connection(self, conn: sqlite3.Connection) -> Retriever:
+        """沿用检索配置，在调用者的读取事务内查询，不共享连接生命周期。"""
+        return Retriever(conn, embedder=self._embedder, config=self._config, db_path=self._db_path)
+
     # ── 主入口 ──────────────────────────────────────────────
 
     def retrieve(self, query: str, k: int | None = None, *, project_id: int) -> list[Evidence]:

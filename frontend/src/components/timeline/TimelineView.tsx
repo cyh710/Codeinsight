@@ -1,3 +1,4 @@
+import { openSource } from '../exploration/actions'
 /**
  * 演进时间线（源文档 §2.4）：每次索引/外部变更一格。
  *
@@ -22,7 +23,6 @@ import { api } from '../../api/dataSource'
 import type { ChangesResponse, TimelineItem, TimelineResponse } from '../../api/types'
 import { projectStore } from '../../store/projectStore'
 import { viewStore } from '../../store/viewStore'
-import { workbenchStore } from '../../store/workbenchStore'
 import { fileCountsLabel, formatTimelineTime, modeLabel, shortCommit } from './timelineModel'
 
 export default function TimelineView() {
@@ -295,9 +295,9 @@ function ChangeDetail({ detail }: { detail: ChangesResponse }) {
                 </span>
                 <button
                   type="button"
-                  disabled={symbol.change === 'removed'}
+                  disabled={symbol.change === 'removed' && !symbol.target}
                   onClick={() =>
-                    workbenchStore.getState().selectSymbol(symbol.qualname, symbol.path)
+                    openSource(symbol)
                   }
                   className="min-w-0 flex-1 truncate text-left font-mono text-slate-600 enabled:hover:text-accent disabled:text-slate-400"
                   title={`${symbol.path}:${symbol.lineno}`}
@@ -364,7 +364,7 @@ function FileGroup({
             <button
               type="button"
               disabled={deleted}
-              onClick={() => workbenchStore.getState().selectFile(file.path, 1)}
+              onClick={() => openSource({ path: file.path, lineno: 1 })}
               className="w-full truncate text-left font-mono text-[9.5px] text-slate-500 enabled:hover:text-accent disabled:text-slate-400 disabled:line-through"
               title={file.path}
             >

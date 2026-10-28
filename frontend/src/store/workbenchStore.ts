@@ -11,7 +11,7 @@ export function panelKey(panel: RightPanel): string { return JSON.stringify(pane
 export function materialKey(panel: RightPanel): string {
   if (panel.mode === 'exploration') return `exploration:${panel.projectId}:${panel.conversationId}:${panel.requestId}:${panel.target.topic_id}:${panel.target.section_id}:${panel.target.version}`
   if (panel.mode === 'knowledge') return `knowledge:${panel.target.topic_id}:${panel.target.version}`
-  if (panel.mode === 'file') return `file:${panel.path}:${panel.version ?? ''}${panel.indexEpoch === undefined ? '' : `:epoch:${panel.indexEpoch}`}${panel.sourceKind === 'workspace' ? `:workspace:${panel.contentSha ?? ''}` : ''}`
+  if (panel.mode === 'file') return `file:${panel.path}:${panel.version ?? ''}${panel.indexEpoch === undefined ? '' : `:epoch:${panel.indexEpoch}`}:${panel.sourceKind ?? ''}:${panel.contentSha ?? ''}${panel.versionMissing ? ':missing' : ''}`
   if (panel.mode === 'symbol') return `symbol:${panel.qualname}:${panel.version ?? ''}`
   if (panel.mode === 'concept') return `concept:${panel.conceptId}`
   return panelKey(panel)

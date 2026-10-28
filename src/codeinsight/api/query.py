@@ -23,7 +23,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from codeinsight.agent.discovery import discover
-from codeinsight.agent.exploration import target, version
+from codeinsight.agent.exploration import requires_index, target, version
 from codeinsight.agent.runtime import RuntimeEvent
 from codeinsight.agent.service import AgentSession, ProjectNotFound, open_agent
 from codeinsight.api.conversations import RUNNING
@@ -116,16 +116,6 @@ def _reserve(body: QueryBody):
             if not source:
                 raise bad_request("探索动作来源不存在或不属于当前会话")
             now = version(session.conn, body.project_id)
-            if (
-                any(source.get(k) != now[k] for k in ("project_id", "index_epoch", "head_commit"))
-                or origin.get("index_epoch") != now["index_epoch"]
-            ):
-                raise ApiFailure(
-                    status_code=409,
-                    code="reading_invalid",
-                    title="探索入口已过期",
-                    hint="请刷新项目导览或重新核对当前版本。",
-                )
             action = next(
                 (
                     a
@@ -136,6 +126,18 @@ def _reserve(body: QueryBody):
             )
             if action is None:
                 raise bad_request("探索动作不存在或不属于当前会话")
+            if source.get("project_id") != body.project_id:
+                raise bad_request("探索入口不属于当前项目")
+            if requires_index(action) and (
+                any(source.get(k) != now[k] for k in ("index_epoch", "head_commit"))
+                or origin.get("index_epoch") != now["index_epoch"]
+            ):
+                raise ApiFailure(
+                    status_code=409,
+                    code="reading_invalid",
+                    title="探索入口已过期",
+                    hint="该入口依赖旧索引关系，请刷新项目导览后重试。",
+                )
             body.question = action["question"]
             original = action.get("target")
             body.reading_context = (
@@ -251,6 +253,7 @@ async def query(body: QueryBody) -> dict[str, Any]:
         "citations": [
             {
                 "path": item.path,
+                "target": item.target,
                 "source_kind": item.source_kind,
                 "content_sha256": item.content_sha256,
                 "head_commit": item.head_commit,

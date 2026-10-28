@@ -48,6 +48,14 @@ class ToolServices:
     def root(self) -> Path:
         return Path(self.repo_root)
 
+    @property
+    def read_versions(self) -> dict[str, str]:
+        """HTTP与MCP使用调用范围，直接工具测试保留独立容器行为。"""
+        from codeinsight.agent.source_scope import CURRENT_SCOPE
+
+        scope = CURRENT_SCOPE.get()
+        return scope.versions if scope is not None else self.workspace_versions
+
 
 class BaseTool:
     """工具基类：管好截断与错误归一，子类只管查询与排版。"""
@@ -79,6 +87,65 @@ class BaseTool:
             content = (
                 "以下来自索引快照，仅供定位；解释当前实现前请用read_file核对工作区。\n" + content
             )
+        if data and not error:
+            from codeinsight.agent.source_scope import CURRENT_SCOPE
+            from codeinsight.cognitive.source_targets import citation_target, indexed_target
+
+            scope = CURRENT_SCOPE.get()
+            labels = []
+            for citation in data.get("citations") or []:
+                target = citation_target(self.services.project_id, citation)
+                if target is None and citation.get("source_kind") != "workspace":
+                    target = indexed_target(
+                        self.services.conn,
+                        self.services.project_id,
+                        citation["path"],
+                        citation["lineno"],
+                        citation.get("end_lineno"),
+                    )
+                elif (
+                    target
+                    and target.get("source_kind") != "workspace"
+                    and not target.get("content_sha256")
+                ):
+                    current = indexed_target(
+                        self.services.conn,
+                        self.services.project_id,
+                        citation["path"],
+                        citation["lineno"],
+                        citation.get("end_lineno"),
+                    )
+                    if (
+                        current
+                        and current.get("index_epoch") == target.get("index_epoch")
+                        and current.get("head_commit") == target.get("head_commit")
+                    ):
+                        target = current
+                if target:
+                    if citation.get("qualname"):
+                        target["qualname"] = citation["qualname"]
+                    citation["target"] = target
+                    for field_name in (
+                        "source_kind",
+                        "content_sha256",
+                        "head_commit",
+                        "index_epoch",
+                    ):
+                        if field_name in target:
+                            citation[field_name] = target[field_name]
+                    if scope is not None:
+                        key = scope.register(target)
+                        citation["source_ref"] = key
+                        labels.append(
+                            f"{key}: {target['path']}:{target['lineno']}-{target.get('end_lineno', target['lineno'])} ({target.get('source_kind', 'index')})"
+                        )
+            if labels:
+                content = (
+                    "来源编号（本请求内可用于探索target.source_ref）：\n"
+                    + "\n".join(labels)
+                    + "\n"
+                    + content
+                )
         text, truncated = self.services.budget.clamp_tool_result(content)
         return ToolResult(text, data or {}, truncated, error)
 

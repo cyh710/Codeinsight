@@ -155,6 +155,8 @@ class Citation:
     content_sha256: str | None = None
     index_epoch: int | None = None
     head_commit: str | None = None
+    target: dict[str, Any] | None = None
+    """可选 CodeReadingContext，必须与本次取得的来源版本一致。"""
 
     @property
     def location(self) -> str:

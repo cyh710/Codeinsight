@@ -1,3 +1,4 @@
+import { openSource, sourceTarget } from '../exploration/actions'
 /**
  * 概念卡：本体字段（summary/principles/tradeoffs/alternatives——来自
  * 人工策展的 YAML，不是模型生成的）+ 三级深度解释（quick 不调 LLM）。
@@ -145,8 +146,8 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
     depth === 'quick' ? detail.summary : (loadedExplanation?.summary ?? detail.summary)
   const extraExplanation = additionalExplanation(summaryText, loadedExplanation?.inferences ?? [])
   const reliable = instances?.for === conceptId ? instances.items.filter(i => i.confidence >= 0.8 && i.evidence) : []
-  const exact = origin?.kind === 'code' ? reliable.find(i => i.path === origin.path && i.lineno >= origin.lineno && i.lineno <= (origin.end_lineno ?? origin.lineno)) : undefined
-  const nearby = origin?.kind === 'code' ? reliable.find(i => i.path === origin.path) : undefined
+  const exact = origin?.kind === 'code' ? reliable.find(i => i.path === origin.path && Boolean(i.target?.content_sha256 && i.target.content_sha256 === origin.content_sha256) && i.lineno >= origin.lineno && i.lineno <= (origin.end_lineno ?? origin.lineno)) : undefined
+  const nearby = origin?.kind === 'code' ? reliable.find(i => i.path === origin.path && Boolean(i.target?.content_sha256 && i.target.content_sha256 === origin.content_sha256)) : undefined
   const primary = exact ?? nearby ?? reliable[0]
 
   return (
@@ -164,9 +165,9 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
       </header>
 
       <section className="context-excerpt">
-        <p className="exploration-section-label">{exact ? '当前阅读范围中的实例' : nearby ? '同文件中的实例' : '先看项目中的可靠实例'}</p>
-        {primary ? <><button className="text-left text-sm text-accent" onClick={() => workbenchStore.getState().selectFile(primary.path, primary.lineno)}>{primary.path}:{primary.lineno}</button><p className="mt-2 text-sm leading-7">{primary.evidence}</p>
-          <button className="wb-button mt-2" disabled={streaming} onClick={() => { viewStore.getState().setCenterTab('chat'); layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) }); void chatStore.getState().sendMessage(projectId!, `请结合 ${primary.path} 第 ${primary.lineno} 行解释 ${detail.name} 在这里解决什么问题，核对实际实现后再讨论取舍。`, { preserveDraft: true, reading: { kind: 'code', project_id: projectId!, path: primary.path, lineno: primary.lineno } }) }}>追问：解释它在这里的作用</button>
+        <p className="exploration-section-label">{exact ? '当前阅读范围中的实例' : nearby ? '同版本文件中的实例' : '索引版本中的实例'}</p>
+        {primary ? <><button className="text-left text-sm text-accent" onClick={() => openSource(primary)}>{primary.path}:{primary.lineno}</button><p className="mt-2 text-sm leading-7">{primary.evidence}</p>
+          <button className="wb-button mt-2" disabled={streaming} onClick={() => { viewStore.getState().setCenterTab('chat'); layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) }); void chatStore.getState().sendMessage(projectId!, `请结合 ${primary.path} 第 ${primary.lineno} 行解释 ${detail.name} 在这里解决什么问题，核对实际实现后再讨论取舍。`, { preserveDraft: true, reading: sourceTarget(primary) ?? undefined }) }}>追问：解释它在这里的作用</button>
         </> : <p className="exploration-muted">{instances?.for === conceptId ? '未找到可靠的项目实例，下面仍可阅读通用说明。' : '正在核对项目实例…'}</p>}
       </section>
       <div className="flex gap-1" role="tablist" aria-label="解释深度">
@@ -227,7 +228,7 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
               <summary className="cursor-pointer">项目位置</summary>
               <ul className="mt-2 space-y-2">
                 {loadedExplanation.facts.map((f, i) => <li key={i}>
-                  <button type="button" className="text-left text-accent hover:underline" onClick={() => workbenchStore.getState().selectFile(f.citation.path, f.citation.lineno)}>{f.citation.path}:{f.citation.lineno}</button>
+                  <button type="button" className="text-left text-accent hover:underline" onClick={() => openSource(f.citation)}>{f.citation.path}:{f.citation.lineno}</button>
                   <p>{f.text}</p>
                 </li>)}
               </ul>
@@ -247,11 +248,7 @@ export default function ConceptCard({ conceptId }: { conceptId: string }) {
                 <button
                   type="button"
                   onClick={() =>
-                    inst.qualname
-                      ? workbenchStore
-                          .getState()
-                          .selectSymbol(inst.qualname, inst.path, inst.lineno)
-                      : workbenchStore.getState().selectFile(inst.path, inst.lineno)
+                    openSource(inst)
                   }
                   className="flex w-full items-start gap-1.5 rounded px-1.5 py-1 text-left text-[11px] transition-colors hover:bg-accent-soft/50"
                   title={`跳到 ${inst.path}:${inst.lineno}`}

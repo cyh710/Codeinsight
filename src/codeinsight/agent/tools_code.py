@@ -214,11 +214,15 @@ class FindSymbolTool(BaseTool):
 
 class ReadFileTool(BaseTool):
     name = "read_file"
-    description = "默认读取当前工作区文件，不要求索引或提交，支持代码/配置/实验文本。一次最多200行。同文件在本回合保持首次读取版本；历史阅读可显式指定source_kind和版本。"
+    description = "默认读取当前工作区文件，不要求索引或提交，支持代码/配置/实验文本。一次最多200行。HTTP请求内默认固定首次版本；MCP每次默认调用重读。历史阅读可传完整target或显式source_kind和版本。"
     parameters = {
         "type": "object",
         "properties": {
             "path": {"type": "string", "description": "仓库相对路径，如 backend/api/pet.py"},
+            "target": {
+                "type": "object",
+                "description": "跨调用固定版本时传入上一结果的完整target（含项目、路径、source_kind和版本身份）",
+            },
             "start_line": {"type": "integer", "description": "起始行（从 1 开始），默认 1"},
             "end_line": {"type": "integer", "description": "结束行（含），默认 start+200"},
             "source_kind": {"type": "string", "enum": ["workspace", "index"]},
@@ -226,10 +230,34 @@ class ReadFileTool(BaseTool):
             "index_epoch": {"type": "integer"},
             "head_commit": {"type": "string"},
         },
-        "required": ["path"],
+        "anyOf": [{"required": ["path"]}, {"required": ["target"]}],
     }
 
     async def run(self, arguments: dict[str, Any], ctx: ToolContext) -> ToolResult:
+        if "target" in arguments:
+            target = arguments["target"]
+            if (
+                not isinstance(target, dict)
+                or target.get("kind") != "code"
+                or target.get("project_id") != self.services.project_id
+                or not target.get("source_kind")
+                or not target.get("content_sha256")
+            ):
+                return self.result(
+                    "来源目标缺少完整版本身份或不属于当前项目。", error="bad_request"
+                )
+            arguments = {
+                **arguments,
+                **{
+                    k: target[k]
+                    for k in ("path", "source_kind", "content_sha256", "head_commit", "index_epoch")
+                    if k in target
+                },
+                "start_line": arguments.get("start_line", target.get("lineno", 1)),
+                "end_line": arguments.get(
+                    "end_line", target.get("end_lineno", target.get("lineno", 1))
+                ),
+            }
         path = str(arguments.get("path") or "").strip()
         if not path:
             return self.result("缺少 path 参数。", error="bad_request")
@@ -251,13 +279,11 @@ class ReadFileTool(BaseTool):
             return self.result("结束行不能早于起始行。", error="bad_request")
         try:
             if kind == "workspace":
-                expected = arguments.get("content_sha256") or self.services.workspace_versions.get(
-                    path
-                )
+                expected = arguments.get("content_sha256") or self.services.read_versions.get(path)
                 source = read_workspace(
                     self.services.conn, self.services.project_id, path, expected
                 )
-                self.services.workspace_versions[path] = source.sha256
+                self.services.read_versions.setdefault(path, source.sha256)
             else:
                 source = read_source(
                     self.services.conn,

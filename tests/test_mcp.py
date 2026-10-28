@@ -119,3 +119,19 @@ def test_two_projects_without_flag_is_an_explicit_error(indexed_db: Path) -> Non
     with pytest.raises(ProjectNotFound) as excinfo:
         open_runtime(None, db=indexed_db)
     assert "second" in str(excinfo.value)
+
+
+async def test_mcp_default_reads_fresh_and_explicit_target_restores_original(runtime):
+    path = Path(runtime.session.repo_root) / "new.txt"
+    path.write_text("version = 1\n", encoding="utf-8")
+    first = await call_tool(runtime, "read_file", {"path": "new.txt"})
+    old = first.structured_content["citations"][0]["target"]
+    path.write_text("version = 2\n", encoding="utf-8")
+    second = await call_tool(runtime, "read_file", {"path": "new.txt"})
+    assert not second.is_error and "version = 2" in second.content[0].text
+    restored = await call_tool(runtime, "read_file", {"target": old})
+    assert not restored.is_error and "version = 1" in restored.content[0].text
+    again = await call_tool(runtime, "read_file", {"path": "new.txt"})
+    assert "version = 2" in again.content[0].text
+    foreign = await call_tool(runtime, "read_file", {"target": {**old, "project_id": 99}})
+    assert foreign.is_error

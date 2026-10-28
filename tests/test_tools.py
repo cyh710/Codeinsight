@@ -64,6 +64,8 @@ def conn() -> sqlite3.Connection:
         "INSERT INTO flow_step (flow_id, ordinal, qualname, path, lineno, note) VALUES (1, ?, ?, ?, ?, ?)",
         [(1, "a.run", "a.py", 3, "入口"), (2, "a.helper", "a.py", 12, "调用 helper")],
     )
+    c.execute("UPDATE flow SET entry_symbol_id=1")
+    c.execute("UPDATE flow_step SET symbol_id=CASE ordinal WHEN 1 THEN 1 ELSE 2 END")
     c.execute(
         "INSERT INTO concept (id, name, category, summary, detection_json)"
         " VALUES ('jwt', 'JWT', 'auth', '签名令牌', '{}')"
@@ -157,7 +159,9 @@ async def test_read_file_does_not_cite_changed_unindexed_source(conn, tmp_path) 
         (hashlib.sha256(SOURCE_A.encode()).hexdigest(),),
     )
     (tmp_path / "a.py").write_text("changed source", encoding="utf-8")
-    result = await ReadFileTool(_services(conn, tmp_path)).run({"path": "a.py", "source_kind": "index"}, _ctx())
+    result = await ReadFileTool(_services(conn, tmp_path)).run(
+        {"path": "a.py", "source_kind": "index"}, _ctx()
+    )
     assert result.error == "stale_source" and not result.data.get("citations")
 
 

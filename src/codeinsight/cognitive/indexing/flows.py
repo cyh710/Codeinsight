@@ -14,8 +14,7 @@
 - 目标是某个对象的方法且方法名在动词清单里（`write` `commit` `execute` `post` …）→ 副作用。
 
 这**是启发式**，会有误报（`config.update()` 会被当成写库）。
-但流程检测的用途是「给出一条可读的链路」，多一条流比少一条流危害小；
-而且这条判定不进入任何对外承诺的数字里——评测用的 ground truth 是人工标的。
+因此结果只能称为静态候选路径，不证明业务语义或运行顺序。
 """
 
 from __future__ import annotations
@@ -213,8 +212,6 @@ def detect_flows(
             continue
         adjacency.setdefault(edge.src_id, []).append(edge)
 
-    module_members = _module_level_symbols(symbols)
-
     flows: list[Flow] = []
     seen_effects: set[str] = set()
 
@@ -223,16 +220,13 @@ def detect_flows(
         if start is None:
             continue
 
-        # 入口是**模块**时，真正的起点是它里面的模块级函数——
-        # 模块本身只定义函数、不调用函数，直接从模块 BFS 只会走到空。
+        # 定义/包含关系不能代替调用边；模块没有真实出边时不生成路径。
         seeds = [start]
-        if start.kind == "module":
-            seeds.extend(module_members.get(start.qualname, []))
 
         for seed in seeds:
             if len(flows) >= max_flows:
                 break
-            path0 = [start] if seed.id == start.id else [start, seed]
+            path0 = [start]
             # BFS：记录每个到达符号的最短路径
             queue: deque[tuple[FlowSymbol, list[FlowSymbol]]] = deque([(seed, path0)])
             visited: set[int] = {seed.id}
@@ -253,8 +247,8 @@ def detect_flows(
                                 entry_symbol_id=start.id,
                                 description=(
                                     f"从 {start.qualname} 到 {current.qualname}，"
-                                    f"经由 {max(len(path) - 1, 0)} 步调用；"
-                                    f"副作用：{', '.join(sorted(set(effects)))}"
+                                    f"静态候选包含 {max(len(path) - 1, 0)} 条调用边（不代表运行顺序）；"
+                                    f"启发式副作用候选：{', '.join(sorted(set(effects)))}"
                                 ),
                                 steps=[
                                     FlowStep(
@@ -291,25 +285,6 @@ def _endpoint_label(current: FlowSymbol, start: FlowSymbol) -> str:
     if current.id == start.id:
         return "模块初始化"
     return current.qualname
-
-
-def _module_level_symbols(symbols: list[FlowSymbol]) -> dict[str, list[FlowSymbol]]:
-    """模块 → 它自己定义的模块级符号（函数 / 类 / 常量）。
-
-    判据用 qualname 的层级：模块 `a.b` 的模块级符号是 `a.b.xxx`，
-    `a.b.Cls.method` 就不是（那是方法，另有其主）。
-    """
-    out: dict[str, list[FlowSymbol]] = {}
-    for symbol in symbols:
-        module = symbol.module_qualname
-        if not module:
-            continue
-        if symbol.kind not in {"function", "class", "constant"}:
-            continue
-        if symbol.qualname.count(".") != module.count(".") + 1:
-            continue
-        out.setdefault(module, []).append(symbol)
-    return out
 
 
 def _entry_symbol(entry: FlowEntry, by_qualname: dict[str, FlowSymbol]) -> FlowSymbol | None:

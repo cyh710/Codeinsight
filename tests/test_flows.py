@@ -33,6 +33,7 @@ def test_flow_is_a_path_from_entry_to_side_effect() -> None:
         _sym(3, "app.main.store", "app.main"),
     ]
     edges = [
+        FlowEdge(src_id=1, dst_id=2, kind="call", dst_name="handler"),
         FlowEdge(src_id=2, dst_id=3, kind="call", dst_name="store"),
         FlowEdge(src_id=3, dst_id=None, kind="call", dst_name="session.execute"),
     ]
@@ -62,7 +63,10 @@ def test_known_side_effect_module_is_detected() -> None:
         _sym(1, "app.main", "app", kind="module"),
         _sym(2, "app.main.fetcher", "app.main"),
     ]
-    edges = [FlowEdge(src_id=2, dst_id=None, kind="call", dst_name="requests.post")]
+    edges = [
+        FlowEdge(src_id=1, dst_id=2, kind="call", dst_name="fetcher"),
+        FlowEdge(src_id=2, dst_id=None, kind="call", dst_name="requests.post"),
+    ]
     entries = [FlowEntry(kind="file", target="app.main", module_qualname="app.main")]
 
     flows = detect_flows(symbols, edges, entries)
@@ -81,23 +85,11 @@ def test_weak_verbs_are_not_side_effects() -> None:
     assert detect_flows(symbols, edges, entries) == []
 
 
-def test_entry_module_expands_to_its_module_level_functions() -> None:
-    """入口是模块时，真正的起点是它里面的模块级函数。
-
-    模块本身只定义函数、不调用函数——直接从模块 BFS 只会走到空。
-    """
-    symbols = [
-        _sym(1, "app.main", "app", kind="module"),
-        _sym(2, "app.main.setup", "app.main"),
-        _sym(3, "app.main.other", "app.main"),
-    ]
+def test_module_membership_is_not_a_call():
+    symbols = [_sym(1, "app.main", "app", kind="module"), _sym(2, "app.main.unused", "app.main")]
     edges = [FlowEdge(src_id=2, dst_id=None, kind="call", dst_name="os.makedirs")]
     entries = [FlowEntry(kind="file", target="app.main", module_qualname="app.main")]
-
-    flows = detect_flows(symbols, edges, entries)
-    assert len(flows) == 1
-    assert flows[0].steps[0].qualname == "app.main"
-    assert flows[0].steps[1].qualname == "app.main.setup"
+    assert detect_flows(symbols, edges, entries) == []
 
 
 def test_nested_function_is_not_a_module_level_seed() -> None:
@@ -143,6 +135,8 @@ def test_one_flow_per_side_effect_symbol() -> None:
         _sym(4, "app.main.writer", "app.main"),
     ]
     edges = [
+        FlowEdge(src_id=1, dst_id=2, kind="call", dst_name="a"),
+        FlowEdge(src_id=1, dst_id=3, kind="call", dst_name="b"),
         FlowEdge(src_id=2, dst_id=4, kind="call", dst_name="writer"),
         FlowEdge(src_id=3, dst_id=4, kind="call", dst_name="writer"),
         FlowEdge(src_id=4, dst_id=None, kind="call", dst_name="os.remove"),

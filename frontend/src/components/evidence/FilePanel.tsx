@@ -10,10 +10,10 @@ import type { CodeReadingContext } from '../../api/types'
 import { viewStore } from '../../store/viewStore'
 
 type CodeWindow = Awaited<ReturnType<typeof readProjectCode>>
-export default function FilePanel({ path, lineno, version, indexEpoch, sourceKind, contentSha }: { path: string; lineno: number; version?: string; indexEpoch?: number; sourceKind?: 'workspace' | 'index'; contentSha?: string }) {
+export default function FilePanel({ path, lineno, version, indexEpoch, sourceKind, contentSha, versionMissing }: { path: string; lineno: number; version?: string; indexEpoch?: number; sourceKind?: 'workspace' | 'index'; contentSha?: string; versionMissing?: boolean }) {
   const projectId = useStore(projectStore, s => s.currentProjectId)
   const readingMode = useStore(workbenchStore, s => s.readingMode)
-  const identity = `${projectId}:${path}:${lineno}:${version}:${indexEpoch}:${sourceKind}:${contentSha}`
+  const identity = `${projectId}:${path}:${lineno}:${version}:${indexEpoch}:${sourceKind}:${contentSha}:${versionMissing}`
   const [loaded, setLoaded] = useState<{ identity: string; data: CodeWindow } | null>(null)
   const [failure, setFailure] = useState<{ identity: string; error: string } | null>(null)
   const data = loaded?.identity === identity ? loaded.data : null
@@ -22,11 +22,11 @@ export default function FilePanel({ path, lineno, version, indexEpoch, sourceKin
   const [selection, setSelection] = useState<{ startLine: number; endLine: number; startColumn: number; endColumn: number; text: string } | null>(null)
   const root = useRef<HTMLElement>(null)
   useEffect(() => {
-    if (projectId === null) return
+    if (projectId === null || versionMissing) return
     let alive = true
     readProjectCode(projectId, path, lineno, indexEpoch, version, sourceKind, contentSha).then(result => { if (alive) { setLoaded({ identity, data: result }); setFailure(null); setSelection(null); workbenchStore.getState().bindFileVersion(path, lineno, result.head_commit, result.index_epoch, result.source_kind, result.content_sha256) } }).catch(e => { if (alive) setFailure({ identity, error: e instanceof ApiError ? `${e.title}：${e.hint}` : String(e) }) })
     return () => { alive = false }
-  }, [projectId, path, lineno, retry, identity, indexEpoch, version, sourceKind, contentSha])
+  }, [projectId, path, lineno, retry, identity, indexEpoch, version, sourceKind, contentSha, versionMissing])
   const stale = Boolean(data && version && data.head_commit !== version)
   useLayoutEffect(() => {
     if (!data || projectId === null || stale) return
@@ -39,9 +39,10 @@ export default function FilePanel({ path, lineno, version, indexEpoch, sourceKin
     if (container) container.scrollTop = workbenchStore.getState().scrollPositions[panelKey(workbenchStore.getState().rightPanel)] ?? 0
   }, [data])
   const move = (line: number) => workbenchStore.getState().selectFile(path, Math.max(1, Math.min(data?.total_lines ?? line, line)), data?.head_commit ?? version, data?.index_epoch ?? indexEpoch, data?.source_kind ?? sourceKind, data?.content_sha256 ?? contentSha)
-  if (error) return <div role="alert" className="text-xs leading-6 text-danger">{error}<p>可重新读取原版本，或主动打开当前文件。</p><button className="wb-button" onClick={() => setRetry(v => v + 1)}>重新读取</button><button className="wb-button ml-2" onClick={() => workbenchStore.getState().selectFile(path, lineno, null, undefined, 'workspace')}>查看当前文件</button></div>
+  if (versionMissing) return <div role="status" className="text-sm leading-7 text-slate-600">原版本未记录，无法恢复这处历史位置。<button className="wb-button ml-2" onClick={() => workbenchStore.getState().selectFile(path, 1, null, undefined, 'workspace')}>查看当前文件</button></div>
+  if (error) return <div role="alert" className="text-xs leading-6 text-danger">{error}<p>可重新读取原版本，或主动打开当前文件。</p><button className="wb-button" onClick={() => setRetry(v => v + 1)}>重新读取</button><button className="wb-button ml-2" onClick={() => workbenchStore.getState().selectFile(path, 1, null, undefined, 'workspace')}>查看当前文件</button></div>
   if (!data) return <p className="text-xs text-slate-400">读取文件…</p>
-  if (stale) return <div role="alert" className="text-xs leading-6 text-amber-700">这个页签的源码版本已更新，原位置未被替换。<button className="wb-button ml-2" onClick={() => { workbenchStore.getState().setIndexVersion(data.head_commit); workbenchStore.getState().selectFile(path, lineno, data.head_commit, data.index_epoch) }}>打开当前版本</button></div>
+  if (stale) return <div role="alert" className="text-xs leading-6 text-amber-700">这个页签的源码版本已更新，原位置未被替换。<button className="wb-button ml-2" onClick={() => { workbenchStore.getState().setIndexVersion(data.head_commit); workbenchStore.getState().selectFile(path, 1, null, undefined, 'workspace') }}>打开当前版本</button></div>
   const ask = () => {
     if (!selection || projectId === null) return
     const context: CodeReadingContext = { kind: 'code', project_id: projectId, path, head_commit: data.head_commit, index_epoch: data.index_epoch, source_kind: data.source_kind,
@@ -57,7 +58,7 @@ export default function FilePanel({ path, lineno, version, indexEpoch, sourceKin
     <header className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
       <span className="break-all font-mono">{path}</span><span>{data.start_line}–{data.end_line} / {data.total_lines} 行</span>
       <span title={data.content_sha256} className="text-[10px] text-slate-400">{data.source_kind === 'workspace' ? `工作区 · ${data.content_sha256.slice(0, 8)}` : `索引版本 ${data.head_commit?.slice(0, 8) || data.index_epoch}`}</span>
-      <button className="wb-button ml-auto" onClick={() => workbenchStore.getState().selectFile(path, lineno, null, undefined, 'workspace')}>查看当前文件</button>
+      <button className="wb-button ml-auto" onClick={() => workbenchStore.getState().selectFile(path, 1, null, undefined, 'workspace')}>查看当前文件</button>
     </header>
     {data.workspace_changed && <p role="status" className="text-xs leading-6 text-amber-700">当前显示已索引的源码快照，磁盘文件已有修改。可从项目菜单更新索引。</p>}
     <div className="flex flex-wrap items-center gap-2">

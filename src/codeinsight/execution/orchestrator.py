@@ -400,6 +400,7 @@ def _change_card(changes: dict[str, Any]) -> dict[str, Any]:
                 "end_lineno": s["lineno"],
                 "qualname": s["qualname"],
                 "snippet": "",
+                "target": s.get("target"),
             },
         }
         for s in changes.get("changed_symbols", [])

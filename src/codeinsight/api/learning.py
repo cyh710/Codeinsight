@@ -12,6 +12,7 @@ from codeinsight.cognitive.concepts.integration import LearningBridge
 from codeinsight.cognitive.concepts.learning_models import KnowledgeError
 from codeinsight.cognitive.concepts.library_loader import get_learning_library
 from codeinsight.cognitive.concepts.service import KnowledgeService
+from codeinsight.cognitive.source_targets import attach_targets
 
 router = APIRouter(tags=["learning"])
 
@@ -110,7 +111,7 @@ def topic_instances(project_id: int, topic_id: str) -> dict[str, Any]:
                 ).fetchone()[0]
             )
         return {
-            "items": items,
+            "items": attach_targets(conn, project_id, items),
             "total": total,
             "limit": 50,
             "status": "ok" if state and state["index_epoch"] > 0 else "not_indexed",

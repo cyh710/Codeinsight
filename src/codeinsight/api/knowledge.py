@@ -25,6 +25,7 @@ from codeinsight.cognitive.concepts.learning_models import KnowledgeError, Relat
 from codeinsight.cognitive.concepts.library_loader import get_learning_library
 from codeinsight.cognitive.concepts.ontology import Concept, DetectionRules
 from codeinsight.cognitive.indexing.concepts_sync import refresh_project_concepts
+from codeinsight.cognitive.source_targets import attach_targets, begin_read
 from codeinsight.config import settings
 from codeinsight.models import ConceptDepth, ConceptInstance
 
@@ -37,6 +38,7 @@ def _prepare_project(conn: Any, project_id: int) -> None:
     refresh_project_concepts(
         conn, project_id=project_id, knowledge_dir=knowledge_directory("concepts")
     )
+    begin_read(conn)
 
 
 def _learning_targets(concept_id: str) -> list[dict]:
@@ -77,13 +79,17 @@ def _instances(conn: Any, project_id: int, concept_id: str) -> list[dict[str, An
         """,
         (project_id, concept_id),
     ).fetchall()
-    return [
-        {
-            **dict(r),
-            "snippet": "",  # 契约要求 snippet；正文由前端按需读取（避免列表膨胀）
-        }
-        for r in rows
-    ]
+    return attach_targets(
+        conn,
+        project_id,
+        [
+            {
+                **dict(r),
+                "snippet": "",  # 契约要求 snippet；正文由前端按需读取（避免列表膨胀）
+            }
+            for r in rows
+        ],
+    )
 
 
 def _instance_count(conn: Any, project_id: int, concept_id: str) -> int:
@@ -257,7 +263,7 @@ async def explain_concept(project_id: int, concept_id: str, body: ExplainBody) -
             knowledge_sources=[hit.target.href for hit in textbook.references] if textbook else (),
         )
         return {
-            **asdict(result),
+            **attach_targets(conn, project_id, asdict(result)),
             "instances": instances,
             "learning_targets": _learning_targets(concept_id)
             + (

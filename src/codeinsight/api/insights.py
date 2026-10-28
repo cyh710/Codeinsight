@@ -21,43 +21,9 @@ def list_flows(project_id: int) -> dict[str, Any]:
     conn = connect_db(project_id)
     try:
         require_project(conn, project_id)
-        rows = conn.execute(
-            "SELECT id, name, description FROM flow WHERE project_id = ? ORDER BY id", (project_id,)
-        ).fetchall()
-        items = []
-        for r in rows:
-            steps = [
-                {
-                    "ordinal": s["ordinal"],
-                    "qualname": s["qualname"],
-                    "path": s["path"],
-                    "lineno": s["lineno"],
-                    "note": s["note"],
-                }
-                for s in conn.execute(
-                    "SELECT ordinal, qualname, path, lineno, note FROM flow_step "
-                    "WHERE flow_id = ? ORDER BY ordinal",
-                    (r["id"],),
-                ).fetchall()
-            ]
-            items.append(
-                {
-                    "id": r["id"],
-                    "name": r["name"],
-                    "description": r["description"] or "",
-                    # 入口符号缺关联时退而取第一步的 qualname，两处都空则为空串。
-                    "entry_qualname": (
-                        conn.execute(
-                            "SELECT s.qualname FROM flow fl JOIN symbol s ON s.id = fl.entry_symbol_id "
-                            "WHERE fl.id = ?",
-                            (r["id"],),
-                        ).fetchone()
-                        or {"qualname": steps[0]["qualname"] if steps else None}
-                    )["qualname"]
-                    or "",
-                    "steps": steps,
-                }
-            )
+        from codeinsight.cognitive.indexing.flow_read import verified_flows
+
+        items = verified_flows(conn, project_id)
         return {"items": items, "total": len(items)}
     finally:
         conn.close()

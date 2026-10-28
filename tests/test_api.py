@@ -345,7 +345,7 @@ def test_callers_endpoint_shape(client: TestClient) -> None:
     body = client.get("/projects/1/symbols/src.a.helper/callers").json()
     assert body["total"] == 2
     assert all(
-        set(r) == {"qualname", "path", "lineno", "confidence", "uncertain", "note"}
+        {"qualname", "path", "lineno", "confidence", "uncertain", "note"} <= set(r)
         for r in body["items"]
     )
 

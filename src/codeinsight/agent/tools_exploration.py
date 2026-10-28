@@ -35,7 +35,7 @@ class ProposeExplorationTool(BaseTool):
                         "question": {"type": "string"},
                         "target": {
                             "type": "object",
-                            "description": "code: kind/path/lineno/qualname；knowledge: kind/topic_id/section_id/version",
+                            "description": "code: kind/path/lineno，版本由本轮已取得材料补齐；同路径多版本用source_ref（如s1）选择，勿计算哈希。knowledge: kind/topic_id/section_id/version。MCP跨调用使用完整来源target。",
                         },
                     },
                 },

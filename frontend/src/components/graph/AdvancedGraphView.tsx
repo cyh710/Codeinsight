@@ -1,3 +1,4 @@
+import { openSource } from '../exploration/actions'
 /**
  * 关系图（源文档 §2.2-6/7）：中心符号的 N 跳邻域。
  *
@@ -400,7 +401,7 @@ function FlowCanvas({
   }, [data, fitView])
 
   const openSymbol = (node: SymbolNodeData['node']) => {
-    workbenchStore.getState().selectSymbol(node.qualname, node.path)
+    openSource(node)
   }
 
   return (
@@ -417,7 +418,7 @@ function FlowCanvas({
         onNodeClick={(_event, rfNode) => openSymbol(rfNode.data.node)}
         onNodeDoubleClick={(_event, rfNode) => {
           const node = rfNode.data.node
-          workbenchStore.getState().selectFile(node.path, node.lineno)
+          openSource(node)
         }}
         onNodeContextMenu={(event, rfNode) => {
           event.preventDefault()

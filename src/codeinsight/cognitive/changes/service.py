@@ -12,6 +12,7 @@ import sqlite3
 from typing import Any
 
 from codeinsight.cognitive.changes.staleness import latest_stale_decisions
+from codeinsight.cognitive.source_targets import begin_read
 
 MAX_TESTS = 50
 
@@ -32,6 +33,7 @@ def build_changes(
     conn: sqlite3.Connection, project_id: int, *, since: str | None = None
 ) -> dict[str, Any]:
     """最近一次变更的完整说明；没有任何变更记录时返回空壳（形状不变）。"""
+    begin_read(conn)
     params: list[Any] = [project_id]
     where = "WHERE project_id = ?"
     if since:
@@ -85,7 +87,7 @@ def build_changes(
         ).fetchall()
     ]
 
-    return {
+    result = {
         "since": base_commit,
         "head": str(head or ""),
         "summary": summary or "",
@@ -103,6 +105,7 @@ def build_changes(
                 "path": symbol["path"],
                 "lineno": int(symbol.get("lineno") or 0),
                 "change": symbol["change"],
+                **({"target": symbol["target"]} if symbol.get("target") else {}),
             }
             for group in (added, removed, modified)
             for symbol in group["symbols"]
@@ -116,6 +119,39 @@ def build_changes(
         # 读**索引时写下的报告**，不在读路径重算——两处各算一遍必然漂移。
         "stale_design_decisions": latest_stale_decisions(conn, project_id=project_id),
     }
+    from codeinsight.cognitive.indexing.source_store import SourceError, read_source
+
+    for symbol in result["changed_symbols"]:
+        if symbol.get("target"):
+            continue
+        commit = base_commit if symbol["change"] in {"deleted", "removed", "D"} else head
+        if not commit or symbol["lineno"] < 1:
+            continue
+        saved = conn.execute(
+            "SELECT content_sha256 FROM file_snapshot WHERE project_id=? AND path=? AND commit_sha=?",
+            (project_id, symbol["path"], commit),
+        ).fetchone()
+        try:
+            source = read_source(
+                conn,
+                project_id,
+                symbol["path"],
+                head_commit=commit,
+                expected_sha=saved[0] if saved else None,
+            )
+        except (SourceError, OSError):
+            continue  # 历史未保存时保留位置，不能用当前索引替代旧版本。
+        symbol["target"] = {
+            "kind": "code",
+            "project_id": project_id,
+            "path": symbol["path"],
+            "lineno": symbol["lineno"],
+            "end_lineno": symbol["lineno"],
+            "source_kind": "index",
+            "head_commit": commit,
+            "content_sha256": source.sha256,
+        }
+    return result
 
 
 def _empty(conn: sqlite3.Connection, project_id: int, since: str | None) -> dict[str, Any]:

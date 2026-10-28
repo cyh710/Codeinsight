@@ -29,7 +29,7 @@ export default function ProjectGuide() {
       {detail?.status === 'indexing' && <p role="status">项目代码正在准备；入口仍对应上一次完成的索引。</p>}
       {detail?.source_available === false && <p role="status">源码目录不可用，仍可查看已保存的证据、对话和教材。</p>}
       {data?.exploration_entries?.length ? <ExplorationActions actions={data.exploration_entries}
-        version={{ project_id: pid, head_commit: data.head_commit ?? null, index_epoch: data.index_epoch ?? 0 }} overview /> : <p className="exploration-muted">当前没有足够证据生成探索入口。可以先查看文件或直接提问；尚未索引时请等待索引完成。</p>}
+        version={{ project_id: pid, head_commit: data.head_commit ?? null, index_epoch: data.index_epoch ?? 0 }} overview /> : <p className="exploration-muted">当前没有足够证据生成探索入口。可以先查看文件或直接提问；索引完成后可补充关系与变更入口。</p>}
     </>}
     <div className="project-guide-footer"><button type="button" onClick={() => workbenchStore.getState().openKnowledgeTree()}>浏览完整教材</button></div>
   </section>

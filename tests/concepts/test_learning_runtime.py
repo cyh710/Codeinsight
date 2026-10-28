@@ -44,6 +44,32 @@ def bridge(library):
     return LearningBridge(KnowledgeService(library))
 
 
+@pytest.mark.parametrize(
+    "question",
+    ["已有策略和成绩", "这个项目做什么", "SQL 和 React 是什么", "class", "不存在的术语是什么"],
+)
+def test_ordinary_or_ambiguous_questions_do_not_auto_inject(bridge, question):
+    _, prepared = bridge.prepare_goal(question, max_message_bytes=16000)
+    assert not prepared.context.references
+
+
+@pytest.mark.parametrize(
+    "question", ["SQL", "SQL 是什么", "什么是 SQL", "解释一下 SQL", "SQL 是什么意思"]
+)
+def test_unique_definition_injects_one_whole_chapter(bridge, question):
+    _, prepared = bridge.prepare_goal(question, max_message_bytes=16000)
+    assert len(prepared.context.references) == 1
+    assert len(prepared.entries) == 1
+    assert prepared.entries[0].topic_id == "sql-database"
+    hit = prepared.context.references[0]
+    assert hit.target.topic_id == "sql-database"
+    topic = bridge.library.get(hit.target.topic_id)
+    chapter = next(s for s in topic.sections if s.id == hit.target.section_id)
+    assert bridge.library.visuals.describe(chapter.content) in prepared.context.content
+    _, too_small = bridge.prepare_goal(question, max_message_bytes=16000, max_knowledge_bytes=10)
+    assert not too_small.context.references and not too_small.context.content
+
+
 @pytest.fixture
 def indexed_repo(tmp_path, data_dir):
     root = tmp_path / "example-project"

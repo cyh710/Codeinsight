@@ -285,12 +285,108 @@ def test_api_actions_memory_replay_and_restart(indexed, data_dir, monkeypatch):
         ]
         before = len(provider.calls)
         assert restarted.post("/query", json=payload).status_code == 200
-        assert restarted.post("/query", json={**payload, "request_id": "stale"}).status_code == 409
-        assert len(provider.calls) == before
+        assert restarted.post("/query", json={**payload, "request_id": "stale"}).status_code == 200
+        assert len(provider.calls) > before
         assert restarted.patch(
             f"/projects/1/conversations/{cid}", json={"clear_exploration": True}
         ).json()["exploration_state"] == {"stale": False}
-        assert len(restarted.get(f"/projects/1/conversations/{cid}/turns").json()["items"]) == 2
+        assert len(restarted.get(f"/projects/1/conversations/{cid}/turns").json()["items"]) == 3
+
+
+def test_indexed_entry_targets_keep_original_bytes_after_edit_and_reindex(indexed, data_dir):
+    conn, root = indexed
+    with TestClient(create_app()) as client:
+        graph = client.get("/projects/1/graph", params={"qualname": "app.main"}).json()
+        old = next(n["target"] for n in graph["nodes"] if n["qualname"] == "app.main")
+        client.get("/projects/1/concepts")
+        conn.execute(
+            "INSERT INTO concept_instance(project_id,concept_id,path,lineno,evidence,confidence) VALUES(1,'db-transaction','app.py',4,'离线夹具：保存位置',1)"
+        )
+        conn.commit()
+        concept = client.get("/projects/1/knowledge/topics/sql-transactions/instances").json()
+        assert (
+            concept["items"]
+            and concept["items"][0]["target"]["content_sha256"] == old["content_sha256"]
+        )
+        root.joinpath("app.py").write_text("# current file\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(root), "add", "."], check=True, capture_output=True)
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "commit",
+                "-m",
+                "replace source",
+            ],
+            check=True,
+            capture_output=True,
+        )
+        index_project(db_path(data_dir), root=root, name=root.name)
+        assert version(conn, 1)["index_epoch"] > old["index_epoch"]
+        response = client.get(
+            "/projects/1/code",
+            params={
+                k: v
+                for k, v in old.items()
+                if k in {"path", "source_kind", "content_sha256", "head_commit", "index_epoch"}
+            },
+        ).json()
+        assert "def main" in response["content"]
+        current = client.get(
+            "/projects/1/code",
+            params={"path": old["path"], "source_kind": "workspace", "lineno": 1},
+        ).json()
+        assert current["content"].startswith("# current")
+
+
+def test_stored_flow_requires_real_adjacent_call_and_keeps_uncertainty(indexed):
+    from codeinsight.cognitive.indexing.flow_read import verified_flows
+
+    conn, _ = indexed
+    module, main, write = [
+        conn.execute("SELECT id FROM symbol WHERE project_id=1 AND qualname=?", (name,)).fetchone()[
+            0
+        ]
+        for name in ("app", "app.main", "app.write")
+    ]
+    conn.execute("DELETE FROM flow WHERE project_id=1")
+    for fid, entry in ((100, module), (101, main)):
+        conn.execute(
+            "INSERT INTO flow(id,project_id,name,entry_symbol_id) VALUES(?,1,?,?)",
+            (fid, str(fid), entry),
+        )
+        for ordinal, symbol in enumerate((entry, write), 1):
+            conn.execute(
+                "INSERT INTO flow_step(flow_id,ordinal,symbol_id,qualname,path,lineno) SELECT ?,?,id,qualname,'app.py',lineno FROM symbol WHERE id=?",
+                (fid, ordinal, symbol),
+            )
+    conn.execute(
+        "UPDATE edge SET confidence=0.5 WHERE src_symbol_id=? AND dst_symbol_id=?", (main, write)
+    )
+    conn.commit()
+    flows = verified_flows(conn, 1)
+    assert [f["id"] for f in flows] == [101]
+    assert flows[0]["basis"] == "static_candidate" and flows[0]["edges"][0]["uncertain"]
+    assert flows[0]["effect_candidates"] and "启发式" in flows[0]["description"]
+
+
+def test_module_containment_is_not_an_exploration_flow(indexed):
+    conn, _ = indexed
+    raw = {
+        "flow": {
+            "nodes": [
+                {"id": "a", "target": {"qualname": "app"}},
+                {"id": "b", "target": {"qualname": "app.write"}},
+            ],
+            "edges": [{"source": "a", "target": "b"}],
+        }
+    }
+    assert normalize(conn, 1, raw)["flow"] is None
 
 
 def test_memory_is_bounded_and_omits_failed_turns(indexed):

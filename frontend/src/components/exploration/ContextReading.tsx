@@ -6,7 +6,7 @@ import { getKnowledgeTopic } from '../../api/learning'
 import { panelKey, workbenchStore } from '../../store/workbenchStore'
 import { selectedKnowledge } from '../learning/selection'
 import LearningMarkdown from '../learning/LearningMarkdown'
-import { openCode } from './actions'
+import { knowledgeTarget, openSource } from './actions'
 import { chatStore } from '../../store/chatStore'
 import { viewStore } from '../../store/viewStore'
 import { layoutStore } from '../../store/layoutStore'
@@ -46,20 +46,19 @@ export default function ContextReading({ projectId, conversationId, requestId, t
   const full = () => workbenchStore.getState().openKnowledge({ ...target, version: topic.version, title: topic.title })
   if (topic.version !== target.version || !topic.sections.some(s => s.id === sectionId)) return <div role="alert">原章节已更新，原提问关联保持不变。<button className="wb-button" onClick={full}>打开当前教材</button></div>
   const citations = turn.answer.citations ?? []
-  const firstCitation = citations[0]
   const associated = [...(turn.answer.knowledge_sources?.map(s => s.target) ?? []), ...(turn.answer.learning_targets ?? []),
-    ...(turn.answer.exploration?.actions.flatMap(a => a.kind === 'knowledge' && a.target?.kind === 'knowledge' ? [a.target] : []) ?? [])]
+    ...(turn.answer.exploration?.actions.flatMap(a => a.kind === 'knowledge' && a.target ? [knowledgeTarget(a.target)!].filter(Boolean) : []) ?? [])]
   if (!associated.some(t => t.topic_id === target.topic_id && t.version === target.version)) return <div role="alert">原回答没有关联这个知识目标。<button className="wb-button" onClick={full}>打开教材全文</button></div>
-  const takeaways = turn.answer.exploration?.takeaways ?? []
+  const body = turn.answer.text || turn.answer.raw_text || ''
+  const openCitation = (c: import('../../api/types').Citation) => openSource(c.source_kind === 'workspace' ? c : { ...c, head_commit: c.head_commit ?? turn.answer.source_head_commit, index_epoch: c.index_epoch ?? turn.answer.evidence_review?.source_version?.index_epoch })
   return <article ref={root} className="context-reading" data-reading-ready="true">
     <header><h2>{topic.title}</h2></header>
     <div className="context-reading-tools context-reading-actions"><button className="context-reading-primary" type="button" onClick={full}><BookOpen size={18} aria-hidden="true" />阅读全文</button><button className="context-reading-return" type="button" onClick={() => { void chatStore.getState().openConversation(projectId, conversationId, requestId).then(() => { viewStore.getState().setCenterTab('chat'); layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) }) }) }}><ChevronLeft size={16} aria-hidden="true" />回到来源回答</button></div>
-    {(citations.length > 0 || takeaways.length > 0) && <div className="context-project-link">
-      {takeaways.length > 0 && <div className="context-excerpt"><LearningMarkdown text={takeaways.slice(0, 1).join('\n\n')} citations={citations} onCitation={c => openCode({ kind: 'code', project_id: projectId, path: c.path, lineno: c.lineno, source_kind: c.source_kind ?? undefined, content_sha256: c.content_sha256 ?? undefined, head_commit: c.source_kind === 'workspace' ? null : c.head_commit ?? turn.answer.source_head_commit, index_epoch: c.source_kind === 'workspace' ? undefined : c.index_epoch ?? turn.answer.evidence_review?.source_version?.index_epoch })} /></div>}
-      {citations.length > 0 && <div className="context-project-sources"><button type="button" title={citations[0].path} onClick={() => openCode({ kind: 'code', project_id: projectId, path: citations[0].path, lineno: citations[0].lineno, source_kind: firstCitation.source_kind ?? undefined, content_sha256: firstCitation.content_sha256 ?? undefined, head_commit: firstCitation.source_kind === 'workspace' ? null : firstCitation.head_commit ?? turn.answer.source_head_commit, index_epoch: firstCitation.source_kind === 'workspace' ? undefined : firstCitation.index_epoch ?? turn.answer.evidence_review?.source_version?.index_epoch })}>{citations[0].path}:{citations[0].lineno}</button>
-        {citations.length > 1 && <details><summary>另 {citations.length - 1} 处来源</summary>{citations.slice(1).map(c => <button type="button" className="block text-left" key={`${c.path}:${c.lineno}`} onClick={() => openCode({ kind: 'code', project_id: projectId, path: c.path, lineno: c.lineno, source_kind: c.source_kind ?? undefined, content_sha256: c.content_sha256 ?? undefined, head_commit: c.source_kind === 'workspace' ? null : c.head_commit ?? turn.answer.source_head_commit, index_epoch: c.source_kind === 'workspace' ? undefined : c.index_epoch ?? turn.answer.evidence_review?.source_version?.index_epoch })}>{c.path}:{c.lineno}</button>)}</details>}
-      </div>}
-    </div>}
+    <div className="context-project-link">
+      <div className="context-excerpt"><LearningMarkdown text={body} excerptTarget={target} targets={associated} citations={citations} onCitation={openCitation} /></div>
+      <details><summary>展开完整来源回答</summary><LearningMarkdown text={body} targets={associated} citations={citations} onCitation={openCitation} variant="answer" /></details>
+      {citations.length > 0 && <details className="context-project-sources"><summary>对应的项目位置</summary>{citations.map(c => <button type="button" className="block text-left" key={`${c.path}:${c.lineno}`} onClick={() => openCitation(c)}>{c.path}:{c.lineno}</button>)}</details>}
+    </div>
     <div className="context-reading-tools"><button type="button" onPointerDown={e => e.preventDefault()} onClick={() => {
       try { workbenchStore.getState().fixReading(selectedKnowledge(root.current!, topic)); setSelectionError(''); viewStore.getState().setCenterTab('chat'); layoutStore.setState({ full: false, ...(layoutStore.getState().viewport < 1100 ? { right: false } : {}) }); requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.wb-center textarea')?.focus()) } catch (e) { setSelectionError(String(e)) }
     }}>问选中段落</button></div>

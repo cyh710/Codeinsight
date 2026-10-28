@@ -24,6 +24,7 @@ export interface ToolTimelineItem {
 
 /** 右栏证据面板的一格。SSE `evidence` 事件与非流式 `evidence[]` 统一到这里。 */
 export interface PanelEvidence {
+  target?: import('../api/types').CodeReadingContext | null
   source_kind?: 'workspace' | 'index' | null
   content_sha256?: string | null
   index_epoch?: number | null
@@ -176,7 +177,7 @@ export type RightPanel =
   | { mode: 'concept'; conceptId: string }
   | { mode: 'knowledge-tree' }
   | { mode: 'knowledge'; target: LearningTarget }
-  | { mode: 'file'; path: string; lineno: number; version?: string; indexEpoch?: number; sourceKind?: 'workspace' | 'index'; contentSha?: string }
+  | { mode: 'file'; path: string; lineno: number; version?: string; indexEpoch?: number; sourceKind?: 'workspace' | 'index'; contentSha?: string; versionMissing?: boolean }
 
 export interface WorkbenchStore {
   tabs: Array<{ id: string; panel: RightPanel; title: string }>

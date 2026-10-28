@@ -6,7 +6,9 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from codeinsight.agent.exploration import normalize
 from codeinsight.agent.selection import code_selection
+from codeinsight.agent.source_scope import source_scope
 from codeinsight.agent.tool import ToolContext
 from codeinsight.agent.tools import ToolServices, build_tools
 from codeinsight.api.app import create_app
@@ -46,6 +48,100 @@ async def test_unindexed_directory_search_and_read_are_independent(conn, workspa
     workspace.joinpath("new.py").write_text("new content", encoding="utf-8")
     again = await tools.get("read_file").run({"path": "new.py"}, ctx)
     assert "中文😀" in again.content and again.data["citations"] == read.data["citations"]
+
+
+async def test_request_versions_and_unindexed_exploration_targets(conn, workspace):
+    tools = build_tools(ToolServices(conn, 1, str(workspace)))
+    ctx = ToolContext(1, str(workspace))
+    with source_scope():
+        first = await tools.get("read_file").run({"path": "new.py"}, ctx)
+        citation = first.data["citations"][0]
+        workspace.joinpath("new.py").write_text("version = 2\n", encoding="utf-8")
+        same = await tools.get("read_file").run({"path": "new.py"}, ctx)
+        assert "中文😀" in same.content
+        raw = {
+            "actions": [
+                {"kind": "code", "label": "看实现", "target": {"path": "new.py", "lineno": 1}}
+            ]
+        }
+        resolved = normalize(conn, 1, raw)["actions"][0]
+        assert resolved["dependency"] == "source"
+        assert resolved["target"]["content_sha256"] == citation["content_sha256"]
+        assert "source_ref" in citation and citation["source_ref"] in first.content
+        for target in (
+            {"source_ref": "missing"},
+            {"source_ref": []},
+            {"source_ref": citation["source_ref"], "lineno": 999},
+            {"source_ref": citation["source_ref"], "lineno": 1, "end_lineno": 999},
+            {"source_ref": citation["source_ref"], "project_id": 99},
+        ):
+            assert not normalize(
+                conn, 1, {"actions": [{"kind": "code", "label": "错误", "target": target}]}
+            )["actions"]
+    with source_scope():
+        fresh = await tools.get("read_file").run({"path": "new.py"}, ctx)
+        assert "version = 2" in fresh.content
+    for target in (
+        {**citation["target"], "end_lineno": 999},
+        {**citation["target"], "source_ref": citation["source_ref"]},
+    ):
+        assert not normalize(
+            conn, 1, {"actions": [{"kind": "code", "label": "错误", "target": target}]}
+        )["actions"]
+
+
+async def test_multiple_observed_versions_require_source_ref(conn, workspace):
+    tools = build_tools(ToolServices(conn, 1, str(workspace)))
+    ctx = ToolContext(1, str(workspace))
+    old = read_workspace(conn, 1, "new.py")
+    workspace.joinpath("new.py").write_text("version = 2\n", encoding="utf-8")
+    with source_scope():
+        first = await tools.get("read_file").run({"path": "new.py"}, ctx)
+        second = await tools.get("read_file").run(
+            {"path": "new.py", "source_kind": "workspace", "content_sha256": old.sha256}, ctx
+        )
+
+        def action(t):
+            return normalize(conn, 1, {"actions": [{"kind": "code", "label": "读", "target": t}]})[
+                "actions"
+            ]
+
+        assert not action({"path": "new.py", "lineno": 1})
+        assert (
+            action({"source_ref": first.data["citations"][0]["source_ref"], "lineno": 1})[0][
+                "target"
+            ]["content_sha256"]
+            != old.sha256
+        )
+        assert (
+            action({"source_ref": second.data["citations"][0]["source_ref"], "lineno": 1})[0][
+                "target"
+            ]["content_sha256"]
+            == old.sha256
+        )
+
+
+async def test_concurrent_scopes_do_not_clear_each_others_versions(conn, workspace):
+    import asyncio
+
+    from codeinsight.agent.source_scope import CURRENT_SCOPE
+
+    ready = asyncio.Event()
+
+    async def first():
+        with source_scope() as scope:
+            scope.versions["new.py"] = "first"
+            ready.set()
+            await asyncio.sleep(0.01)
+            assert CURRENT_SCOPE.get() is scope and scope.versions["new.py"] == "first"
+
+    async def second():
+        await ready.wait()
+        with source_scope() as scope:
+            assert not scope.versions
+            scope.versions["new.py"] = "second"
+
+    await asyncio.gather(first(), second())
 
 
 def test_current_read_and_history_survive_modification_and_removed_root(conn, workspace):

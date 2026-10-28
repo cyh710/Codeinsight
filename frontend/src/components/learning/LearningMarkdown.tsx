@@ -11,6 +11,7 @@ import KnowledgeFigure from './KnowledgeFigure'
 import { resolveVisualAsset } from './visualAssets'
 import { citationMarkers } from './citationMarkers'
 import ReplyCodeBlock from './ReplyCodeBlock'
+import { relatedBlock } from './relatedBlock'
 import './reply.css'
 
 // 滚动保存会更新工作台状态；未变正文不应因此重建图片与其阅读状态。
@@ -25,6 +26,7 @@ const LearningMarkdown = memo(function LearningMarkdown({
   onKnowledge,
   variant = 'article',
   citationHref,
+  excerptTarget,
 }: {
   text: string
   targets?: LearningTarget[]
@@ -36,11 +38,12 @@ const LearningMarkdown = memo(function LearningMarkdown({
   onKnowledge?: (target: LearningTarget) => void
   variant?: 'article' | 'answer'
   citationHref?: (citation: Citation) => string | undefined
+  excerptTarget?: LearningTarget
 }) {
   return (
     <div className={`learning-prose${variant === 'answer' ? ' learning-prose--answer' : ''}`}>
       <Markdown
-        remarkPlugins={[remarkGfm, ...(selectable ? [sourcePositions] : []), ...(!streaming && citations?.length ? [[citationMarkers, { citations, label: variant === 'answer' ? 'file' : 'number' }] as [typeof citationMarkers, { citations: Citation[]; label: 'file' | 'number' }]] : [])]}
+        remarkPlugins={[remarkGfm, ...(excerptTarget ? [[relatedBlock, { target: excerptTarget }] as [typeof relatedBlock, { target: LearningTarget }]] : []), ...(selectable ? [sourcePositions] : []), ...(!streaming && citations?.length ? [[citationMarkers, { citations, label: variant === 'answer' ? 'file' : 'number' }] as [typeof citationMarkers, { citations: Citation[]; label: 'file' | 'number' }]] : [])]}
         components={{
           p: ({ node, children }) => node?.children.some(child => child.type === 'element' && child.tagName === 'img')
             ? <div className="knowledge-figure-paragraph">{children}</div>

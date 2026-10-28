@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import subprocess
 import sys
 import tempfile
@@ -60,7 +61,7 @@ class BrowserProvider:
                         ToolCall(
                             "sparse",
                             "read_file",
-                            {"path": "store.py", "start_line": 1, "end_line": 6},
+                            {"path": "store.py", "start_line": 1, "end_line": 10},
                         )
                     ]
                 )
@@ -112,7 +113,7 @@ class BrowserProvider:
                         ToolCall(
                             "body-read",
                             "read_file",
-                            {"path": "store.py", "start_line": 1, "end_line": 6},
+                            {"path": "store.py", "start_line": 1, "end_line": 10},
                         )
                     ],
                 )
@@ -155,7 +156,7 @@ class BrowserProvider:
                         ToolCall(
                             f"long-read-{count}",
                             "read_file",
-                            {"path": "store.py", "start_line": 1, "end_line": 6}
+                            {"path": "store.py", "start_line": 1, "end_line": 10}
                             if count == 0
                             else {"path": "large.py", "start_line": count, "end_line": count},
                         )
@@ -179,7 +180,7 @@ class BrowserProvider:
                         ToolCall(
                             "review-read",
                             "read_file",
-                            {"path": "store.py", "start_line": 1, "end_line": 6},
+                            {"path": "store.py", "start_line": 1, "end_line": 10},
                         )
                     ]
                 )
@@ -201,14 +202,24 @@ class BrowserProvider:
                 for m in recent
                 for call in m.get("tool_calls", [])
             )
-            if not proposed:
+            read = next((m for m in recent if m.get("tool_call_id") == "explore-read"), None)
+            if not proposed and read is None:
                 yield StreamChunk(
                     tool_calls=[
                         ToolCall(
                             "explore-read",
                             "read_file",
-                            {"path": "store.py", "start_line": 1, "end_line": 6},
-                        ),
+                            {"path": "store.py", "start_line": 1, "end_line": 10},
+                        )
+                    ]
+                )
+                return
+            if not proposed:
+                # 导览可能关联索引版本，默认重读取得工作区版本；从真实结果选编号。
+                source_ref = re.search(r"(s\d+): store\.py:1-\d+ \(workspace\)", read["content"])
+                assert source_ref is not None
+                yield StreamChunk(
+                    tool_calls=[
                         ToolCall(
                             "explore-plan",
                             "propose_exploration",
@@ -220,7 +231,11 @@ class BrowserProvider:
                                         "label": "如果不提交会怎样",
                                         "reason": "比较写入与持久化的边界",
                                         "question": "SQL 如果没有提交事务，刷新后还能读到吗？",
-                                        "target": {"kind": "code", "path": "store.py", "lineno": 3},
+                                        "target": {
+                                            "kind": "code",
+                                            "source_ref": source_ref[1],
+                                            "lineno": 3,
+                                        },
                                     },
                                     {
                                         "kind": "knowledge",
@@ -248,9 +263,9 @@ class BrowserProvider:
                                     "nodes": [
                                         {
                                             "id": "module",
-                                            "label": "存储模块",
-                                            "role": "组织数据库写入",
-                                            "target": {"qualname": "store"},
+                                            "label": "保存入口",
+                                            "role": "将连接交给保存函数",
+                                            "target": {"qualname": "store.start"},
                                         },
                                         {
                                             "id": "save",
@@ -314,7 +329,7 @@ def main() -> None:
                 encoding="utf-8",
             )
             (root / "store.py").write_text(
-                'import sqlite3\n\ndef save(conn):\n    conn.execute("BEGIN")\n    conn.execute("INSERT INTO items VALUES (1)")\n    conn.commit()\n',
+                'import sqlite3\n\ndef save(conn):\n    conn.execute("BEGIN")\n    conn.execute("INSERT INTO items VALUES (1)")\n    conn.commit()\n\ndef start(conn):\n    save(conn)\n',
                 encoding="utf-8",
             )
             (root / "large.py").write_text(

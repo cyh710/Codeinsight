@@ -1,3 +1,4 @@
+import { openSource } from '../exploration/actions'
 /**
  * 符号详情卡：定义（Monaco 只读）+ 调用者/被调者（不确定的标 ⚠）。
  * 数据来自 `GET /projects/{id}/symbols/{qualname}`（mock 下同样形状）。
@@ -32,12 +33,13 @@ function RelationList({ title, items }: { title: string; items: RelationRef[] })
             ) : (
               <span className="mt-px shrink-0 text-slate-300">·</span>
             )}
-            <span
-              className="min-w-0 truncate font-mono text-slate-600"
+            <button
+              onClick={() => openSource(r)}
+              className="min-w-0 truncate text-left font-mono text-slate-600"
               title={`${r.path}:${r.lineno}`}
             >
               {r.qualname}
-            </span>
+            </button>
             <span className="ml-auto shrink-0 font-mono text-[10px] text-slate-400">
               :{r.lineno}
             </span>
@@ -134,7 +136,7 @@ export default function SymbolDetailCard({
         </p>
       )}
 
-      <FilePanel path={detail.path} lineno={focusLine ?? detail.lineno} version={version} sourceKind="index" />
+      <FilePanel path={detail.path} lineno={focusLine ?? detail.lineno} version={version ?? detail.target?.head_commit ?? undefined} indexEpoch={detail.target?.index_epoch} contentSha={detail.target?.content_sha256} sourceKind="index" versionMissing={!detail.target && !version} />
       {detail.concept_ids.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {detail.concept_ids.map((id) => (

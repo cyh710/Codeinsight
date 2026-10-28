@@ -22,7 +22,7 @@ test('探索入口后的短补充保留正文、表格、代码及引用，刷�
   const turn = saved.items.at(-1)
   expect(turn.answer.raw_text).toContain('## 已有策略')
   expect(turn.answer.raw_text).toContain('补充：')
-  expect(turn.answer.raw_text).not.toContain('我先查资料')
+  expect(turn.answer.raw_text).toContain('我先查资料')
   expect(turn.answer.citations[0].path).toBe('store.py')
   await page.reload()
   await expect(answer.getByRole('heading', { name: '已有策略' })).toBeVisible()

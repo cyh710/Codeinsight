@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import json
 import sys
-from dataclasses import dataclass
+from copy import copy
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -45,15 +46,18 @@ __all__ = [
 ]
 
 INSTRUCTIONS = """\
-CodeInsight 是一个本地代码理解服务。它索引过一个真实仓库（符号、调用边、
-概念实例、设计说明），你可以用这里的工具查「代码在哪、怎么串起来、为什么这么写」，
-而不是靠 grep 猜。
+CodeInsight 是一个本地代码理解服务。你可以直接阅读已注册项目的当前文件，
+并借助已有索引中的符号、调用边、概念实例和设计说明理解代码如何连接及设计取舍。
 
 使用建议：
-- 先 `search_code` 或 `find_symbol` 定位，再用 `read_file` / `get_callers` 看上下文。
-- 任何指向代码的结论都带 `file:line`（在 structured_content 的 citations 里）。
+- 普通项目理解先用 `list_files` / `search_files` / `read_file` 阅读当前工作区；
+  索引的 `search_code` / `find_symbol` / `get_callers` 辅助定位和静态关系分析。
+- 每次不带版本的调用重新读取当前文件；需要固定旧版本时传入上一结果的完整来源目标。
+  HTTP问答则在同一请求内固定同文件首次读取的版本；短source_ref只在本次调用有效。
+- 连贯回答用户的问题，关键实现附少量可定位来源（structured_content 的 citations），不要求逐句标注。
   引用教材内容时不要当作项目事实——教材和项目证据是两套来源。
 - `get_changes` 告诉你最近一次索引更新改了什么、影响谁、哪些设计说明已过期。
+- `get_flow` 仅提供由静态调用边支持的候选，不代表运行顺序；副作用是启发式候选。
 - 工具都是只读的：改代码、跑命令由你（外部 agent）负责。
 """
 
@@ -148,17 +152,39 @@ async def call_tool(
         # v1 全部只读；写工具将来要接审批（ADR 0008），不能悄悄放开。
         return _text(f"{name} 是写操作，当前 MCP 版本不开放。", is_error=True)
 
+    call_conn = None
     try:
-        result: ToolResult = await tool.run(
-            arguments,
-            ToolContext(
-                project_id=runtime.session.project_id,
-                repo_root=runtime.session.repo_root,
-                conversation_id="mcp",
-            ),
-        )
+        from codeinsight.agent.source_scope import source_scope
+        from codeinsight.agent.tools import BaseTool
+        from codeinsight.cognitive.retrieval.retriever import Retriever
+        from codeinsight.cognitive.source_targets import begin_read
+
+        if isinstance(tool, BaseTool):
+            # MCP可并发且长期存活；连接和读取事务不能被另一次调用提交/清理。
+            call_conn = open_sqlite(runtime.db, row_factory=True)
+            tool = copy(tool)
+            retriever = tool.services.retriever
+            if isinstance(retriever, Retriever):
+                retriever = retriever.with_connection(call_conn)
+            tool.services = replace(
+                tool.services, conn=call_conn, retriever=retriever, workspace_versions={}
+            )
+            begin_read(call_conn)
+
+        with source_scope():
+            result: ToolResult = await tool.run(
+                arguments,
+                ToolContext(
+                    project_id=runtime.session.project_id,
+                    repo_root=runtime.session.repo_root,
+                    conversation_id="mcp",
+                ),
+            )
     except Exception as exc:  # noqa: BLE001 —— 协议层兜底，绝不把栈回溯塞给客户端
         return _text(f"工具执行失败：{type(exc).__name__}: {exc}", is_error=True)
+    finally:
+        if call_conn is not None:
+            call_conn.close()
 
     structured = _json_safe(result.data) if result.data else None
     return types.CallToolResult(

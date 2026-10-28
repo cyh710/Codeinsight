@@ -23,6 +23,7 @@ from fastapi import APIRouter
 
 from codeinsight.api.errors import bad_request, not_found_symbol
 from codeinsight.api.projects import connect_db, require_project
+from codeinsight.cognitive.source_targets import attach_targets, begin_read
 
 router = APIRouter(tags=["structure"])
 
@@ -78,6 +79,7 @@ def build_graph(
     max_nodes: int = DEFAULT_NODES,
     kinds: Sequence[str] = GRAPH_EDGE_KINDS,
 ) -> dict[str, Any]:
+    begin_read(conn)
     kinds = tuple(kinds)
     kind_sql = _placeholders(len(kinds))
     edge_params = [project_id, *kinds]
@@ -106,15 +108,19 @@ def build_graph(
 
     nodes = _load_nodes(conn, selected, distances)
     edges = _filter_edges(candidates, set(selected))
-    return {
-        "mode": "focus" if center else "overview",
-        "center": center,
-        "depth": depth if center else None,
-        "kinds": list(kinds),
-        "nodes": nodes,
-        "edges": edges,
-        "truncated": truncated,
-    }
+    return attach_targets(
+        conn,
+        project_id,
+        {
+            "mode": "focus" if center else "overview",
+            "center": center,
+            "depth": depth if center else None,
+            "kinds": list(kinds),
+            "nodes": nodes,
+            "edges": edges,
+            "truncated": truncated,
+        },
+    )
 
 
 def _bfs(

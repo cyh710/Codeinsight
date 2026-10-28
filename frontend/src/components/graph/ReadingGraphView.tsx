@@ -1,3 +1,4 @@
+import { openSource } from '../exploration/actions'
 /** 静态调用的阅读视图；展示项、测试折叠和证据位置都由现有索引派生。 */
 import { useEffect, useMemo, useState } from 'react'
 import { useStore } from 'zustand'
@@ -149,7 +150,7 @@ export default function ReadingGraphView({
             </p>
             <button
               className="mt-4 flex items-center gap-1 text-xs text-accent hover:underline"
-              onClick={() => workbenchStore.getState().selectFile(center.path, center.lineno)}
+              onClick={() => openSource(center)}
             >
               <Code2 size={13} />
               查看源码
@@ -300,7 +301,7 @@ function ConnectionCard({
       </p>
       <button
         onClick={() =>
-          workbenchStore.getState().selectSymbol(node.qualname, node.path, node.lineno)
+          openSource(node)
         }
         className="mt-1.5 block w-full break-words text-left text-[13px] font-semibold leading-6 text-slate-700 hover:text-accent"
         title={node.qualname}
@@ -322,7 +323,7 @@ function ConnectionCard({
           以此为中心
         </button>
         <button
-          onClick={() => workbenchStore.getState().selectFile(node.path, node.lineno)}
+          onClick={() => openSource(node)}
           className="text-slate-500 hover:text-accent"
         >
           源码
@@ -335,7 +336,7 @@ function ConnectionCard({
             <button
               key={index}
               className="mt-1 block text-left text-accent hover:underline"
-              onClick={() => workbenchStore.getState().selectFile(callPath, edge.lineno!)}
+              onClick={() => openSource({ path: callPath, lineno: edge.lineno!, target: (direction === 'incoming' ? node.target : center.target) ? { ...(direction === 'incoming' ? node.target! : center.target!), lineno: edge.lineno!, end_lineno: edge.lineno! } : undefined })}
             >
               {callPath}:{edge.lineno}
               {edge.uncertain ? ` · 待核对 ${Math.round(edge.confidence * 100)}%` : ''}

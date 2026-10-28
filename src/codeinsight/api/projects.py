@@ -409,6 +409,9 @@ def list_symbols(
     offset = max(0, offset)
     conn = connect_db(project_id)
     try:
+        from codeinsight.cognitive.source_targets import attach_targets, begin_read
+
+        begin_read(conn)
         require_project(conn, project_id)
         where = ["s.project_id = ?"]
         params: list[Any] = [project_id]
@@ -453,7 +456,7 @@ def list_symbols(
             [*params, limit, offset],
         ).fetchall()
         items = [{**dict(r), "concept_ids": _symbol_concepts(conn, r["id"])} for r in rows]
-        return {"items": items, "total": total}
+        return attach_targets(conn, project_id, {"items": items, "total": total})
     finally:
         conn.close()
 
@@ -472,6 +475,9 @@ def _symbol_concepts(conn: sqlite3.Connection, symbol_id: int) -> list[str]:
 def get_symbol(project_id: int, qualname: str) -> dict[str, Any]:
     conn = connect_db(project_id)
     try:
+        from codeinsight.cognitive.source_targets import attach_targets, begin_read
+
+        begin_read(conn)
         require_project(conn, project_id)
         rows = conn.execute(
             """
@@ -515,7 +521,7 @@ def get_symbol(project_id: int, qualname: str) -> dict[str, Any]:
                 {"qualname": r["qualname"], "path": r["path"], "lineno": r["lineno"]}
                 for r in rows[1:8]
             ]
-        return detail
+        return attach_targets(conn, project_id, detail)
     finally:
         conn.close()
 
@@ -616,6 +622,9 @@ def _relation_list(
 ) -> dict[str, Any]:
     conn = connect_db(project_id)
     try:
+        from codeinsight.cognitive.source_targets import attach_targets, begin_read
+
+        begin_read(conn)
         require_project(conn, project_id)
         sym = conn.execute(
             "SELECT s.id FROM symbol s JOIN file f ON f.id = s.file_id "
@@ -628,6 +637,8 @@ def _relation_list(
         total = len(items)
         limit = max(1, min(limit, 500))
         offset = max(0, offset)
-        return {"items": items[offset : offset + limit], "total": total}
+        return attach_targets(
+            conn, project_id, {"items": items[offset : offset + limit], "total": total}
+        )
     finally:
         conn.close()

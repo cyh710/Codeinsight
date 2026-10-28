@@ -73,3 +73,5 @@ NNNN-简短英文短语.md
 
 | [0041](0041-source-snapshots-and-tool-recovery.md) | 源码快照与无进展工具恢复 | 已接受 |
 | [0042](0042-workspace-first.md) | 当前工作区优先，索引辅助，历史按内容恢复 | 已接受 |
+
+| [0043](0043-exploration-consistency.md) | 核心探索链路统一公开正文、来源生命周期与学习承接 | 已接受 |

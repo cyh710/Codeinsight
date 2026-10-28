@@ -102,6 +102,7 @@ class GroundedFile:
     content_sha256: str | None = None
     index_epoch: int | None = None
     head_commit: str | None = None
+    target: dict[str, Any] | None = None
 
     def covers(self, path: str, lineno: int) -> bool:
         return path == self.path and self.lineno <= lineno <= max(self.end_lineno, self.lineno)
@@ -208,6 +209,7 @@ class Grounding:
                 item.content_sha256,
                 item.index_epoch,
                 item.head_commit,
+                item.target,
             )
             for item in self._files.values()
         ]
@@ -326,6 +328,9 @@ def _record(
                         match.content_sha256,
                         match.index_epoch,
                         match.head_commit,
+                        {**match.target, "lineno": lineno, "end_lineno": lineno}
+                        if match.target
+                        else None,
                     )
                 )
 

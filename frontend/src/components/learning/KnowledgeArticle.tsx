@@ -1,3 +1,4 @@
+import { openSource } from '../exploration/actions'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import { getKnowledgeTopic, getTopicInstances } from '../../api/learning'
@@ -204,11 +205,7 @@ export default function KnowledgeArticle({ target }: { target: LearningTarget })
           <button
             key={i.id}
             className="mt-2 block w-full rounded-lg bg-slate-50 p-2 text-left hover:bg-accent-soft/40"
-            onClick={() =>
-              i.qualname
-                ? workbenchStore.getState().selectSymbol(i.qualname, i.path, i.lineno)
-                : workbenchStore.getState().selectFile(i.path, i.lineno)
-            }
+            onClick={() => openSource(i)}
           >
             <span className="font-mono text-[11px] text-accent">
               {i.path}:{i.lineno}

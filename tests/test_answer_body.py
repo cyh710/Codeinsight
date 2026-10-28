@@ -78,8 +78,8 @@ async def test_attachment_body_survives_final_tail_and_is_verified(final):
 
     answer = await runtime.run(project_id=1, question="现有策略和成绩", emit=emit)
     assert "已有策略" in answer.text and "value = 1" in answer.text
-    assert answer.raw_text.count("## 已有策略") == 1
-    assert "我先查一下" not in answer.raw_text
+    assert answer.raw_text.count("## 已有策略") == (2 if final == BODY + "\n\n" + SUPPLEMENT else 1)
+    assert "我先查一下" in answer.raw_text
     assert answer.citations and not answer.incomplete
     final_event = next(event for event in events if event.type == "answer")
     assert final_event.data["text"] == answer.text
@@ -105,7 +105,7 @@ async def test_failed_metadata_does_not_discard_body_or_validate_fake_citation()
     assert "猜测的位置" in answer.text
     assert answer.dropped_citations == ["ghost.py:99"]
     assert all(citation.path != "ghost.py" for citation in answer.citations)
-    assert "草稿中还不能确定" not in answer.raw_text
+    assert "草稿中还不能确定" in answer.raw_text
     assert not answer.exploration
 
 
@@ -121,11 +121,61 @@ async def test_explicit_limit_still_keeps_already_written_body():
         config=RuntimeConfig(max_model_turns=2),
     )
     answer = await runtime.run(project_id=1, question="解释")
-    assert answer.incomplete and "已有策略" in answer.text and BODY == answer.raw_text
+    assert (
+        answer.incomplete and "已有策略" in answer.text and "查阅过程\n\n" + BODY == answer.raw_text
+    )
+
+
+async def test_regular_search_and_read_rounds_preserve_public_explanation():
+    runtime = AgentRuntime(
+        provider=Script(
+            [(BODY, ["read_file"]), (SUPPLEMENT, ["read_file"]), ("最终更正：成绩仍需比较。", [])]
+        ),
+        registry=ToolRegistry([Source()]),
+    )
+    events = []
+
+    async def emit(event):
+        events.append(event)
+
+    answer = await runtime.run(project_id=1, question="策略和成绩", emit=emit)
+    public = "".join(e.data["text"] for e in events if e.type == "delta")
+    assert public == answer.raw_text == BODY + "\n\n" + SUPPLEMENT + "\n\n最终更正：成绩仍需比较。"
+    assert events[-2].data["text"] == answer.text
+
+
+@pytest.mark.parametrize("cancel", [False, True])
+async def test_failure_or_cancel_keeps_delivered_public_text(cancel):
+    import asyncio
+
+    class Interrupted:
+        model_id = "offline"
+
+        async def stream_with_tools(self, *args, **kwargs):
+            yield StreamChunk(text=BODY)
+            raise asyncio.CancelledError() if cancel else RuntimeError("离线失败")
+
+    runtime = AgentRuntime(provider=Interrupted(), registry=ToolRegistry([]))
+    events = []
+
+    async def emit(event):
+        events.append(event)
+
+    if cancel:
+        with pytest.raises(asyncio.CancelledError):
+            await runtime.run(project_id=1, question="解释", emit=emit)
+    else:
+        answer = await runtime.run(project_id=1, question="解释", emit=emit)
+        assert answer.raw_text == BODY == answer.text
+    assert "".join(e.data["text"] for e in events if e.type == "delta") == BODY
+    assert any(e.type == "error" for e in events)
 
 
 def test_only_exact_containment_is_deduplicated():
-    assert merge_answer_body([BODY], BODY + "\n\n" + SUPPLEMENT) == BODY + "\n\n" + SUPPLEMENT
+    assert (
+        merge_answer_body([BODY], BODY + "\n\n" + SUPPLEMENT)
+        == BODY + "\n\n" + BODY + "\n\n" + SUPPLEMENT
+    )
     assert merge_answer_body([BODY, BODY], "") == BODY
     assert merge_answer_body(["策略 A"], "策略 B") == "策略 A\n\n策略 B"
 

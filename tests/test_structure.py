@@ -90,7 +90,12 @@ def client(seeded: sqlite3.Connection) -> TestClient:
 def test_graph_focus_depth_one(client: TestClient) -> None:
     body = client.get("/projects/1/graph", params={"qualname": "src.a.entry", "depth": 1}).json()
     assert body["mode"] == "focus"
-    assert body["center"] == {"qualname": "src.a.entry", "path": "src/a.py", "lineno": 1}
+    assert {k: v for k, v in body["center"].items() if k != "target"} == {
+        "qualname": "src.a.entry",
+        "path": "src/a.py",
+        "lineno": 1,
+    }
+    assert body["center"]["target"]["content_sha256"] == "sha-a"
     # 中心恒在第一位：前端据此决定初始视口。
     assert [n["qualname"] for n in body["nodes"]][0] == "src.a.entry"
     names = {n["qualname"] for n in body["nodes"]}

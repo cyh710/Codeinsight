@@ -680,14 +680,45 @@ def record_change(
     symbol_changes: list[SymbolChange],
     impact: dict,
 ) -> int:
+    state = conn.execute(
+        "SELECT index_epoch FROM repo_state WHERE project_id=?", (project_id,)
+    ).fetchone()
+    old_epoch = state[0] if state else 0
+
     # 分门别类存**完整**的符号信息（qualname / path / lineno / change）。
     # 只存名字的话，读的人还得回表猜行号——而那个行号可能已经变了。
     def entry(change: SymbolChange) -> dict:
+        removed = change.change == "removed"
+        row = conn.execute(
+            "SELECT content_sha256 FROM file_snapshot WHERE project_id=? AND commit_sha=? AND path=?"
+            if removed
+            else "SELECT content_sha256 FROM file WHERE project_id=? AND path=?",
+            (project_id, f"epoch:{old_epoch}", change.path)
+            if removed
+            else (project_id, change.path),
+        ).fetchone()
         return {
             "qualname": change.qualname,
             "path": change.path,
             "lineno": change.lineno,
             "change": change.change,
+            **(
+                {
+                    "target": {
+                        "kind": "code",
+                        "project_id": project_id,
+                        "path": change.path,
+                        "lineno": change.lineno,
+                        "end_lineno": change.lineno,
+                        "source_kind": "index",
+                        "content_sha256": row[0],
+                        "index_epoch": old_epoch if removed else old_epoch + 1,
+                        "head_commit": plan.old_commit if removed else plan.new_commit,
+                    }
+                }
+                if row
+                else {}
+            ),
         }
 
     added_symbols = [entry(c) for c in symbol_changes if c.change == "added"]

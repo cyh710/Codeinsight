@@ -88,7 +88,10 @@ def prepare_answer_restoration(
             has_final = True
     if not parts or not has_final or "raw_text" not in original:
         raise ValueError("缺少附加阶段正文或最终原文，不能恢复")
-    raw_text = merge_answer_body(parts, original["raw_text"])
+    # 这是指定旧记录的显式恢复：已恢复的完整原文不能再拼一次历史片段。
+    raw_text = merge_answer_body(
+        [p for p in parts if p not in original["raw_text"]], original["raw_text"]
+    )
     split = split_answer(raw_text, grounding, preserve_invalid=True)
     answer = Answer(
         text=split.text,

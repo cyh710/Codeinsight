@@ -1,3 +1,4 @@
+import { sourcePanel } from '../exploration/actions'
 /** 连贯正文为主，来源与实际查阅按需打开；兼容旧回答记录。 */
 import { memo, useState } from 'react'
 import { chatStore } from '../../store/chatStore'
@@ -128,7 +129,7 @@ const MessageBubble = memo(function MessageBubble({ message, onOpenCitation: ori
               if (pid === null) return undefined
               const version = citation.head_commit ?? message.sourceHeadCommit
               const epoch = citation.index_epoch ?? message.evidenceReview?.source_version?.index_epoch
-              const material = { mode: 'file', path: citation.path, lineno: citation.lineno, ...(citation.source_kind === 'workspace' ? { sourceKind: 'workspace', contentSha: citation.content_sha256 } : { ...(version ? { version } : {}), ...(epoch == null ? {} : { indexEpoch: epoch }) }) }
+              const material = sourcePanel({ ...citation, head_commit: version, index_epoch: epoch })
               return `/?${new URLSearchParams({ project: String(pid), conversation: cid, view: 'chat', material: JSON.stringify(material) })}`
             }}
             onKnowledge={openKnowledge}

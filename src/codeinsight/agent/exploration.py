@@ -23,11 +23,56 @@ def version(conn: sqlite3.Connection, project_id: int) -> dict:
 
 
 def code_target(conn: sqlite3.Connection, pid: int, raw: dict) -> dict | None:
-    """仅返回同一项目索引里的真实文件/符号范围，不读取客户端预览。"""
+    """由请求内来源、完整快照身份或索引符号定位；不读取客户端预览。"""
     if not isinstance(raw, dict):
         return None
     if raw.get("project_id", pid) != pid:
         return None
+    if raw.get("qualname") is not None and not isinstance(raw["qualname"], str):
+        return None
+    if raw.get("path") is not None and not isinstance(raw["path"], str):
+        return None
+    if raw.get("qualname") and "lineno" not in raw and "source_ref" not in raw:
+        located = conn.execute(
+            "SELECT f.path,s.lineno FROM symbol s JOIN file f ON f.id=s.file_id WHERE s.project_id=? AND s.qualname=? AND (? IS NULL OR f.path=?) ORDER BY f.path,s.lineno LIMIT 1",
+            (pid, raw["qualname"], raw.get("path"), raw.get("path")),
+        ).fetchone()
+        if located:
+            raw = {**raw, "path": located[0], "lineno": located[1]}
+            if not raw.get("source_kind") and not raw.get("content_sha256"):
+                from codeinsight.cognitive.source_targets import indexed_target
+
+                indexed = indexed_target(conn, pid, located[0], located[1])
+                if indexed:
+                    raw = {**raw, **indexed, "qualname": raw["qualname"]}
+    from codeinsight.agent.source_scope import CURRENT_SCOPE
+
+    scope = CURRENT_SCOPE.get()
+    if scope is None and "source_ref" in raw:
+        return None
+    if scope is not None:
+        resolved = scope.resolve(raw)
+        if resolved is not None:
+            if raw.get("qualname") and not resolved.get("qualname"):
+                row = conn.execute(
+                    "SELECT 1 FROM symbol s JOIN file f ON f.id=s.file_id WHERE s.project_id=? AND f.path=? AND f.content_sha256=? AND s.qualname=? AND s.lineno<=? AND s.end_lineno>=?",
+                    (
+                        pid,
+                        resolved["path"],
+                        resolved.get("content_sha256"),
+                        raw["qualname"],
+                        resolved["lineno"],
+                        resolved["lineno"],
+                    ),
+                ).fetchone()
+                if row:
+                    resolved["qualname"] = raw["qualname"]
+            return resolved
+        if "source_ref" in raw or (
+            not raw.get("content_sha256")
+            and any(s.get("path") == raw.get("path") for s in scope.sources.values())
+        ):
+            return None
     path, line, name = raw.get("path"), raw.get("lineno", 1), raw.get("qualname")
     if name is not None and not isinstance(name, str):
         return None
@@ -45,7 +90,7 @@ def code_target(conn: sqlite3.Connection, pid: int, raw: dict) -> dict | None:
             return None
         total = len(source.raw.decode("utf-8", "replace").splitlines())
         end = raw.get("end_lineno", line)
-        if type(end) is not int or end < line or line > total:
+        if type(end) is not int or end < line or line > total or end > total:
             return None
         return {
             "kind": "code",
@@ -57,6 +102,31 @@ def code_target(conn: sqlite3.Connection, pid: int, raw: dict) -> dict | None:
             "content_sha256": source.sha256,
             "head_commit": None,
             "qualname": None,
+        }
+    if raw.get("source_kind") == "index" and raw.get("content_sha256"):
+        from codeinsight.cognitive.indexing.source_store import SourceError, read_source
+
+        try:
+            source = read_source(
+                conn,
+                pid,
+                path,
+                expected_sha=raw["content_sha256"],
+                index_epoch=raw.get("index_epoch"),
+                head_commit=raw.get("head_commit"),
+            )
+        except (SourceError, OSError, TypeError):
+            return None
+        total = len(source.raw.decode("utf-8", "replace").splitlines())
+        end = raw.get("end_lineno", line)
+        if type(end) is not int or end < line or line > max(1, total) or end > max(1, total):
+            return None
+        return {
+            **raw,
+            "kind": "code",
+            "project_id": pid,
+            "lineno": line,
+            "end_lineno": min(end, line + 199, max(1, total)),
         }
     if name:
         row = conn.execute(
@@ -74,6 +144,9 @@ def code_target(conn: sqlite3.Connection, pid: int, raw: dict) -> dict | None:
     ).fetchone()
     if not row or line > max(1, row[0] or 0):
         return None
+    end = raw.get("end_lineno", line)
+    if type(end) is not int or end < line or end > max(1, row[0] or 0):
+        return None
     if ("head_commit" in raw and raw["head_commit"] != version(conn, pid)["head_commit"]) or (
         "content_sha256" in raw and raw["content_sha256"] != row[1]
     ):
@@ -87,17 +160,11 @@ def code_target(conn: sqlite3.Connection, pid: int, raw: dict) -> dict | None:
     return {
         "kind": "code",
         "project_id": pid,
+        "source_kind": "index",
         "index_epoch": version(conn, pid)["index_epoch"],
         "path": path,
         "lineno": line,
-        "end_lineno": min(
-            max(
-                line,
-                raw.get("end_lineno", line) if type(raw.get("end_lineno", line)) is int else line,
-            ),
-            line + 199,
-            max(1, row[0]),
-        ),
+        "end_lineno": min(end, line + 199),
         "qualname": symbol[1] if symbol else None,
         "head_commit": version(conn, pid)["head_commit"],
         "content_sha256": row[1],
@@ -106,6 +173,8 @@ def code_target(conn: sqlite3.Connection, pid: int, raw: dict) -> dict | None:
 
 def target(conn: sqlite3.Connection, pid: int, raw: Any, learning: Any = None) -> dict | None:
     if not isinstance(raw, dict):
+        return None
+    if raw.get("project_id", pid) != pid:
         return None
     if raw.get("kind", "code") == "code":
         return code_target(conn, pid, raw)
@@ -167,6 +236,13 @@ def normalize(conn: sqlite3.Connection, pid: int, raw: Any, learning: Any = None
             "reason": str(action.get("reason") or "")[:180],
             "target": resolved,
             "question": question.strip()[:1000] if kind == "follow_up" else "",
+            "dependency": "index"
+            if kind in {"graph", "timeline"}
+            else "knowledge"
+            if resolved and resolved["kind"] == "knowledge"
+            else "source"
+            if resolved
+            else "none",
         }
         clean["id"] = hashlib.sha256(
             json.dumps(clean, sort_keys=True, ensure_ascii=False).encode()
@@ -185,7 +261,7 @@ def normalize(conn: sqlite3.Connection, pid: int, raw: Any, learning: Any = None
             if resolved:
                 nodes[node["id"]] = {
                     "id": node["id"],
-                    "label": str(node.get("label") or resolved["qualname"] or resolved["path"])[
+                    "label": str(node.get("label") or resolved.get("qualname") or resolved["path"])[
                         :80
                     ],
                     "role": str(node.get("role") or "")[:220],
@@ -200,11 +276,16 @@ def normalize(conn: sqlite3.Connection, pid: int, raw: Any, learning: Any = None
             a, b = nodes.get(edge.get("source")), nodes.get(edge.get("target"))
             if not a or not b:
                 continue
+            if not all(
+                n["target"].get("qualname") and _current_identity(conn, pid, n["target"])
+                for n in (a, b)
+            ):
+                continue
             row = conn.execute(
                 "SELECT e.kind,e.confidence FROM edge e JOIN symbol s ON s.id=e.src_symbol_id "
                 "JOIN symbol d ON d.id=e.dst_symbol_id JOIN file sf ON sf.id=s.file_id "
                 "JOIN file df ON df.id=d.file_id WHERE e.project_id=? AND s.qualname=? "
-                "AND d.qualname=? AND sf.path=? AND df.path=? AND e.kind IN ('call','imports','inherits') LIMIT 1",
+                "AND d.qualname=? AND sf.path=? AND df.path=? AND e.kind='call' LIMIT 1",
                 (
                     pid,
                     a["target"]["qualname"],
@@ -217,30 +298,6 @@ def normalize(conn: sqlite3.Connection, pid: int, raw: Any, learning: Any = None
                 edges.append(
                     {"source": a["id"], "target": b["id"], "kind": row[0], "uncertain": row[1] < 1}
                 )
-            else:
-                contains = conn.execute(
-                    "SELECT 1 FROM symbol s JOIN symbol p ON (s.parent_symbol_id=p.id OR (p.kind='module' AND p.file_id=s.file_id)) "
-                    "JOIN file pf ON pf.id=p.file_id JOIN file sf ON sf.id=s.file_id "
-                    "WHERE s.project_id=? AND p.project_id=? AND p.qualname=? AND s.qualname=? "
-                    "AND pf.path=? AND sf.path=?",
-                    (
-                        pid,
-                        pid,
-                        a["target"]["qualname"],
-                        b["target"]["qualname"],
-                        a["target"]["path"],
-                        b["target"]["path"],
-                    ),
-                ).fetchone()
-                if contains:
-                    edges.append(
-                        {
-                            "source": a["id"],
-                            "target": b["id"],
-                            "kind": "contains",
-                            "uncertain": False,
-                        }
-                    )
         connected = {e[k] for e in edges for k in ("source", "target")}
         if edges:
             result["flow"] = {
@@ -249,6 +306,27 @@ def normalize(conn: sqlite3.Connection, pid: int, raw: Any, learning: Any = None
                 "edges": edges,
             }
     return result
+
+
+def _current_identity(conn: sqlite3.Connection, pid: int, source: dict) -> bool:
+    if source.get("source_kind") != "workspace" and any(
+        source.get(k) != version(conn, pid)[k] for k in ("index_epoch", "head_commit")
+    ):
+        return False
+    row = conn.execute(
+        "SELECT content_sha256 FROM file WHERE project_id=? AND path=?", (pid, source["path"])
+    ).fetchone()
+    if source.get("content_sha256"):
+        return bool(row and row[0] == source["content_sha256"])
+    return (
+        source.get("index_epoch") == version(conn, pid)["index_epoch"]
+        and source.get("head_commit") == version(conn, pid)["head_commit"]
+    )
+
+
+def requires_index(action: dict) -> bool:
+    """静态关系与时间线依赖当前索引；不可变源码和教材各自检查版本。"""
+    return action.get("kind") in {"graph", "timeline"} or action.get("dependency") == "index"
 
 
 def plain(text: str) -> str:

@@ -17,9 +17,10 @@ export default function ExplorationActions({ actions, version, requestId, overvi
   const cid = useStore(chatStore, s => s.conversationId)
   const detail = useStore(projectStore, s => s.currentDetail)
   const pid = useStore(projectStore, s => s.currentProjectId)
-  const stale = pid !== version.project_id || Boolean(detail && (detail.index_epoch !== version.index_epoch || detail.head_commit !== version.head_commit))
+  const indexStale = Boolean(detail && (detail.index_epoch !== version.index_epoch || detail.head_commit !== version.head_commit))
+  const stale = (action: ExplorationAction) => pid !== version.project_id || (indexStale && (action.dependency === 'index' || action.kind === 'graph' || action.kind === 'timeline'))
   const activate = (action: ExplorationAction) => {
-    if (stale) return
+    if (stale(action)) return
     if (action.kind === 'follow_up') {
       const origin: ActionOrigin = { kind: overview ? 'overview' : 'answer', action_id: action.id, index_epoch: version.index_epoch, ...(requestId ? { request_id: requestId } : {}) }
       viewStore.getState().setCenterTab('chat')
@@ -35,9 +36,9 @@ export default function ExplorationActions({ actions, version, requestId, overvi
   if (!actions.length) return null
   return <nav className={overview ? 'project-exploration-entries' : 'exploration-actions'} aria-label={overview ? '项目探索入口' : '接着探索'}>
     {!overview && <p className="exploration-section-label">接着探索</p>}
-    {stale && <p role="status" className="exploration-muted">入口来自旧索引，请刷新项目导览；历史正文仍可阅读。</p>}
+    {actions.some(stale) && <p role="status" className="exploration-muted">关系或变更入口来自旧索引，请刷新项目导览；来源快照与教材仍可打开。</p>}
     {actions.slice(0, overview ? 4 : 3).map(action => <button key={action.id} type="button"
-      disabled={stale || loading || (action.kind === 'follow_up' && streaming)} onClick={() => activate(action)}>
+      disabled={stale(action) || loading || (action.kind === 'follow_up' && streaming)} onClick={() => activate(action)}>
       <span className="exploration-action-kind">{{ follow_up: '追问', code: '代码', knowledge: '知识', graph: '关系', timeline: '变更' }[action.kind]}</span>
       <span><strong>{action.kind === 'knowledge' ? action.label.replace(/^(?:理解[:：]\s*)+/, '') : action.label}</strong>{action.reason && <small>{action.reason}</small>}</span>
       <span aria-hidden="true">↗</span>

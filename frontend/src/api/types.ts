@@ -118,6 +118,7 @@ export interface ListResponse<T> {
 
 /** 一条指向代码的引用。`path:lineno` 是本项目的核心承诺。 */
 export interface Citation {
+  target?: CodeReadingContext | null
   source_kind?: 'workspace' | 'index' | null
   content_sha256?: string | null
   index_epoch?: number | null
@@ -143,6 +144,7 @@ export interface Inference {
 
 /** 检索命中或成功读取的材料；读取项无 chunk_id/score。 */
 export interface Evidence {
+  target?: CodeReadingContext | null
   chunk_id?: number | null
   path: string
   lineno: number
@@ -156,6 +158,7 @@ export interface Evidence {
 
 /** 关系图上的一条边引用（调用者 / 被调者 / 引用处）。 */
 export interface RelationRef {
+  target?: CodeReadingContext | null
   qualname: string
   path: string
   lineno: number
@@ -305,6 +308,7 @@ export interface FileEntry {
 
 /** 符号列表项与详情共用的字段（契约 §4.1 / §4.2）。 */
 export interface SymbolBase {
+  target?: CodeReadingContext | null
   id: number
   qualname: string
   name: string
@@ -352,6 +356,7 @@ export interface RelationListResponse extends ListResponse<RelationRef> {}
 // ─────────────────────────────────────────────────────────────
 
 export interface GraphNode {
+  target?: CodeReadingContext | null
   id: number
   qualname: string
   name: string
@@ -402,6 +407,7 @@ export interface GraphQuery {
 // ─────────────────────────────────────────────────────────────
 
 export interface FlowStep {
+  target?: CodeReadingContext | null
   ordinal: number
   qualname: string | null
   path: string | null
@@ -410,6 +416,9 @@ export interface FlowStep {
 }
 
 export interface Flow {
+  basis?: 'static_candidate'
+  edges?: Array<{ source: number; target: number; kind: 'call'; uncertain: boolean; confidence: number }>
+  effect_candidates?: Array<{ dst_name: string; confidence: number }>
   id: number
   name: string
   description: string | null
@@ -445,6 +454,7 @@ export interface ConceptDetail {
 }
 
 export interface ConceptInstance {
+  target?: CodeReadingContext | null
   id: number
   concept_id: string
   path: string
@@ -494,6 +504,7 @@ export interface ChangedFile {
 }
 
 export interface ChangedSymbol {
+  target?: CodeReadingContext | null
   qualname: string
   path: string
   lineno: number
@@ -637,6 +648,11 @@ export interface SseToolEvent {
 }
 
 export interface SseEvidenceEvent {
+  target?: CodeReadingContext | null
+  source_kind?: 'workspace' | 'index' | null
+  content_sha256?: string | null
+  head_commit?: string | null
+  index_epoch?: number | null
   path: string
   lineno: number
   end_lineno: number
@@ -901,6 +917,7 @@ export interface ActionOrigin {
   request_id?: string
 }
 export interface ExplorationAction {
+  dependency?: 'index' | 'source' | 'knowledge' | 'none'
   id: string
   kind: 'follow_up' | 'code' | 'knowledge' | 'graph' | 'timeline'
   label: string

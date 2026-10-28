@@ -16,8 +16,8 @@ from codeinsight.models import Citation
 class GetFlowTool(BaseTool):
     name = "get_flow"
     description = (
-        "查看项目的关键业务流程（从入口到副作用的调用链）。"
-        "不给名字时列出所有流程；给名字返回有序步骤。"
+        "查看由真实调用边支持的静态候选路径（不代表运行顺序，副作用仅为启发式候选）。"
+        "不给名字时列出所有流程；给名字返回沿调用边排列的步骤。"
     )
     parameters = {
         "type": "object",
@@ -28,86 +28,33 @@ class GetFlowTool(BaseTool):
     }
 
     async def run(self, arguments: dict[str, Any], ctx: ToolContext) -> ToolResult:
+        from codeinsight.cognitive.indexing.flow_read import verified_flows
+
+        items = verified_flows(self.services.conn, self.services.project_id)
         name = str(arguments.get("flow_name") or "").strip()
-        if not name:
-            rows = self.services.conn.execute(
-                """
-                SELECT f.id, f.name, f.description, f.entry_symbol_id,
-                       (SELECT COUNT(*) FROM flow_step s WHERE s.flow_id = f.id) AS steps
-                FROM flow f WHERE f.project_id = ? ORDER BY f.id
-                """,
-                (self.services.project_id,),
-            ).fetchall()
-            if not rows:
-                return self.result(
-                    "索引里没有识别出业务流程。入口可能没有被识别到（M1 的 entry_point 为空）。",
-                    data={"items": [], "citations": []},
-                )
-            lines = [f"共 {len(rows)} 条关键流程："]
-            for row in rows:
-                lines.append(
-                    f"- [{row['id']}] {row['name']}（{row['steps']} 步）：{row['description'] or ''}"
-                )
+        if name:
+            items = [f for f in items if name in f["name"]][:1]
+        if not items:
             return self.result(
-                "\n".join(lines),
-                data={
-                    "items": [
-                        {
-                            "id": int(row["id"]),
-                            "name": row["name"],
-                            "description": row["description"],
-                            "steps": int(row["steps"]),
-                        }
-                        for row in rows
-                    ],
-                    "citations": [],
-                },
-            )
-
-        flow = self.services.conn.execute(
-            "SELECT id, name, description FROM flow WHERE project_id = ? AND (name = ? OR name LIKE ?)"
-            " ORDER BY (name = ?) DESC LIMIT 1",
-            (self.services.project_id, name, f"%{name}%", name),
-        ).fetchone()
-        if flow is None:
-            return self.result(
-                f"没有找到名为「{name}」的流程。不传 flow_name 可以先看全部流程。",
+                "没有可核对的静态候选链路；可以直接读取入口源码继续分析。",
                 data={"items": [], "citations": []},
-                error="not_found",
-            )
-
-        steps = self.services.conn.execute(
-            "SELECT ordinal, qualname, path, lineno, note FROM flow_step"
-            " WHERE flow_id = ? ORDER BY ordinal",
-            (flow["id"],),
-        ).fetchall()
-        lines = [f"{flow['name']}（{len(steps)} 步）：{flow['description'] or ''}"]
-        for step in steps:
-            lines.append(
-                f"{step['ordinal']}. {step['path']}:{step['lineno']}  {step['qualname'] or ''}"
-                f"  {('— ' + step['note']) if step['note'] else ''}"
             )
         citations = [
-            Citation(step["path"], int(step["lineno"]), int(step["lineno"]), step["qualname"], "")
-            for step in steps
-            if step["path"] and step["lineno"]
+            Citation(s["path"], s["lineno"], s["lineno"], s["qualname"], "")
+            for f in items
+            for s in f["steps"]
+            if s["path"] and s["lineno"]
         ]
+        content = "静态候选路径，不代表运行顺序；末端副作用为启发式候选。\n" + "\n".join(
+            f"{f['name']}："
+            + " → ".join(f"{s['qualname']} ({s['path']}:{s['lineno']})" for s in f["steps"])
+            + ("（含不确定调用）" if any(e["uncertain"] for e in f["edges"]) else "")
+            for f in items
+        )
         return self.result(
-            "\n".join(lines),
+            content,
             data={
-                "id": int(flow["id"]),
-                "name": flow["name"],
-                "description": flow["description"],
-                "steps": [
-                    {
-                        "ordinal": int(step["ordinal"]),
-                        "qualname": step["qualname"],
-                        "path": step["path"],
-                        "lineno": int(step["lineno"] or 0),
-                        "note": step["note"],
-                    }
-                    for step in steps
-                ],
+                **(items[0] if name else {"items": items}),
                 "citations": self.citations(citations),
             },
         )

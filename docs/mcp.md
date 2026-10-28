@@ -44,9 +44,10 @@ uv run ci mcp --project tapestry     # stdio
 |---|---|
 | `search_code` | 自然语言 / 标识符检索，返回带 `file:line` 的证据 |
 | `find_symbol` | 按名字精确找定义（签名、docstring、引用数） |
-| `read_file` | 读索引版本里的源码（带行号） |
+| `list_files` / `search_files` | 列出、搜索当前工作区文件，无需先索引 |
+| `read_file` | 默认读当前工作区；传完整来源target可恢复旧快照（带行号） |
 | `get_callers` / `get_callees` | 调用关系（<1 置信度标「可能」） |
-| `get_flow` | 从入口到副作用的业务流程 |
+| `get_flow` | 真实调用边支持的静态候选；不代表运行顺序，副作用为启发式候选 |
 | `get_module_overview` | 模块职责与主要符号 |
 | `get_design_decisions` | ADR 及其代码证据 |
 | `get_changes` | 最近一次索引更新的变更、影响范围、过期设计说明 |
@@ -85,3 +86,15 @@ list_tools          → 15 个（14 个项目/知识工具 + list_projects）
 call_tool search_code → 文本 + structured_content.citations（3 条）
 call_tool list_projects → 已索引项目与绑定标记
 ```
+
+
+## 来源与读取生命周期（ADR0043）
+
+普通项目问题从当前文件开始，索引辅助定位和关系分析。解释围绕问题展开，关键实现提供少量来源链接，不要求逐句引用或事实/推断分栏。
+
+每次MCP不带版本的`read_file`/`search_files`重新读取当前文件，避免长期进程缓存旧工作区。
+若要跨调用固定版本，将上一结果`citations[].target`完整传给`read_file`的`target`参数；
+也可显式传`path/source_kind/content_sha256/head_commit/index_epoch`原字段。
+例如`read_file({"target": <上一结果的完整target>})`。来源必须属于同一项目及路径。
+短`source_ref`只用于一次请求内探索，不是跨调用凭证；跨调用应使用完整target。
+HTTP问答在同一次请求内固定同文件首次默认读取的版本，下一次请求重读当前磁盘。

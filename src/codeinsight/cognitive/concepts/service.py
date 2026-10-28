@@ -51,7 +51,9 @@ class KnowledgeService:
         reading_context = (
             self.library.reading_context(reading, max_bytes=max_bytes) if reading else None
         )
-        hits = [] if is_reading_follow_up(question) else self.library.search(question, limit=6)
+        hits = (
+            [] if reading or is_reading_follow_up(question) else self._automatic_chapter(question)
+        )
         references = [*(reading_context.references if reading_context else ()), *hits]
         unique = {}
         for hit in references:
@@ -63,11 +65,37 @@ class KnowledgeService:
         for hit in context.references:
             target = self.library.target(hit.target.topic_id)
             entries.setdefault(target.topic_id, target)
-        if entries:
-            first = self.library.get(next(iter(entries)))
-            for tid in (*first.prerequisites, *first.related):
-                entries.setdefault(tid, self.library.target(tid))
         return context, tuple(list(entries.values())[:3])
+
+    def _automatic_chapter(self, question: str) -> list:
+        """仅唯一明确术语自动补一节；普通项目问题交给显式知识工具。"""
+        term = question.strip().strip("?？。！! ")
+        term = re.sub(r"^(?:请问|请|我想知道|我想了解一下|我想了解)\s*", "", term)
+        match = re.fullmatch(r"(?:什么是|解释一下|解释)\s*(.+)|(.+?)\s*(?:是什么|是什么意思)", term)
+        if match:
+            term = (match[1] or match[2]).strip()
+        target = self.library.resolve_term(term)
+        if target is None:
+            return []
+        topic = self.library.get(target.topic_id)
+        hits = [
+            h for h in self.library.search(term, limit=50) if h.target.topic_id == target.topic_id
+        ]
+        if hits:
+            return hits[:1]
+        if not topic or not topic.sections:
+            return []
+        from codeinsight.cognitive.concepts.learning_models import KnowledgeHit
+
+        section = topic.sections[0]
+        return [
+            KnowledgeHit(
+                self.library.target(topic.id, section.id),
+                section.content,
+                1.0,
+                tuple(self.library.sources[s] for s in topic.source_ids),
+            )
+        ]
 
     def find_instances(
         self,

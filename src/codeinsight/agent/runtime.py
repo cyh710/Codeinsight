@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from codeinsight.agent.answer import GroundedFile, Grounding, split_answer
-from codeinsight.agent.answer_body import is_answer_attachment, merge_answer_body
+from codeinsight.agent.answer_body import merge_answer_body
 from codeinsight.agent.context import ContextBudget, assemble, message_bytes, truncate_bytes
 from codeinsight.agent.evidence_review import assess, record_check
 from codeinsight.agent.exploration import normalize, plain, version
@@ -96,6 +96,36 @@ class AgentRuntime:
         emit: Emit | None = None,
         reading_context: dict[str, Any] | None = None,
     ) -> Answer:
+        """每次运行都有独立来源状态，不能跨续聊或并发会话共享。"""
+        from codeinsight.agent.source_scope import source_scope
+
+        with source_scope():
+            return await self._run_scoped(
+                project_id=project_id,
+                question=question,
+                conversation_id=conversation_id,
+                emit=emit,
+                reading_context=reading_context,
+            )
+
+    async def _run_scoped(
+        self,
+        *,
+        project_id: int,
+        question: str,
+        conversation_id: str = "",
+        emit: Emit | None = None,
+        reading_context: dict[str, Any] | None = None,
+    ) -> Answer:
+        delivered: list[str] = []
+        outer_emit = emit
+
+        async def public_emit(event: RuntimeEvent) -> None:
+            if event.type == "delta":
+                delivered.append(event.data["text"])
+            await _emit(outer_emit, event)
+
+        emit = public_emit
         task_id = new_task_id()
         answer = Answer(task_id=task_id, model_id=str(getattr(self.provider, "model_id", "")))
         ledger = (
@@ -138,10 +168,6 @@ class AgentRuntime:
             if context:
                 prior = [*prior, {"role": "user", "content": context}]
         grounding = Grounding()
-        for name in self.registry.names:
-            services = getattr(self.registry.get(name), "services", None)
-            if services is not None and hasattr(services, "workspace_versions"):
-                services.workspace_versions.clear()
         focus = self.store.focus(session_key) if conversation_id else Focus()
         final_text = ""
         body_parts: list[str] = []
@@ -399,7 +425,9 @@ class AgentRuntime:
                     messages, _dropped = assemble(
                         prior, current, {**goal, "content": goal["content"] + note}, self.budget
                     )
-                text, calls = await self._one_turn(messages, emit, finishing=finishing)
+                text, calls = await self._one_turn(
+                    messages, emit, finishing=finishing, has_body=bool(body_parts)
+                )
 
                 if not calls or finishing:
                     final_text = merge_answer_body(body_parts, text)
@@ -414,7 +442,7 @@ class AgentRuntime:
                         )
                     break
 
-                if is_answer_attachment([call.name for call in calls]):
+                if text.strip():
                     body_parts.append(text)
 
                 current.append(_assistant_message(text, calls))
@@ -509,7 +537,13 @@ class AgentRuntime:
                     # 附加建议不能破坏已经完成且可核查的正文。
                     answer.exploration = None
                 if initial_version != version(self.conn, project_id):
-                    answer.exploration = None
+                    if answer.exploration:
+                        from codeinsight.agent.exploration import requires_index
+
+                        answer.exploration["actions"] = [
+                            a for a in answer.exploration["actions"] if not requires_index(a)
+                        ]
+                        answer.exploration["flow"] = None
             await _emit(
                 emit,
                 RuntimeEvent(
@@ -559,6 +593,9 @@ class AgentRuntime:
             answer.error = _error_payload(exc)
             await _emit(emit, RuntimeEvent("error", answer.error))
         finally:
+            if answer.error and delivered:
+                answer.raw_text = "".join(delivered)
+                answer.text = answer.raw_text
             status = (
                 "interrupted"
                 if answer.error and answer.error.get("code") == "aborted"
@@ -635,14 +672,20 @@ class AgentRuntime:
         tool = self.registry.get(call.name)
         assert tool is not None
         result = recovery.blocked(call.name, call.arguments) if recovery else None
-        workspace_tool = call.name in {"list_files", "search_files"} or (
+        workspace_tool = call.name in {
+            "list_files",
+            "search_files",
+            "propose_exploration",
+            "search_knowledge",
+            "read_knowledge_topic",
+        } or (
             call.name == "read_file"
-            and call.arguments.get("source_kind", "workspace") == "workspace"
-            and not call.arguments.get("index_epoch")
-            and not call.arguments.get("head_commit")
             and (
-                not call.arguments.get("content_sha256")
-                or call.arguments.get("source_kind") == "workspace"
+                call.arguments.get("target")
+                or call.arguments.get("content_sha256")
+                or call.arguments.get("index_epoch")
+                or call.arguments.get("head_commit")
+                or call.arguments.get("source_kind", "workspace") == "workspace"
             )
         )
         if (
@@ -656,6 +699,10 @@ class AgentRuntime:
                 error="stale_source",
             )
         if result is None:
+            from codeinsight.cognitive.source_targets import begin_read
+
+            if self.conn is not None:
+                begin_read(self.conn)
             result = await tool.run(
                 call.arguments,
                 ToolContext(
@@ -664,6 +711,8 @@ class AgentRuntime:
                     conversation_id=conversation_id,
                 ),
             )
+            if self.conn is not None and self.conn.in_transaction:
+                self.conn.commit()
         if recovery:
             if (
                 not workspace_tool
@@ -794,11 +843,17 @@ class AgentRuntime:
         return chr(10).join(lines)
 
     async def _one_turn(
-        self, messages: list[dict[str, Any]], emit: Emit | None, *, finishing: bool = False
+        self,
+        messages: list[dict[str, Any]],
+        emit: Emit | None,
+        *,
+        finishing: bool = False,
+        has_body: bool = False,
     ) -> tuple[str, list[ToolCall]]:
         """跑一次模型调用，把正文增量实时交出去，返回 (正文, 工具调用)。"""
         text_parts: list[str] = []
         calls: list[ToolCall] = []
+        started = False
         async for chunk in self.provider.stream_with_tools(
             SYSTEM_PROMPT + (LEARNING_PROMPT if self.learning is not None else ""),
             messages,
@@ -808,6 +863,9 @@ class AgentRuntime:
             **({"tool_choice": "none"} if finishing else {}),
         ):
             if chunk.text:
+                if not started and has_body:
+                    await _emit(emit, RuntimeEvent("delta", {"text": "\n\n"}))
+                started = True
                 text_parts.append(chunk.text)
                 await _emit(emit, RuntimeEvent("delta", {"text": chunk.text}))
             if chunk.tool_calls:
@@ -861,6 +919,7 @@ def _absorb_grounding(grounding: Grounding, data: dict[str, Any]) -> None:
                 item.get("content_sha256"),
                 item.get("index_epoch"),
                 item.get("head_commit"),
+                item.get("target"),
             )
         )
 
@@ -921,7 +980,13 @@ def _collect_evidence(answer: Answer, tool_name: str, data: dict[str, Any]) -> N
             if key in seen_locations:
                 continue
             seen_locations.add(key)
-            answer.evidence.append({**citation, "lanes": [], "concept_ids": []})
+            answer.evidence.append(
+                {
+                    **{k: v for k, v in citation.items() if k != "source_ref"},
+                    "lanes": [],
+                    "concept_ids": [],
+                }
+            )
         return
     if tool_name != "search_code":
         return
@@ -929,8 +994,27 @@ def _collect_evidence(answer: Answer, tool_name: str, data: dict[str, Any]) -> N
     for item in data.get("items") or []:
         if item.get("chunk_id") in seen:
             continue
+        source = next(
+            (
+                c
+                for c in data.get("citations", [])
+                if c.get("path") == item.get("path") and c.get("lineno") == item.get("lineno")
+            ),
+            {},
+        )
         answer.evidence.append(
             {
+                **{
+                    k: source[k]
+                    for k in (
+                        "target",
+                        "source_kind",
+                        "content_sha256",
+                        "head_commit",
+                        "index_epoch",
+                    )
+                    if k in source
+                },
                 "chunk_id": item.get("chunk_id"),
                 "path": item.get("path"),
                 "lineno": item.get("lineno"),
@@ -946,14 +1030,34 @@ def _collect_evidence(answer: Answer, tool_name: str, data: dict[str, Any]) -> N
 
 async def _emit_evidence(emit: Emit | None, tool_name: str, data: dict[str, Any]) -> None:
     """检索证据边流边推，前端右栏不必等 `answer`。"""
-    if tool_name != "search_code":
+    if tool_name not in {"search_code", "read_file", "search_files"}:
         return
-    for item in data.get("items") or []:
+    items = data.get("items") if tool_name == "search_code" else data.get("citations")
+    for item in items or []:
+        source = next(
+            (
+                c
+                for c in data.get("citations", [])
+                if c.get("path") == item.get("path") and c.get("lineno") == item.get("lineno")
+            ),
+            {},
+        )
         await _emit(
             emit,
             RuntimeEvent(
                 "evidence",
                 {
+                    **{
+                        k: source[k]
+                        for k in (
+                            "target",
+                            "source_kind",
+                            "content_sha256",
+                            "head_commit",
+                            "index_epoch",
+                        )
+                        if k in source
+                    },
                     "path": item.get("path"),
                     "lineno": item.get("lineno"),
                     "end_lineno": item.get("end_lineno"),
@@ -1023,6 +1127,7 @@ def _citations_payload(answer: Answer) -> list[dict[str, Any]]:
     return [
         {
             "path": item.path,
+            "target": item.target,
             "source_kind": item.source_kind,
             "content_sha256": item.content_sha256,
             "head_commit": item.head_commit,

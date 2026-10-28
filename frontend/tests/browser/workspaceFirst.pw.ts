@@ -38,7 +38,7 @@ test('新增实验文件无需更新索引即可问答，来源、分页和刷�
     await expect(reader.locator('.monaco-editor')).toContainText('sample')
     await reader.getByRole('button', { name: '查看当前文件', exact: true }).click()
     await expect(reader.locator('.monaco-editor')).toContainText('changed')
-    await reader.getByRole('button', { name: '前 200 行', exact: true }).click()
+    await expect(reader.getByRole('button', { name: '前 200 行', exact: true })).toBeDisabled()
     await expect(reader.locator('.monaco-editor')).toContainText('MRR=0.99')
     expect((await (await request.get(`/api/projects/${pid}`)).json()).index_epoch).toBe(1)
     await page.screenshot({ path: resolve('../.ci/browser/workspace-first.png'), animations: 'disabled' })

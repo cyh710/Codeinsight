@@ -66,6 +66,7 @@ export function applySseEvent(
         evidence: [
           ...(m.evidence ?? []),
           {
+            ...event.data,
             path: event.data.path,
             lineno: event.data.lineno,
             end_lineno: event.data.end_lineno,

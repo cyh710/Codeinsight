@@ -1,3 +1,4 @@
+import { projectStore } from '../src/store/projectStore'
 import { afterEach, expect, it } from 'vitest'
 import { workbenchStore, materialKey } from '../src/store/workbenchStore'
 import { openCode } from '../src/components/exploration/actions'
@@ -5,6 +6,7 @@ import { openCode } from '../src/components/exploration/actions'
 afterEach(() => workbenchStore.getState().resetProject())
 
 it('默认打开当前文件不继承旧索引版本，首次读取按哈希绑定且不增加材料历史', () => {
+  projectStore.setState({ currentProjectId: 1 })
   const s = workbenchStore.getState()
   s.setIndexVersion('old-commit')
   s.selectFile('new.py')
@@ -17,6 +19,7 @@ it('默认打开当前文件不继承旧索引版本，首次读取按哈希绑�
 })
 
 it('同文件不同工作区版本不覆盖，来源跳转保留实际版本', () => {
+  projectStore.setState({ currentProjectId: 1 })
   const s = workbenchStore.getState()
   openCode({ kind: 'code', project_id: 1, path: 'score.txt', lineno: 1, source_kind: 'workspace', content_sha256: 'old' })
   const previous = workbenchStore.getState().activeTab
