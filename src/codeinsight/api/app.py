@@ -41,6 +41,9 @@ async def lifespan(app: FastAPI):
             repository = ConversationRepository(conn)
             repository.backfill()
             repository.recover()
+            from codeinsight.execution.orchestrator import recover_executions
+
+            recover_executions(conn)
     yield
 
 

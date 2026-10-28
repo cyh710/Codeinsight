@@ -75,3 +75,4 @@ NNNN-简短英文短语.md
 | [0042](0042-workspace-first.md) | 当前工作区优先，索引辅助，历史按内容恢复 | 已接受 |
 
 | [0043](0043-exploration-consistency.md) | 核心探索链路统一公开正文、来源生命周期与学习承接 | 已接受 |
+| [0044](0044-debug-core-consistency.md) | 并发隔离、索引发布、词法绑定与来源版本边界 | 已接受 |

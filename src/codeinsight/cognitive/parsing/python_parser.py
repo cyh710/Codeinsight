@@ -80,6 +80,8 @@ class _Collector:
     local: dict[str, str] = field(default_factory=dict)
     # qualname → 符号类型，用来区分 method / function
     kinds: dict[str, SymbolKind] = field(default_factory=dict)
+    shadowed: dict[str, set[str]] = field(default_factory=dict)
+    parents: dict[str, str] = field(default_factory=dict)
 
     def add_symbol(self, sym: ParsedSymbol) -> None:
         self.symbols.append(sym)
@@ -291,6 +293,16 @@ class PythonParser:
         package: str,
     ) -> None:
         qualname = f"{prefix}.{node.name}"
+        bindings = _LocalBindings()
+        for statement in node.body:
+            bindings.visit(statement)
+        arguments = [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
+        arguments += [arg for arg in (node.args.vararg, node.args.kwarg) if arg is not None]
+        parameters = {arg.arg for arg in arguments}
+        if class_qualname:
+            parameters -= {"self", "cls"}
+        col.shadowed[qualname] = bindings.names | parameters
+        col.parents[qualname] = prefix
         end = getattr(node, "end_lineno", node.lineno) or node.lineno
 
         deco_names = [_decorator_name(d) for d in node.decorator_list]
@@ -480,6 +492,19 @@ class PythonParser:
 
     def _emit_call(self, col: _Collector, node: ast.Call, scope: _Scope) -> None:
         func = node.func
+        root = func.id if isinstance(func, ast.Name) else _base_name(func)
+        owner = scope.owner
+        shadowed = False
+        while owner in col.shadowed:
+            if root in col.shadowed[owner]:
+                shadowed = True
+                break
+            owner = col.parents.get(owner, "")
+        if shadowed:
+            col.add_edge(
+                scope.owner, _dotted_name(func) or root, EdgeKind.CALL, node.lineno, confidence=0.5
+            )
+            return
         if isinstance(func, ast.Name):
             dst_name = func.id
             dst_qual = col.local.get(func.id)
@@ -554,6 +579,39 @@ class PythonParser:
 
 def _is_dunder(name: str) -> bool:
     return name.startswith("__") and name.endswith("__") and len(name) > 4
+
+
+class _LocalBindings(ast.NodeVisitor):
+    """仅收集当前函数的值绑定，内层作用域不能污染外层调用解析。"""
+
+    def __init__(self) -> None:
+        self.names: set[str] = set()
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if isinstance(node.ctx, ast.Store):
+            self.names.add(node.id)
+
+    def visit_Import(self, node: ast.Import) -> None:
+        self.names.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        self.names.update(alias.asname or alias.name for alias in node.names)
+
+    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
+        if node.name:
+            self.names.add(node.name)
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        return
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        return
+
+    def visit_Lambda(self, node: ast.Lambda) -> None:
+        return
 
 
 def _header_of(lines: list[str], lineno: int) -> str:

@@ -112,16 +112,13 @@ class Grounding:
     """本回合的 grounded 集合。工具每返回一条证据就登记一次。"""
 
     def __init__(self) -> None:
-        self._files: dict[tuple[str, int, int], GroundedFile] = {}
+        self._files: dict[tuple, GroundedFile] = {}
         self._by_path: dict[str, list[GroundedFile]] = {}
 
     def add(self, item: GroundedFile) -> None:
-        key = (item.path, item.lineno, item.end_lineno)
+        key = (item.path, item.lineno, item.end_lineno, self.identity(item))
         if key in self._files:
-            old = self._files[key]
-            if old.source_kind == "workspace" or item.source_kind != "workspace":
-                return
-            self._by_path[item.path].remove(old)
+            return
         self._files[key] = item
         self._by_path.setdefault(item.path, []).append(item)
 
@@ -156,6 +153,11 @@ class Grounding:
                     item.end_lineno or item.lineno,
                     item.qualname,
                     item.snippet,
+                    item.source_kind,
+                    item.content_sha256,
+                    item.index_epoch,
+                    item.head_commit,
+                    item.target,
                 )
             )
 
@@ -168,18 +170,32 @@ class Grounding:
         return workspace or candidates
 
     def covers_range(self, path: str, start: int, end: int) -> bool:
-        """范围内每行都须可定位；不按模型提供的巨大行号逐行遍历。"""
+        """只有唯一来源版本能覆盖整段时才可定位，不能跨版本拼接。"""
+        return self.resolve_range(path, start, end) is not None
+
+    @staticmethod
+    def identity(item: GroundedFile) -> tuple:
+        """保留来源类型及版本，旧无身份材料仍使用独立兼容组。"""
+        return (item.source_kind, item.content_sha256, item.index_epoch, item.head_commit)
+
+    def resolve_range(self, path: str, start: int, end: int) -> GroundedFile | None:
+        """同一版本的多个读取窗口可合并，多版本同时覆盖则保持歧义。"""
         if start < 1 or end < start:
-            return False
-        cursor = start
-        for item in sorted(self._candidates(path), key=lambda item: item.lineno):
-            if item.lineno > cursor:
-                break
-            if item.end_lineno >= cursor:
-                cursor = item.end_lineno + 1
-            if cursor > end:
-                return True
-        return False
+            return None
+        groups: dict[tuple, list[GroundedFile]] = {}
+        for item in self._candidates(path):
+            groups.setdefault(self.identity(item), []).append(item)
+        matches = []
+        for items in groups.values():
+            cursor = start
+            for item in sorted(items, key=lambda item: item.lineno):
+                if item.lineno > cursor:
+                    break
+                cursor = max(cursor, item.end_lineno + 1)
+                if cursor > end:
+                    matches.append(next(i for i in items if i.covers(path, start)))
+                    break
+        return matches[0] if len(matches) == 1 else None
 
     def nearest(self, path: str, lineno: int) -> GroundedFile | None:
         """给一句事实挑引用：覆盖该行的那条；否则同文件里最近的一条。"""
@@ -233,7 +249,7 @@ def split_answer(text: str, grounding: Grounding, *, preserve_invalid: bool = Fa
     preserve_invalid 是旧调用兼容参数；无效位置统一进入详情，不插入正文告警。
     """
     result = SplitAnswer(text="")
-    seen_citations: set[tuple[str, int]] = set()
+    seen_citations: set[tuple] = set()
     paragraphs: list[str] = []
 
     for kind, block in _markdown_blocks(text):
@@ -284,10 +300,10 @@ def split_answer(text: str, grounding: Grounding, *, preserve_invalid: bool = Fa
 
 def _record(
     cleaned: str,
-    cited: list[tuple[str, int]],
+    cited: list[tuple[str, int, int, GroundedFile]],
     grounding: Grounding,
     result: SplitAnswer,
-    seen_citations: set[tuple[str, int]],
+    seen_citations: set[tuple],
     *,
     invalid: bool = False,
 ) -> None:
@@ -295,8 +311,7 @@ def _record(
     if not cleaned.strip():
         return
     if cited:
-        path, lineno = cited[0]
-        anchor = grounding.nearest(path, lineno)
+        path, lineno, end_lineno, anchor = cited[0]
         if anchor is None:  # pragma: no cover —— _verify 只放行 grounded 位置
             return
         statement = {
@@ -304,31 +319,30 @@ def _record(
             "citation": {
                 "path": path,
                 "lineno": lineno,
-                "end_lineno": lineno,
+                "end_lineno": end_lineno,
                 "qualname": anchor.qualname,
                 "snippet": anchor.snippet,
             },
         }
         result.facts.append(statement)
-        for path, lineno in cited:
-            key = (path, lineno)
+        for path, lineno, end_lineno, match in cited:
+            key = (path, lineno, end_lineno, grounding.identity(match))
             if key in seen_citations:
                 continue
             seen_citations.add(key)
-            match = grounding.nearest(path, lineno)
             if match is not None:
                 result.citations.append(
                     Citation(
                         path,
                         lineno,
-                        lineno,
+                        end_lineno,
                         match.qualname,
                         match.snippet,
                         match.source_kind,
                         match.content_sha256,
                         match.index_epoch,
                         match.head_commit,
-                        {**match.target, "lineno": lineno, "end_lineno": lineno}
+                        {**match.target, "lineno": lineno, "end_lineno": end_lineno}
                         if match.target
                         else None,
                     )
@@ -375,9 +389,9 @@ def _sentences(text: str) -> list[str]:
 
 def _verify(
     sentence: str, grounding: Grounding, dropped: list[str], preserve_invalid: bool = False
-) -> tuple[str, list[tuple[str, int]]]:
+) -> tuple[str, list[tuple[str, int, int, GroundedFile]]]:
     """核对正文位置；无效引用移入详情，句子与示例原样保留。"""
-    accepted: list[tuple[str, int]] = []
+    accepted: list[tuple[str, int, int, GroundedFile]] = []
     protected = [
         (m.start(), m.end())
         for m in re.finditer(r"(`+)[\s\S]*?\1|\[[^\]\n]*\]\([^\)\n]*\)", sentence)
@@ -388,8 +402,9 @@ def _verify(
         if any(lo <= match.start() < hi for lo, hi in protected):
             return match.group(0)
         end = int(match.group(3) or start)
-        if grounding.covers_range(path, start, end):
-            accepted.append((path, start))
+        source = grounding.resolve_range(path, start, end)
+        if source is not None:
+            accepted.append((path, start, end, source))
             return match.group(0)
         dropped.append(f"{path}:{start}" + (f"-{end}" if end != start else ""))
         return ""

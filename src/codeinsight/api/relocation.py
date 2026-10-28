@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import closing
 
 from codeinsight.api.indexing import _default_concepts_dir
-from codeinsight.cognitive.indexing.indexer import run_index
+from codeinsight.cognitive.indexing.staging import build_and_publish_index
 from codeinsight.config import settings
 from codeinsight.storage.sqlite import db_path, open_sqlite
 
@@ -20,19 +21,16 @@ def rebuild_relocated_project(
     operation: str = "relocate",
 ) -> None:
     """只处理已预留的运行记录；重建失败回滚路径、索引及其版本，不删除会话。"""
-    with open_sqlite(db_path(settings.data_dir)) as conn:
+    with closing(open_sqlite(db_path(settings.data_dir))) as conn:
         try:
-            conn.execute("BEGIN IMMEDIATE")
-            stats = run_index(
+            stats = build_and_publish_index(
                 conn,
                 project_id,
                 root_path,
                 ref,
                 max_chunk_lines=settings.max_chunk_lines,
                 concepts_dir=_default_concepts_dir(),
-                commit=False,
             )
-            conn.execute("UPDATE project SET root_path = ? WHERE id = ?", (root_path, project_id))
             conn.execute(
                 "UPDATE index_run SET head_commit = ?, finished_at = datetime('now'), ok = 1, "
                 "files_total = ?, symbols_added = ? WHERE id = ? AND project_id = ?",

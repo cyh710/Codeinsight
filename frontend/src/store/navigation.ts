@@ -51,7 +51,7 @@ export function startNavigation() {
     const hash = panel.mode === 'knowledge' && panel.target.section_id ? `#${panel.target.section_id}` : ''
     const next = `${path}?${params}${hash}`
     if (next === previous) return
-    if (previous && panel.mode === 'file' && panel.indexEpoch !== undefined) {
+    if (previous && panel.mode === 'file' && (panel.indexEpoch !== undefined || panel.contentSha)) {
       try {
         const prior = JSON.parse(new URL(previous, location.origin).searchParams.get('material') ?? 'null') as RightPanel | null
         // 首次读取后补齐版本身份属于同一位置，不能额外压入浏览器历史。

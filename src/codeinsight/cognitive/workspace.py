@@ -125,6 +125,12 @@ def read_workspace(
             )
             conn.commit()
         except (OSError, sqlite3.Error) as exc:
+            if isinstance(exc, sqlite3.OperationalError) and any(
+                word in str(exc).lower() for word in ("locked", "busy")
+            ):
+                raise SourceError(
+                    "本地数据库暂时繁忙，源码版本尚未保存，请稍后重新读取。", "save_failed"
+                ) from exc
             raise SourceError(
                 "读取了当前文件，但无法保存对应版本；请检查数据目录权限和空间后重试。",
                 "save_failed",

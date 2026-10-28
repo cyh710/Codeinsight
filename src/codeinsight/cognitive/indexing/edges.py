@@ -155,6 +155,8 @@ class EdgeResolver:
         `dst_symbol_id`（库里的行）必须指向同一个东西，否则读边的人会看到
         「名字是 A、指向的却是 B」。
         """
+        if edge.kind is EdgeKind.CALL and edge.confidence < 1:
+            return None
         if edge.dst_qualname:
             # 解析器已经给出了全限定名——它是**更强的证据**。
             # 多义就留 NULL，绝不退回按短名猜：短名在全项目里撞车极多
@@ -199,7 +201,7 @@ class EdgeResolver:
                 if found is not None:
                     return self._index.qualname_by_id[found], found
             # 全项目唯一的同名符号——同名多义就不认。
-            ids = self._index.by_name.get(local_name)
+            ids = self._index.by_name.get(local_name) if edge.kind is not EdgeKind.CALL else None
             if ids and len(ids) == 1:
                 qualname = self._index.qualname_by_id.get(ids[0])
                 if qualname:

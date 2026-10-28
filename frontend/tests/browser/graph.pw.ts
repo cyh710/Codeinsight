@@ -61,8 +61,10 @@ function response(qualname: string | null): GraphResponse {
 }
 
 test('局部阅读分清方向、折叠测试、展开关系、验证调用位置与换中心，并保留高级图', async ({
-  page,
+  page, request,
 }) => {
+  const saved = await (await request.get('/api/projects/1/code?path=store.py')).json()
+  nodes[0].target = { kind: 'code', project_id: 1, path: 'store.py', lineno: 3, source_kind: 'workspace', content_sha256: saved.content_sha256 }
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.route('**/api/projects/*/graph?**', async (route) => {

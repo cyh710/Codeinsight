@@ -171,6 +171,23 @@ def get_execution(project_id: int, task_id: str) -> dict[str, Any]:
         conn.close()
 
 
+def recover_executions(conn: sqlite3.Connection) -> None:
+    """仅启动时收束失去跟踪的任务；不重跑或清理分支和工作树。"""
+    rows = conn.execute(
+        "SELECT id,result_json FROM execution_task WHERE status='executing'"
+    ).fetchall()
+    for task_id, encoded in rows:
+        if task_id in _tasks:
+            continue
+        result = json.loads(encoded or "{}")
+        result["error"] = "服务重启，执行跟踪已中断；分支和工作树已保留，请检查后处理。"
+        conn.execute(
+            "UPDATE execution_task SET status='failed',result_json=?,finished_at=? WHERE id=? AND status='executing'",
+            (json.dumps(result, ensure_ascii=False), sql_now(), task_id),
+        )
+    conn.commit()
+
+
 def execution_public(row: dict[str, Any]) -> dict[str, Any]:
     """契约 §16.2 的 execution 元数据形状。"""
     result = _result_json(row)

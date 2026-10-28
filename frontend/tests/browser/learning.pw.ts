@@ -114,6 +114,8 @@ test('真实项目实例、代码概念标签与 deep 降级形成往返', async
   await reader.getByRole('button').filter({ hasText: '组合证据' }).click()
   await expect(reader.getByRole('heading', { name: /save/ })).toBeVisible()
   await expect(reader.locator('.monaco-editor')).toBeVisible()
+  await expect(reader.getByRole('button', { name: '了解 db-transaction', exact: true })).toBeVisible()
+  await page.screenshot({ path: resolve('..', '.ci/browser/debug-code-concepts.png'), animations: 'disabled' })
   await reader.getByRole('button', { name: '了解 db-transaction', exact: true }).click()
   await reader.getByRole('tab', { name: '深入探索', exact: true }).click()
   await expect(reader.getByRole('status').filter({ hasText: '深入解释不可用' })).toBeVisible()

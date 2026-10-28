@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -123,6 +125,16 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def _unhandled(_req: Request, exc: Exception) -> JSONResponse:
+        if isinstance(exc, sqlite3.OperationalError) and any(
+            word in str(exc).lower() for word in ("locked", "busy")
+        ):
+            return ApiFailure(
+                status_code=503,
+                code="internal_error",
+                title="本地数据库暂时繁忙",
+                hint="请稍后重试；已保存的对话和资料仍会保留。",
+                detail="database_busy",
+            ).to_response()
         # 兜底：任何未捕获异常都不得返回非契约形状（前端不允许白屏）。
         return JSONResponse(
             status_code=500,

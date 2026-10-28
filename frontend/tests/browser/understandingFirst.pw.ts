@@ -52,6 +52,9 @@ test('旧概念独有解读作为普通正文保留，项目位置可打开而�
   await expect(card).not.toContainText('60%')
   await card.getByText('项目位置', { exact: true }).click()
   await card.getByRole('button', { name: 'store.py:3', exact: true }).click()
+  await expect(page.locator('#workspace-materials')).toContainText('原版本未记录')
+  await expect(page.locator('#workspace-materials .monaco-editor')).toHaveCount(0)
+  await page.locator('#workspace-materials').getByRole('button', { name: '查看当前文件', exact: true }).click()
   await expect(page.locator('#workspace-materials .monaco-editor')).toBeVisible()
 })
 

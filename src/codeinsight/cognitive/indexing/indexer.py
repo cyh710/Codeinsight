@@ -18,7 +18,7 @@ import json
 import sqlite3
 import subprocess
 import time
-from contextlib import nullcontext
+from contextlib import closing, nullcontext
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -62,7 +62,7 @@ from codeinsight.cognitive.parsing.base import ParseContext
 from codeinsight.cognitive.parsing.python_parser import PythonParser
 from codeinsight.storage.sqlite import ensure_schema, open_sqlite
 
-PARSER_VERSION = "python-ast-1"
+PARSER_VERSION = "python-ast-2"
 """解析器版本。变了就要重建索引（`repo_state.parser_version` 不匹配时强制全量）。"""
 
 _INDEXED_FILE_ROLES = frozenset({"source", "test", "generated", "config", "doc", "vendored"})
@@ -467,18 +467,39 @@ def index_project(
     started_at = datetime.now(UTC).isoformat(timespec="seconds")
     ensure_schema(db_path)
 
-    with open_sqlite(db_path) as conn:
+    with closing(open_sqlite(db_path)) as conn:
         project_id = _ensure_project(conn, name=name, root_path=_root_label(Path(root)))
-        stats = run_index(
-            conn,
-            project_id,
-            root,
-            ref,
-            max_chunk_lines=max_chunk_lines,
-            embed=embed,
-            concepts_dir=concepts_dir,
-            incremental=incremental,
-        )
+        conn.commit()
+        from codeinsight.cognitive.indexing.staging import build_and_publish_index
+
+        try:
+            stats = build_and_publish_index(
+                conn,
+                project_id,
+                root,
+                ref,
+                max_chunk_lines=max_chunk_lines,
+                embed=embed,
+                concepts_dir=concepts_dir,
+                incremental=incremental,
+            )
+        except Exception as exc:
+            conn.rollback()
+            conn.execute(
+                "INSERT INTO index_run(project_id,head_commit,mode,started_at,finished_at,ok,stats_json) "
+                "VALUES(?,?,'full',?,datetime('now'),0,?)",
+                (
+                    project_id,
+                    "",
+                    started_at,
+                    json.dumps(
+                        {"error": "索引未完成，原记录已保留。", "detail": str(exc)[:500]},
+                        ensure_ascii=False,
+                    ),
+                ),
+            )
+            conn.commit()
+            raise
         # `base_commit` 记的是上一次索引停在哪——它是这次增量的参照点，
         # 也是「这份认知有多新」的唯一依据。
         base_row = conn.execute(

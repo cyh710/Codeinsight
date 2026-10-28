@@ -248,11 +248,14 @@ export function createChatActions(set: Set, get: Get) {
       if (token === generation) void get().refreshConversations()
     },
     newConversation: async (pid: number) => {
+      const token = ++generation
+      const originProject = get().projectId
       try {
         const cid = browserApi() ? (await conversationsApi.createConversation(pid)).id : `conv-${crypto.randomUUID()}`
+        if (token !== generation || get().projectId !== originProject) return
         await get().openConversation(pid, cid)
         await get().refreshConversations()
-      } catch (error) { set({ error: String(error) }) }
+      } catch (error) { if (token === generation) set({ error: String(error) }) }
     },
     updateConversation: async (cid: string, patch: Record<string, unknown>, pid = get().projectId!) => {
       try { const meta = await conversationsApi.patchConversation(pid, cid, patch); const client = clients.get(key(pid, cid)); if (client) { client.title = meta.title; client.archived = meta.archived; sync(client) }; await get().refreshConversations() }

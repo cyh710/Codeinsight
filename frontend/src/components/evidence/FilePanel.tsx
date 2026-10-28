@@ -8,6 +8,8 @@ import { layoutStore } from '../../store/layoutStore'
 import CodeViewer from './CodeViewer'
 import type { CodeReadingContext } from '../../api/types'
 import { viewStore } from '../../store/viewStore'
+import { api } from '../../api/dataSource'
+import type { SymbolListItem } from '../../api/types'
 
 type CodeWindow = Awaited<ReturnType<typeof readProjectCode>>
 export default function FilePanel({ path, lineno, version, indexEpoch, sourceKind, contentSha, versionMissing }: { path: string; lineno: number; version?: string; indexEpoch?: number; sourceKind?: 'workspace' | 'index'; contentSha?: string; versionMissing?: boolean }) {
@@ -20,6 +22,8 @@ export default function FilePanel({ path, lineno, version, indexEpoch, sourceKin
   const error = failure?.identity === identity ? failure.error : ''
   const [jump, setJump] = useState(String(lineno)), [retry, setRetry] = useState(0)
   const [selection, setSelection] = useState<{ startLine: number; endLine: number; startColumn: number; endColumn: number; text: string } | null>(null)
+  const [symbols, setSymbols] = useState<{ key: string; items: SymbolListItem[] } | null>(null)
+  const symbolKey = data ? `${projectId}:${path}:${data.content_sha256}` : ''
   const root = useRef<HTMLElement>(null)
   useEffect(() => {
     if (projectId === null || versionMissing) return
@@ -38,11 +42,20 @@ export default function FilePanel({ path, lineno, version, indexEpoch, sourceKin
     const container = root.current?.closest('[data-reading-scroll]') as HTMLElement | null
     if (container) container.scrollTop = workbenchStore.getState().scrollPositions[panelKey(workbenchStore.getState().rightPanel)] ?? 0
   }, [data])
+  useEffect(() => {
+    if (!data || projectId === null || versionMissing) return
+    let alive = true
+    api.listProjectSymbols(projectId, { path, limit: 500 }).then(result => {
+      if (alive) setSymbols({ key: symbolKey, items: result.items.filter(s => s.target?.content_sha256 === data.content_sha256) })
+    }).catch(() => { if (alive) setSymbols({ key: symbolKey, items: [] }) })
+    return () => { alive = false }
+  }, [symbolKey, projectId, path, data, versionMissing])
   const move = (line: number) => workbenchStore.getState().selectFile(path, Math.max(1, Math.min(data?.total_lines ?? line, line)), data?.head_commit ?? version, data?.index_epoch ?? indexEpoch, data?.source_kind ?? sourceKind, data?.content_sha256 ?? contentSha)
   if (versionMissing) return <div role="status" className="text-sm leading-7 text-slate-600">原版本未记录，无法恢复这处历史位置。<button className="wb-button ml-2" onClick={() => workbenchStore.getState().selectFile(path, 1, null, undefined, 'workspace')}>查看当前文件</button></div>
   if (error) return <div role="alert" className="text-xs leading-6 text-danger">{error}<p>可重新读取原版本，或主动打开当前文件。</p><button className="wb-button" onClick={() => setRetry(v => v + 1)}>重新读取</button><button className="wb-button ml-2" onClick={() => workbenchStore.getState().selectFile(path, 1, null, undefined, 'workspace')}>查看当前文件</button></div>
   if (!data) return <p className="text-xs text-slate-400">读取文件…</p>
   if (stale) return <div role="alert" className="text-xs leading-6 text-amber-700">这个页签的源码版本已更新，原位置未被替换。<button className="wb-button ml-2" onClick={() => { workbenchStore.getState().setIndexVersion(data.head_commit); workbenchStore.getState().selectFile(path, 1, null, undefined, 'workspace') }}>打开当前版本</button></div>
+  const located = symbols?.key === symbolKey ? symbols.items.find(s => s.kind !== 'module' && s.lineno <= lineno && s.end_lineno >= lineno) : undefined
   const ask = () => {
     if (!selection || projectId === null) return
     const context: CodeReadingContext = { kind: 'code', project_id: projectId, path, head_commit: data.head_commit, index_epoch: data.index_epoch, source_kind: data.source_kind,
@@ -55,6 +68,7 @@ export default function FilePanel({ path, lineno, version, indexEpoch, sourceKin
     requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.wb-center textarea')?.focus())
   }
   return <article ref={root} data-reading-ready className="space-y-3">
+    {located && <div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-semibold text-slate-700">{located.name}</h3><button className="wb-button ml-auto" onClick={() => viewStore.getState().openGraph(located.qualname)}>调用关系</button></div>}
     <header className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
       <span className="break-all font-mono">{path}</span><span>{data.start_line}–{data.end_line} / {data.total_lines} 行</span>
       <span title={data.content_sha256} className="text-[10px] text-slate-400">{data.source_kind === 'workspace' ? `工作区 · ${data.content_sha256.slice(0, 8)}` : `索引版本 ${data.head_commit?.slice(0, 8) || data.index_epoch}`}</span>
@@ -70,6 +84,7 @@ export default function FilePanel({ path, lineno, version, indexEpoch, sourceKin
       <button type="button" className="wb-primary" disabled={!selection} onClick={ask}>问选中代码</button>
     </div>
     <CodeViewer code={data.content} startLine={data.start_line} language={path.endsWith('.py') ? 'python' : /\.tsx?$/.test(path) ? 'typescript' : /\.jsx?$/.test(path) ? 'javascript' : path.endsWith('.sql') ? 'sql' : 'text'} viewKey={`${projectId}:${path}:${data.content_sha256}:${data.start_line}`} onSelection={setSelection} />
+    {located && located.concept_ids.length > 0 && <div className="flex flex-wrap gap-2">{located.concept_ids.map(id => <button key={id} className="wb-button" onClick={() => workbenchStore.getState().openConcept(id)}>了解 {id}</button>)}</div>}
     <p className="text-[10px] text-slate-400">只读源码窗口 · 查找仅作用于当前已加载的 {data.end_line - data.start_line + 1} 行</p>
   </article>
 }
