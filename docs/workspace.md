@@ -19,13 +19,15 @@
 ## 2. 物理布局
 
 ```
-D:\yy2\CodeInsight   ← 唯一工作区（当前分支视任务而定）
+D:\yy2\CodeInsight   ← 主要工作区（当前分支视任务而定）
 ```
 
 - 远程：`https://github.com/cyh710/Codeinsight.git`（public）。
 - 密钥与环境：`.env`（gitignore，不入库）。本地跑真机问答需要
   `CI_LLM_API_KEY`，样例见 `.env.example`。
 - 索引库：`.ci/codeinsight.db`（gitignore）。
+- 历史或隔离任务可能仍有独立 worktree；实际位置用 `git worktree list` 核对，
+  不依据本文假定只有一个检出，也不接管其他工作树或其中的未提交工作。
 
 ### 开工检查清单
 

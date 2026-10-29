@@ -23,16 +23,16 @@ Tapestry 与 CodeInsight 是**两个独立项目**，解决不同问题：
 | `src/codeinsight/agent/tool.py` | `backend/agent/tools.py` 的工具定义模式 | 改为 Protocol + `ToolResult(content/data)` 分离。织忆是数据驱动的 schema 列表 + if/elif 分发，这里用 Protocol 便于加 `mutating` 标记与审批扩展 |
 | `src/codeinsight/llm/transport.py` | `backend/llm/transport.py` | 基本照搬：3 次指数退避 + 抖动、同 origin 连续失败 3 次冷却 20s、**流只在首字节前重试**。错误类型改成本项目的 `UpstreamError` |
 | `src/codeinsight/llm/response_parser.py` | `backend/llm/response_parser.py` | 整份拿 `extract_json()`：围栏 / `<think>` / 尾部闲话 / 字符串内未转义引号 / `{{…}}` 双层包裹 |
-| `src/codeinsight/agent/context.py` | `backend/services/agent_runner.py` 的 `_messages_from_events` | **思路移植，代码重写**：交互组不可拆 + 两层字节预算。上限按代码场景重定（12 KB / 24 KB / 64 KB） |
+| `src/codeinsight/agent/context.py` | `backend/services/agent_runner.py` 的 `_messages_from_events` | **思路移植，代码重写**：交互组不可拆 + 两层字节预算。当前持久化结果／单消息／上下文默认上限为 80,000／24,000／64,000 字节，见配置 |
+| `frontend/` 初始基建 | 织忆 `frontend/` | M4 已复制通用组件、主题、SSE 解析／代理与请求封装，并重写业务组件；初始范围见 [`functional-spec.md` §3.3](functional-spec.md)。后续多会话、材料页签、布局与阅读功能已在本项目独立演进，不能把当前文件清单等同于初始复制清单 |
 
-## 计划移植（尚未）
+## 原候选方案（未按原样移植）
 
 | 目标 | 来源 | 备注 |
 |---|---|---|
-| `parse_tool_arguments()` | `backend/llm/tool_arguments.py` | 未移植。OpenAI 兼容协议下参数已是 JSON 字符串，`_parse_arguments()` 够用；多 provider 方言是 M7 之后的事 |
-| action digest 审批 | `backend/services/agent_tasks.py` | P2 备用。若将来把执行侧收回自己手里，整套移植 |
-| `classify_action` 权限分类 | `backend/agent/permissions.py` | P2 备用。同上 |
-| **整个前端基建** | `frontend/` | **M4。直接复制**，清单见 [`functional-spec.md` §3.3](functional-spec.md#c3--前端复制织忆前端基建只换业务组件)。含 `vite.config.ts`（SSE proxy）、`src/components/common/` 全 11 个通用件、`src/theme/palettes.ts`、`src/store/themeStore.ts`、`src/api/stream.ts`（SSE 解析 + watchdog）、`src/api/agent.ts`（`jsonRequest` + 错误类）、`src/store/chat*Actions.ts`（slice 拆分法）、`src/components/chat/`（MessageBubble / ChatWindow / InputBox / agentTimeline）、`tests/helpers/http.ts`（SSE 夹具） |
+| `parse_tool_arguments()` | `backend/llm/tool_arguments.py` | 未按原样移植；当前 OpenAI 兼容协议通过本项目参数解析路径处理 |
+| action digest 审批 | `backend/services/agent_tasks.py` | 未整套移植；现有编排采用计划批准、隔离工作树与结果合入审批（ADR 0035），不是没有执行功能 |
+| `classify_action` 权限分类 | `backend/agent/permissions.py` | 未整套移植；理解／MCP 工具保持只读，外部执行器按各自权限与审批配置运行 |
 
 ## 明确丢弃（织忆有、CodeInsight 不要）
 

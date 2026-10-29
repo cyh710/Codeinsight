@@ -44,8 +44,8 @@ NNNN-简短英文短语.md
 | [0004](0004-dual-layer-staleness.md) | 过期判定用符号级 + 文件级双层哈希 | 已接受 |
 | [0005](0005-symbol-boundary-chunking.md) | 切块按符号边界，超大符号二次切分 | 已接受 |
 | [0006](0006-citation-outside-content.md) | 引用信息与文本内容分离 | 已接受 |
-| [0007](0007-facts-vs-inferences.md) | 事实与推断分开存放 | 已接受 |
-| [0008](0008-understanding-via-external-agents.md) | 执行侧交给外部 agent，CodeInsight 只做理解层 | 已接受 |
+| [0007](0007-facts-vs-inferences.md) | 事实与推断分开存放 | 强制分栏／无引用即推断及弃答由 0040 替代；字段兼容 |
+| [0008](0008-understanding-via-external-agents.md) | 执行侧交给外部 agent，CodeInsight 只做理解层 | 已修订：0035 补入主动编排，MCP 保持只读 |
 | [0009](0009-single-agent-multi-tool.md) | 单 Agent + 多工具，不做多 Agent 协作 | 已接受 |
 | [0010](0010-two-layer-context-bounds.md) | 上下文两层分别设界 | 已接受 |
 | [0011](0011-concept-ontology-is-curated.md) | 概念本体是人工策展的 YAML，不是自动生成的知识图谱 | 已接受 |
@@ -58,6 +58,17 @@ NNNN-简短英文短语.md
 | [0018](0018-timeline-read-only.md) | 时间线只读索引当时写下的数字 | 已接受 |
 | [0019](0019-learning-sources-and-reading-context.md) | 教材来源独立于代码证据，阅读目标由服务端重读 | 已接受 |
 | [0020](0020-workbench-conversations-and-selection.md) | 会话持久化与可恢复的阅读工作区 | 用户确认，已实施并通过离线验收 |
+| [0021](0021-workbench-density-and-action-feedback.md) | 工作台密度与操作反馈 | 已接受 |
+| [0022](0022-workbench-motion.md) | 工作台动效与减少运动支持 | 已接受 |
+| [0023](0023-local-launcher.md) | 本地启动器 | 已接受 |
+| [0024](0024-project-relocation-and-folder-picker.md) | 项目重新定位与系统目录选择 | 已接受 |
+| [0025](0025-project-index-loading-feedback.md) | 项目导入与索引状态反馈 | 已接受 |
+| [0026](0026-hot-state-and-sidebar-scrim.md) | 热更新状态与侧栏遮罩隔离 | 已接受 |
+| [0027](0027-compact-workbench-chrome.md) | 收紧工作台顶栏和分隔空间 | 已接受 |
+| [0028](0028-learning-visual-assets.md) | 教材图文资产 | 已接受 |
+| [0029](0029-project-exploration.md) | 项目导览与结构化探索结果 | 已接受 |
+| [0030](0030-answer-preservation-and-followup.md) | 正文保留与续讲 | 已接受；整体核查与历史限制由 0040／0043 修订 |
+| [0031](0031-sidebar-project-lifecycle.md) | 左栏项目与移除生命周期 | 已接受 |
 | [0032](0032-workbench-progressive-disclosure.md) | 工作台按操作需要展开辅助信息 | 已接受 |
 | [0033](0033-learning-reply-strategies.md) | 讲解围绕困惑选择表示方式 | 已接受 |
 | [0034](0034-executor-mainline-integration.md) | 执行分支与学习分支的历史兼容 | 已接受 |
@@ -66,13 +77,8 @@ NNNN-简短英文短语.md
 | [0037](0037-continuous-analysis.md) | 分析总轮次由完成或停止决定 | 已接受 |
 | [0038](0038-preserve-answer-body.md) | 探索附加工具不能隐式撤回正文 | 已接受 |
 | [0039](0039-reply-typography.md) | 正文排版与代码链接跟随回答 | 已接受 |
-
 | [0040](0040-understanding-first.md) | 理解优先，来源提供定位而非整篇评级 | 已接受 |
-
-<!-- 0021–0031 的记录已随各功能合入，可按文件名查看；本索引待补齐对应行。 -->
-
 | [0041](0041-source-snapshots-and-tool-recovery.md) | 源码快照与无进展工具恢复 | 已接受 |
 | [0042](0042-workspace-first.md) | 当前工作区优先，索引辅助，历史按内容恢复 | 已接受 |
-
 | [0043](0043-exploration-consistency.md) | 核心探索链路统一公开正文、来源生命周期与学习承接 | 已接受 |
 | [0044](0044-debug-core-consistency.md) | 并发隔离、索引发布、词法绑定与来源版本边界 | 已接受 |

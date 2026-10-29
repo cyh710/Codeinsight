@@ -2,6 +2,7 @@
 
 > 本文记录**层与层之间的契约**。换实现不应该改动上层代码——这是"留接口"的意义。
 > 每条契约都标出了它对应的源文档章节。
+> 同步基线：`54ab8e6`（2026-10-29）。HTTP／SSE 字段以 [`api-contract.md`](api-contract.md) 为准。
 
 ## 0. 依赖方向
 
@@ -13,7 +14,7 @@ api ──→ agent ──→ cognitive ──→ storage
 ```
 
 **禁止反向依赖**：`storage` 不认识 `agent`；`cognitive` 不认识 `api`；
-`agent` 不直接写 SQL（走 `storage` 的连接工厂拿连接）。
+数据库连接统一由 `storage` 工厂配置；Agent 服务和仓储可通过该连接查询、保存事件与会话。
 
 ---
 
@@ -33,9 +34,12 @@ class LanguageParser(Protocol):
 - `parse` **不抛异常**。语法错误 / 编码错误降级为"该文件产出空符号集"，
   由调用方记为 skipped，不得让整次索引失败。
 - `ParsedFile.path` 必须是 **repo-relative、posix 风格**。
-- 符号的 `qualname` 在**单个项目内唯一**；方法用 `类名.方法名`。
+- `qualname` 从仓库根全限定，方法包含模块与类路径；重复定义仍可能同名，
+  不能仅凭短名称或 `qualname` 假定唯一，存储同时保留文件与行号。
 - 无法静态解析的关系产出 `ParsedEdge(confidence < 1, dst_qualname=None)`，
   **不丢弃、不假装确定**。
+- `python-ast-2` 将参数／局部绑定遮蔽的调用保留为不确定，不靠全局唯一短名猜目标；
+  更新既有索引后才应用新解析规则（ADR 0044）。
 
 > 对应源文档 §3.2 末句「通过**可扩展的语言解析模块**增加其他语言」。
 
@@ -146,20 +150,23 @@ class Tool(Protocol):
 - `content` 是给模型看的文本（可能被截断）；`data` 是结构化数据（不进模型上下文，
   但会被引用与前端使用）。**两者分离保证截断 `content` 不破坏 `data` 里的 `file:line`。**
 - `data["citations"]` 是**本回合的 grounded 集合**：运行时拿它校验模型答案里的
-  `[路径:行号]`，对不上的引用会被删掉并降级成推断（`agent/answer.py`）。
+  `[路径:行号]` 的位置与来源身份。无效或多版本有歧义的引用不变成可点击链接，
+  解释保留；不因缺引用自动归为推断或整篇弃答（ADR 0040、0044）。
 - 为什么是 `async`：`explain_concept(deep)` 要等模型，其余要等 I/O。同步签名会逼
   调用方在事件循环里 `asyncio.run`，在 FastAPI 里直接炸。
 - v1 全部工具 `mutating=False`。写入与执行交给外部 agent 经 MCP Server 承担。
 
-**v1 工具清单**（`agent/tools_{code,knowledge,project}.py`，共 12 个）：
-`search_code` · `find_symbol` · `read_file` · `get_callers` · `get_callees` ·
-`list_concepts` · `explain_concept` · `find_concept_instances` · `get_flow` ·
-`get_changes`（M6 前返回空壳） · `get_design_decisions` · `get_module_overview`。
+**当前注册表**：15 个基础工具；启用随包教材时另有 2 个知识工具。
+完整名称与 MCP 暴露方式见 [`mcp.md`](mcp.md)。
 
-请求 0012 增加第十三个基础工具 `propose_exploration`（`agent/tools_exploration.py`）。
-它只整理可选流程、已展示要点和至多三项动作，不产生正文引用资格、不执行动作。
-`agent/exploration.py` 校验同版本对象和静态关系；`agent/discovery.py` 以已有索引生成首页入口。
-知识检索工具仍是独立可选来源，代码检索评测通道保持不变。
+`list_files/search_files/read_file` 默认访问当前工作区，索引用于检索和静态关系。
+`propose_exploration` 只整理可选流程、已展示要点和至多三项动作，不执行动作。
+服务端按实际取得的来源补齐版本，多版本可用请求内 `source_ref` 选择；
+短编号不跨请求。`get_flow` 只沿真实静态调用边返回候选，不代表运行顺序。
+
+HTTP 每次问答固定同文件首次默认读取的版本；MCP 每次不带版本的调用重读当前文件。
+显式旧版本使用完整来源目标，不由长期工具对象缓存隐式决定。
+知识工具保持独立来源，代码检索评测通道不变（ADR 0042–0044）。
 
 ---
 
@@ -202,9 +209,11 @@ class CommandRunner(Protocol):
     async def run(self, argv, *, cwd: Path, timeout=60.0, env=None) -> CommandOutcome: ...
 ```
 
-**当前不实现。** 实现方**不得**使用 shell（`shell=True`），必须以 argv 列表调用。
-将来若把执行侧收回自己手里，可照搬 Tapestry 的三层防护：
-action digest 审批 / 子进程最小环境 / 白名单校验。
+这个通用命令 Protocol 仍只保留接口；当前执行编排使用
+`execution/driver.py` 的 `ExecutorDriver.execute(request, emit)`，由
+`ClaudeCodeDriver`／`ZCodeDriver` 调用外部 agent，不通过只读 Agent 工具执行命令。
+驱动器以 argv 启动子进程；计划批准、隔离工作树执行、结果审阅及合入见 ADR 0035。
+服务重启后遗留执行任务转失败并保留分支和工作树，不自动续跑或清理（ADR 0044）。
 
 ---
 
@@ -222,6 +231,10 @@ def db_path(data_dir, name="codeinsight.db") -> Path
 - 每个连接都设 `journal_mode=WAL` / `busy_timeout=5000` / `synchronous=NORMAL` / `foreign_keys=ON`。
 - `check_same_thread` 保持开启：**后台线程必须在自己线程内开连接**。
 - `apply_schema` 幂等（全部 `IF NOT EXISTS`）。
+- 服务入口通过 `ensure_schema` 原地迁移；当前版本仅校验，不在普通读取请求重跑建表写入。
+  当前 schema 为 6，兼容两条分支的历史结构，不能据早期 schema 4 记录删除重建数据库。
+- 索引扫描／解析在隔离库构建，完成后短事务发布本项目索引；不以整库替换覆盖并发会话或其他项目。
+  最终发布仍会持有写锁，外部长期占锁需明确返回可重试原因（ADR 0044）。
 - FTS5 虚表用 **external content + 触发器**与应用层同步——
   手工维护 insert/update/delete 三处同步代码，最容易出的 bug 是"文件删了 FTS 里残留旧行"。
 
@@ -249,15 +262,17 @@ def db_path(data_dir, name="codeinsight.db") -> Path
 `finalize_answer` 输出知识来源、正文目标和最多三项学习入口，不重复检索更换版本。
 代码阅读目标走现有 `read_file` 的同一执行/事件/账本路径，教材不注入代码证据集合。
 `knowledge_directory` 只查 CodeInsight 安装包或源码资产，不依赖被分析项目的工作目录。
-`build_learning_tools` 提供可选异步知识工具；首版 Agent 默认通过有界前置检索注入，
-原 12 个项目工具及代码检索评测通道保持独立。
+`build_learning_tools` 提供可选异步知识工具。没有显式阅读目标时，仅唯一术语或定义式疑问
+自动注入最多一个完整章节；放不进预算就跳过。普通项目问题不通过宽泛检索自动补教材。
+显式阅读／选区按原版本和预算读取，不额外叠加自动章节；模型仍可主动调用知识工具。
 
-schema 2 增加 `concept_rule_version(id,fingerprint)`，repo_state.concept_version 保持 INTEGER。
+历史 schema 1→2 增加 `concept_rule_version(id,fingerprint)`，repo_state.concept_version 保持 INTEGER。
 正文变化只更新本体文案；指纹变化才触发相应项目的概念重新检测，输入为冻结 Git 源码。
 
 ## 12. 探索恢复（请求 0012）
 
 `PersistentConversationStore.exploration_context(key)` 返回最多 4KB 的会话探索脉络，
 加入既有历史预算，当前问题和工具证据仍具有优先权。只保存已展示内容，不推断用户掌握情况。
-schema 4 给 conversation 新增 exploration_json；历史、索引和最近六轮有效问答约定不变。
+历史 schema 3→4 给 conversation 新增 exploration_json；当前集成 schema 为 6，
+历史、索引和最近六轮有效问答约定不变。脉络表示已讨论内容，不表示用户已掌握或新版项目事实。
 前后端动作、回合读取和局部材料身份见 [`api-contract.md` §13](api-contract.md#13-项目探索请求-0012adr-0029)。

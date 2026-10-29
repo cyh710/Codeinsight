@@ -1,11 +1,34 @@
 # 功能实现需求书 · 三线并行
 
-> **这份文档是三条线唯一的对齐依据。** 三个 agent 都以本文为准；
-> 本文与代码冲突时，先改本文再改代码。
+> **历史需求基线**：本文保留早期三线分工、接口草案与源文档章节映射，
+> 不再作为当前协作方式或全部生产行为的唯一依据。
+> 当前协作见 [`../AGENTS.md`](../AGENTS.md) 和 [`workspace.md`](workspace.md)，
+> 现行接口见 [`api-contract.md`](api-contract.md)，现状与验收见 [`roadmap.md`](roadmap.md)。
 >
 > 配套：[`../AGENTS.md`](../AGENTS.md)（作业规程）· [`workspace.md`](workspace.md)（三线怎么协作）·
 > [`roadmap.md`](roadmap.md)（阶段与验收）· [`interfaces.md`](interfaces.md)（接口契约）·
 > [`decisions/`](decisions/)（技术决策与理由）
+
+---
+
+## 现行规则与历史条目的对应（2026-10-29）
+
+以下是用户已批准、并已实现的调整；后文保留原始需求，冲突条款按下表替代，
+不能据历史描述恢复弃答、强制分栏或固定三栏等旧行为。
+
+| 历史条目 | 现行实现与依据 |
+|---|---|
+| §0 三线与目录所有权 | 授权任务使用特性分支；冻结契约先走请求单，合并／推送由用户明确授权，见作业规程 |
+| §1.2 A1 不扫工作区 | 仅描述 Git **索引构建**；默认目录、文字搜索、源码阅读直接读当前文件，未索引文件也可读（[ADR 0042](decisions/0042-workspace-first.md)） |
+| §1.2 A2 调用解析、A5 业务流程 | 局部绑定遮蔽不猜成确定调用；流程只用真实静态调用边，是候选而非运行轨迹（[ADR 0043](decisions/0043-exploration-consistency.md)、[0044](decisions/0044-debug-core-consistency.md)） |
+| §1.4 A12、§2.4、§3.2–3.4 分栏与弃答 | 连贯正文优先；旧字段兼容，缺引用不自动归为推断或整篇弃答（[ADR 0040](decisions/0040-understanding-first.md)） |
+| §1.4 A13、§1.5 的 12 个工具 | 工作区与探索工具已加入；当前注册表与 MCP 清单见 [`mcp.md`](mcp.md) |
+| §2 仅有概念本体 | 另有 67 篇教材及图文资产；自动补充仅唯一术语的一节，教材与项目来源独立（[ADR 0043](decisions/0043-exploration-consistency.md)） |
+| §3 固定三栏与旧页面设计 | 多会话、可调整布局、多材料页签、精确选区和持久化恢复已交付（[ADR 0020](decisions/0020-workbench-conversations-and-selection.md) 及后续工作台 ADR） |
+| 执行侧仅留接口 | 只读 MCP 保持不变；可经双重审批编排 Claude Code／ZCode 在隔离工作树执行（[ADR 0035](decisions/0035-orchestrated-execution.md)） |
+| 索引期间读写主库 | 隔离库构建、短事务发布，保留期间产生的对话和其他项目数据（[ADR 0044](decisions/0044-debug-core-consistency.md)） |
+
+后文的阶段目标、伪代码、数字和排期均保留历史口径；不将它们作为当前已验证效果。
 
 ---
 

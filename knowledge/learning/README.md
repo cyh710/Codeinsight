@@ -1,4 +1,4 @@
-# 内置代码学习知识库 · B 线交付
+# 内置代码学习知识库
 
 这里包含 46 篇基础文章、20 篇工程概念讲解与 1 篇工程实践样章。Markdown 是可维护的正文，
 `index.json` 提供目录/术语/前置知识/工程概念关联；`sources.json` 锁定来源网页快照哈希。
@@ -24,7 +24,7 @@ python knowledge/learning/examples/state_lifetime.py
 
 ## 运行与目录
 
-从 B worktree 根目录运行，使用项目 Python 环境：
+从仓库根目录运行，使用项目 Python 环境：
 
 ```powershell
 $env:PYTHONPATH = 'src'
@@ -51,12 +51,12 @@ tree = library.tree()
 topic = library.get('sql-database')
 context, entries = service.prepare_turn('SQL 是什么', max_bytes=12000)
 # context.content 是实际可以注入的教材片段；references 单独保存知识来源。
-# 模型调用和项目代码检索由 A 线负责；下面只演示对一段既有文本添加链接。
+# 下面只演示为一段既有文本添加链接，不调用模型或检索项目代码。
 answer = link_answer('SQL 可以查询数据库中的表。', library, recommendations=entries)
 text = validate_answer_links(answer.text, library)
 ```
 
-跨线接入优先使用 `integration.LearningBridge`，目录/正文/检索返回可序列化的
+生产接入使用 `integration.LearningBridge`，目录/正文/检索返回可序列化的
 `ToolResult.data`；`prepare_turn()` 返回同一回合的只读快照，最终答案沿用该快照：
 
 ```python
@@ -72,22 +72,22 @@ final = bridge.finalize_answer('SQL 是语言；“表”组织数据，SELECT �
 ```
 
 阅读上下文只传 `kind='knowledge'`、`topic_id`、`section_id`、`version`。
-`reading_status` 区分 `ok/stale/not_found/invalid/outside_budget`；无效目标仍可独立检索
-问题，但不能把“这里”假装解释成功。`kind='code'` 明确交给 A 线重新读取项目代码。
+`reading_status` 区分 `ok/stale/not_found/invalid/outside_budget`；无效目标仍可独立处理
+问题，但不能把“这里”假装解释成功。`kind='code'` 由 Agent 的源码读取路径重新读取。
 客户端附带的 title/snippet/body 不会进入模型。`knowledge_sources` 只列实际注入章节；
 正文的学习链接在 `learning_targets` 中独立保存，不因链接存在就伪造已引用来源。
-这些兼容增量已依请求 0005 接入本分支；正式字段见 `docs/api-contract.md` §11。
+这些兼容增量已接入主线；正式字段见 [`API 契约`](../../docs/api-contract.md) §11 及后续修订。
 纯指代续问缺少目标时标记 `missing`，不把通用词检索产生的碰巧命中当作答案。
 同名术语根据当前文章语言消歧：React 中的“函数”指向 JavaScript 函数；
 没有足够上下文的歧义词保持普通文字。“请求”这样的通用词不独立当作 HTTP。
 
-- 默认复用 A 线 `split_identifiers`，入库与查询使用同一实例；也可通过 `tokenizer=` 注入对照实现。
-  当前接线使用 A 线已声明的 jieba，并保留中文二元词；未安装时仍有共享回退实现。
+- 默认复用项目的 `split_identifiers`，入库与查询使用同一实例；也可通过 `tokenizer=` 注入对照实现。
+  当前接线使用 jieba，并保留中文二元词；未安装时仍有共享回退实现。
 - 搜索返回章节而不是整本书；来源与版本不藏在可截断正文里。
 - `reading_context(target)` 从本地资产重新读取，不信任客户端正文；旧版本/旧章节标记截断/失效。
 - `link_answer` 对正文首次出现的术语加链接，不触碰代码块、行内代码和已有链接。
 - `/learn/{topic_id}#{section_id}` 由工作台拦截后打开右栏；未知目标保持文字。
-- 正文的 `{#section_id}` 是资产锚点标记；C 可按 sections 的 id/title/content 渲染，
+- 正文的 `{#section_id}` 是资产锚点标记；前端按 sections 的 id/title/content 渲染，
   将 id 绑定到标题，不把锚点标记作为面向用户的正文显示。
 - `KnowledgeService` 分别保存项目 commit/index_epoch。未注册项目返回 not_indexed，
   不将“没有数据”声称为“项目没有使用技术”。
@@ -132,10 +132,19 @@ python -m codeinsight.cognitive.concepts.examples.score_review --review .ci/huma
 
 ## 已接入的页面与验证
 
-本分支已接入知识 API、Agent 有界知识上下文、普通/SSE 最终元数据，
+主线已接入知识 API、Agent 有界知识上下文、普通/SSE 最终元数据，
 以及目录搜索、章节阅读、内部链接、项目实例、往返导航和阅读位置恢复。
 正文与代码共用右栏；客户端只传阅读目标，服务器重新取证。
-旧版本会提示更新，项目切换会停止旧请求并隔离上下文。
+旧版本会提示更新。切换项目或会话时原回答继续生成，结果按原项目和会话保存，
+不接管当前材料或草稿；刷新、断线或停止会中断，保留已保存内容、不自动重发。
+
+没有显式阅读目标时，自动教材补充仅用于唯一解析的术语／定义式疑问，每次最多一个
+完整章节，预算不足则跳过。普通项目问题不自动注入宽泛相关章节；AI 仍可主动查阅。
+有关联阅读／选区时按指定版本和范围读取，不叠加自动章节。
+
+从回答中的知识链接进入，先显示链接所在完整 Markdown 块，可展开完整来源回答及阅读全文；
+从目录和旧 `/learn/{id}#章节` 链接进入仍读全文。教材、正文链接及实际查阅来源分别记录，
+链接存在不等于已读取整篇教材，也不等于项目采用了该技术。
 
 ```powershell
 python -m pytest -q

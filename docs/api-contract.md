@@ -1,10 +1,11 @@
 # API + SSE 契约 · 冻结
 
-> **状态**：✅ 已冻结（A 线，M1）
+> **状态**：已冻结；变更须走请求单。原 M1 契约与后续增量已按当前实现同步说明（2026-10-29，基线 `54ab8e6`）。
 > **配套**：[`frontend/src/api/types.ts`](../frontend/src/api/types.ts)（与本文一一对应）
-> **适用范围**：C 线写 `src/codeinsight/api/` 与 `frontend/src/api/` 时**照本文实现，不要自己加字段**。
+> **适用范围**：HTTP／SSE 实现与客户端遵循本文，不在局部实现中自行改字段。
 >
-> 需要改动 → 走 [`requests/`](requests/README.md) 流程，A 线统一改。
+> 需要改动 → 走 [`requests/`](requests/README.md) 流程，按用户批准范围同步实现与类型。
+> 当前正文优先规则见 ADR 0040，工作区／来源规则见 ADR 0042–0044；历史字段保留兼容，不能恢复旧分栏或缺引用即弃答。
 
 ---
 
@@ -21,6 +22,8 @@
 | 后端自身 | `http://127.0.0.1:8020/*`（**无 `/api`**） |
 
 `vite.config.ts` 的 proxy **必须**把 `/api` 前缀剥掉再转发（与织忆一致）。
+表中 8020 为默认端口；启动器可选择其他可用后端端口并设置 `CI_API_TARGET`，
+前端仍通过 `/api` 访问。
 
 ### 0.2 内容类型
 
@@ -50,7 +53,7 @@
 | `hint` | `string` | 下一步该做什么（可空串 `""`） |
 | `detail` | `string` | 原始错误信息（可空串 `""`） |
 
-**错误码表**（`code` 的取值全集）：
+**基础错误码表**（增量错误码见对应功能章节）：
 
 | code | HTTP | 含义 |
 |---|---|---|
@@ -62,9 +65,10 @@
 | `index_running` | 409 | 索引正在跑，重复提交 |
 | `upstream_error` | 502 | 上游 LLM / embedding 服务出错 |
 | `timeout` | 504 | 上游超时 |
-| `internal_error` | 500 | 其它 |
+| `internal_error` | 500；数据库持续繁忙时 503 | 其他错误；503 的 detail 含 `database_busy` 可重试原因 |
 
 > 前端**兜底**：遇到未知 `code` 一律按 `internal_error` 处理，不要白屏。
+> 表中为基础错误码；阅读、会话、执行等增量错误码见对应章节，不是封闭全集。
 
 ### 0.4 列表响应的分页
 
@@ -79,7 +83,8 @@
 ### 0.5 时间与标识符
 
 - 所有时间戳是 **ISO 8601 UTC 字符串**（`2026-10-24T08:31:05Z`），不带时区偏移的本地时间。
-- 所有 `id` 是**正整数**（SQLite 自增主键）。项目 id 在前端**持久化到 localStorage**（`ci.projectId`）。
+- 项目／符号等数据库对象 ID 为正整数；会话、任务、请求和动作 ID 是各自约定的字符串，
+  不能统一按整数处理。项目选择可持久化到 localStorage（`ci.projectId`），并与 URL 导航同步。
 - `qualname` 用点号分层：`backend.core.chunk_bm25.split_identifiers`。
   路径参数里**必须 URL 编码**（前端用 `encodeURIComponent`）。
 
@@ -225,7 +230,7 @@
 > **索引进度**：本期不提供进度端点。前端 `GET /projects/{id}` 轮询即可（见 3.4）。
 
 受理时先预留运行记录，重复导入也会立即进入 `indexing`，不会把旧 `ready` 当作新任务完成。
-该记录由后台索引事务收尾，失败保留旧索引；重启中断标为失败。前端状态读取失败仅代表
+后台在隔离库构建，再以主库短事务发布本项目索引并收尾记录，失败保留旧索引；重启中断标为失败。前端状态读取失败仅代表
 检查中断，不能推断索引失败或自动重复提交。
 
 ---
@@ -635,9 +640,7 @@ Git 仓库根目录。保留项目 ID、名称和会话；轮询本接口观察�
   "facts": [
     { "text": "本项目在 backend/core/cache.py 使用 Redis 做 LLM 响应缓存", "citation": { "path": "backend/core/cache.py", "lineno": 88, "end_lineno": 120, "qualname": "backend.core.cache.get_or_set" } }
   ],
-  "inferences": [
-    { "text": "缓存键似乎包含模型名与 prompt 摘要", "confidence": 0.6 }
-  ],
+  "inferences": [],
   "instances": [ /* 同 6.3 的项 */ ],
   "llm_used": false
 }
@@ -646,11 +649,11 @@ Git 仓库根目录。保留项目 ID、名称和会话；轮询本接口观察�
 | 字段 | 说明 |
 |---|---|
 | `depth=quick` | **不调 LLM**，`llm_used` 恒为 `false`，`facts` 为空，只有 `summary` |
-| `depth=project` | 位置/调用关系**全部从索引自动派生**，不进 `inferences`；只做轻量串场 |
-| `depth=deep` | 调 LLM，`facts` 必须带 `citation`（`file:line`），`inferences` 显式标注 |
+| `depth=project` | 不调 LLM；展示本体、索引实例与关系，不能把索引位置冒称当前文件中的实例 |
+| `depth=deep` | 可调 LLM；以 `summary` 连贯解释作用、机制和取舍，失败保留本体与已有实例，不允许模型新增未取得的代码位置 |
 
-> **前端必须分开渲染 `facts` 和 `inferences`**（ADR 0007）。
-> `facts` 是可验证的（带 `file:line`），`inferences` 是模型的。
+> `facts/inferences` 保留兼容形状，不是强制分栏、真实性评级或置信度展示。
+> 旧记录仅存于 `inferences` 的独有说明作为普通解读保留，避免隐藏分类时丢文字（ADR 0040）。
 
 ---
 
@@ -791,9 +794,7 @@ Git 仓库根目录。保留项目 ID、名称和会话；轮询本接口观察�
   "facts": [
     { "text": "入口是 backend/api/chat.py 的 stream_chat", "citation": { "path": "backend/api/chat.py", "lineno": 42, "end_lineno": 60, "qualname": "backend.api.chat.stream_chat", "snippet": "def stream_chat(...)" } }
   ],
-  "inferences": [
-    { "text": "整体是单请求内的同步编排，没有引入队列", "confidence": 0.7 }
-  ],
+  "inferences": [],
   "citations": [
     { "path": "backend/api/chat.py", "lineno": 42, "end_lineno": 60, "qualname": "backend.api.chat.stream_chat", "snippet": "def stream_chat(...)" }
   ],
@@ -809,14 +810,17 @@ Git 仓库根目录。保留项目 ID、名称和会话；轮询本接口观察�
 
 | 字段 | 说明 |
 |---|---|
-| `facts[].citation` | **每条 fact 必须有 citation**（源文档 §2.3-4）。缺了就说明这条是推断 |
-| `inferences[]` | `{text, confidence}`——**模型推断，显式标注** |
-| `abstained` | `true` = 检索无命中，**明确弃答** |
-| `abstention_reason` | `abstained=true` 时必填，其它情况为空串 |
-| `incomplete` | `true` = 走满轮次/工具上限仍未收尾。**与 `abstained` 是两回事**：一个是「没找到」，一个是「没做完」，界面提示不能混用 |
-| `evidence` | 本次用到的证据（前端右栏渲染） |
+| `text` | 主阅读正文；保留公开解释，仅处理引用／知识链接，不以分类字段替换或删减正文 |
+| `facts[].citation` | 兼容字段：与有效位置对应的原文片段；有位置不等于该句语义已验证 |
+| `inferences[]` | 兼容 `{text, confidence}` 形状；不自动收纳无引用解释，不要求前端分栏 |
+| `citations` | 可定位来源，保留对应范围、版本及可选完整 `target`；无效或多版本歧义不生成链接 |
+| `abstained` | 兼容旧记录；普通新答案不因无代码引用或检索无命中设置为 true |
+| `abstention_reason` | 旧弃答原因，普通新答案为空串；不能据此隐藏已有正文 |
+| `incomplete` | 尚未生成完整最终答案，可用于显式轮次限额或模型空输出；默认不限总轮次，不统一解释为“达到轮次上限” |
+| `evidence` | 本轮检索命中与成功读取的材料；读取项无检索分数，不冒充每项解释的依据 |
 
-> **`abstained=true` 时 `text` 也要写清楚"没找到"**，不能是空的。
+> 新答案先解释已取得的内容，在具体缺口处说明本次未找到什么，不编造项目实现、位置或成绩。
+> 历史 `abstained=true` 也不隐藏原正文；失败、中断与未完成按错误和任务状态表达。
 
 ---
 
@@ -852,7 +856,7 @@ data: <json>
 | `delta` | 文本增量，可多次 | `{text}` |
 | `tool` | 工具调用开始/结束 | `{name, status, summary}` |
 | `evidence` | 检索到证据，可多次 | `{path, lineno, end_lineno, qualname, snippet, lanes[], concepts[]}` |
-| `answer` | 最终答案，**一次** | `{facts[], inferences[], citations[], abstained, reason}` |
+| `answer` | 最终答案，**一次** | `{text, raw_text?, facts[], inferences[], citations[], abstained, reason, incomplete, ...}`；知识／探索等可选元数据见后续章节 |
 | `error` | 出错，可多次 | `{code, title, hint}` |
 | `done` | **最后一个**，流结束 | `{abstained, reason}` |
 
@@ -894,8 +898,10 @@ data: <json>
 
 ```json
 {
+  "text": "入口是 stream_chat，随后沿读取到的调用位置展开说明。",
+  "raw_text": "入口是 stream_chat，随后沿读取到的调用位置展开说明。",
   "facts": [ { "text": "入口是 stream_chat", "citation": { "path": "backend/api/chat.py", "lineno": 42, "end_lineno": 60, "qualname": "backend.api.chat.stream_chat", "snippet": "..." } } ],
-  "inferences": [ { "text": "整体是同步编排", "confidence": 0.7 } ],
+  "inferences": [],
   "citations": [ { "path": "backend/api/chat.py", "lineno": 42, "end_lineno": 60, "qualname": "backend.api.chat.stream_chat", "snippet": "..." } ],
   "abstained": false,
   "reason": "",
@@ -903,11 +909,9 @@ data: <json>
 }
 ```
 
-> `incomplete` 与 `abstained` 同 §8.1：前者是「没做完」，后者是「没找到」，不能合并提示。
-
-> `facts` 与 `inferences` **必须分开显示**（ADR 0007）。
-> `facts[].citation` **必须有**——没有 `file:line` 的 fact 不该出现在 `facts` 里。
-> `reason` = 弃答原因（`abstained=true` 时填，其余空串）。
+> `text` 是完整主正文，`facts/inferences/abstained/reason` 仅兼容，不决定整篇展示。
+> `incomplete` 与错误按实际情况提示，旧 `reason` 不作为正文核查告警。
+> 示例路径与内容仅用于说明字段形状，不是当前导入项目的事实。
 
 **`error`**
 
@@ -978,14 +982,14 @@ done                                ← 恰好一次，最后
 
 ---
 
-## 9. C 线对接清单
+## 9. 客户端对接清单
 
 写代码时对着这张表：
 
 | 你要写的 | 照哪里 |
 |---|---|
 | 类型定义 | `frontend/src/api/types.ts`（**已提供**，一一对应本文） |
-| 请求 URL | 本文 §2 速查表 |
+| 请求 URL | 本文 §2 基础速查表及后续会话、知识、执行等增量章节 |
 | 响应字段 | 本文各章节的 JSON 示例 |
 | 错误处理 | §0.3（**只有 `error` 这一个变体**） |
 | SSE 解析 | §8.3 事件词汇表 + 织忆 `tests/helpers/http.ts` 夹具 |
@@ -994,7 +998,7 @@ done                                ← 恰好一次，最后
 
 **三处最容易写错的地方**：
 
-1. **`facts` 和 `inferences` 不能合到一起渲染**（ADR 0007）——这是本项目的主张之一，不是风格问题。
+1. **以 `text` 渲染连贯正文**；不因兼容分类或缺引用隐藏解释、显示整篇核查警告（ADR 0040）。
 2. **SSE 的 `done` 事件必发**——`error` 之后也要发，否则前端挂死。
 3. **`citation` 在结构化字段里，不在 `text` 里**——截断 `text` 不能丢引用（ADR 0006）。
 
@@ -1004,6 +1008,7 @@ done                                ← 恰好一次，最后
 
 | 日期 | 变更 |
 |---|---|
+| 2026-10-29 | 请求 0028：将已生效的 ADR 0040–0044 规则同步到原章节，修正旧分栏、弃答、读取与来源描述；只整理文档，不增删端点／字段／事件或改变 schema |
 | 2026-10-24 | 初版，M1 冻结 |
 | 2026-10-24 | M3：`/query` 与 `/query/stream` 实装；`incomplete` 字段加入 §8.1 响应与 §8.3 `answer` 事件（区分「没做完」与 `abstained`「没找到」）。前端 `types.ts` 已同步 |
 | 2026-10-24 | 请求 0001/0003/0005 落地：§8.4 知识扩展——`reading_context` 入参、`knowledge_sources` / `learning_*` / `reading_status` / `knowledge_error` 出参、`answer` 事件带最终 `text`；新增 `/knowledge/*` 三个端点。教材来源与项目 `citations` **永不混用** |
@@ -1022,7 +1027,7 @@ done                                ← 恰好一次，最后
 | GET | `/knowledge/topics/{topic_id}` | 文章及稳定章节、版本、来源、前置/关联目标与已解析正文目标 |
 | GET | `/knowledge/search?q=&limit=` | `{items:KnowledgeHit[],total,version,knowledge_sources}`；limit 1–50，默认 8。**limit 是章节数**——同一篇文章的多个章节都会命中，界面按文章合并展示 |
 | GET | `/projects/{id}/knowledge/topics/{topic_id}/instances` | 当前项目关联概念实例、head_commit、index_epoch、status；最多 50 项，非完整召回证明 |
-| GET | `/projects/{id}/code?path=&start_line=&end_line=` | 索引对应源码窗口 `{path,start_line,end_line,content,head_commit}`，最多 200 行 |
+| GET | `/projects/{id}/code?path=&start_line=&end_line=` | 默认当前文件；显式来源参数读取对应快照，返回源码窗口及版本身份，最多 200 行；详见请求 0025／0026 |
 
 `LearningTarget` 为 `{topic_id,section_id:null|string,section_title:null|string,title,version,href}`。
 `section_title` 是章节的可读标题（如「跟着例子理解」）——`section_id` 是内部锚点，
@@ -1180,8 +1185,9 @@ knowledge 要求真实文章及版本；timeline 无目标。其余动作 questi
 `flow` 为 `null` 或 `{title,nodes,edges}`：
 
 - nodes 最多八项，`{id,label,role,target}`，target 必须对应同项目、同版本的代码位置。
-- edges 为 `{source,target,kind,uncertain}`；仅核对已有索引 call/imports/inherits 边或真实 contains
-  包含关系，候选最多十六条。置信不足标 uncertain，不绘制无法核对的连接和孤立节点。
+- edges 为 `{source,target,kind,uncertain}`；仅保留同版本索引中真实 `call` 边，
+  候选最多十六条。包含、导入或继承不能拼成一次调用；置信不足标 uncertain，
+  不绘制无法核对的连接和孤立节点。
 - 这是静态关系，不代表运行时执行顺序；行号合法也不证明角色说明和设计解释正确。
 
 内部只读工具 `propose_exploration` 接收 takeaways/actions/flow，不将 JSON 放入正文。
@@ -1190,8 +1196,9 @@ takeaways 仅保留实际显示文字，最多十二项；无建议时可从实�
 只有最终 answer 完成后动作可用；存在新动作时前端不重复显示旧 learning_entries。
 旧客户端可忽略 exploration；旧答案缺该字段时沿用原展示。
 
-正文引用仍保留真实 `[path:line]` 和独立 citations；前端只把普通正文中已解析引用显示为
-`[1]` 等按钮。代码块、行内代码、既有链接不自动改写；来源区和复制内容保留原位置。
+正文引用仍保留真实 `[path:line]` 和独立 citations；回答中已解析引用显示为简短的
+`文件名:起止行` 链接，教材等普通阅读可显示编号。代码块、行内代码、既有链接不自动改写；
+来源区和复制内容保留原位置。未完成的流式引用不启用。
 
 ### 直接追问与恢复
 
@@ -1203,7 +1210,9 @@ takeaways 仅保留实际显示文字，最多十二项；无建议时可从实�
 
 或 `{kind:"overview",action_id,index_epoch}`。answer 动作只允许来自本项目、本会话保存的回答；
 overview 从当前索引重建。服务端重读规范问题和目标，客户端 question/说明不能替换来源内容。
-无动作或跨会话返回 400 bad_request；旧索引返回 409 reading_invalid，要求刷新入口。
+无动作或跨会话返回 400 bad_request；实际依赖已过期返回 409 reading_invalid。
+工作区／知识动作核对自身内容身份，无关索引更新不禁用；索引关系动作核对对应 epoch，
+过期要求刷新入口，不静默转向新版本。
 同 request_id 已完成动作仍按已有幂等结果重放，不重新调用模型，即使之后索引更新。
 动作来源另存 `exploration.origin`。同会话互斥、其他会话独立生成的规则不变。
 
@@ -1230,16 +1239,17 @@ SQLite schema 3→4 原地增加 `conversation.exploration_json TEXT NOT NULL DE
 
 非流式结果、SSE 最终 answer 及持久化 answer_json 增加可选字段：
 
-- `raw_text`：最终生成原文。只供回看，不能成为可点击引用、检索证据或直接模型记忆。
-  中断前的增量原文也随 delta 持久化；成功时以最终原文替换。
+- `raw_text`：按模型回合顺序保存的完整公开原文，只对完全相同的完整片段去重；
+  工具前后文字和最终补充均保留，不能以最后一轮替换前文。它本身不授予引用或新版项目事实资格。
+  中断前的原文也随 delta 持久化；停止／失败不抹去已保存正文。
 - `response_kind`：answer/rephrase/clarification，分别为正常回答、接续解释及无前文时的澄清。
 - `evidence_review`：`{status,message,checks,unverified_citations,source_version,followup_from?}`。
   source_version 沿用 project_id/head_commit/index_epoch，followup_from 为同会话来源请求 ID。
 
 | status | 含义 |
 |---|---|
-| verified | 正文主张有已校验代码引用，仍不证明角色、设计解释的语义正确性 |
-| partial | 有已校验引用，同时存在未核实说明或引用；不能将整段自动升级为事实 |
+| verified | 引用能定位，不证明角色、设计解释的语义正确性 |
+| partial | 部分引用无法定位，不是整篇或句子真实性评级 |
 | knowledge | 基于本轮教材解释，不授予项目事实资格 |
 | unverified | 没有取得有效引用；可能尚未检索或未将已读取代码对应到正文，不能称为查无实现 |
 | no_match | 本轮真实定位操作均未取得可引用位置，不证明整个项目不存在相关机制 |
@@ -1247,8 +1257,8 @@ SQLite schema 3→4 原地增加 `conversation.exploration_json TEXT NOT NULL DE
 
 checks 随本轮已有工具预算产生，元素 `{tool,status,target}`；status 为 matched/no_match/unavailable。
 只记录真实定位、检索与源码读取，不把结构建议当作取证。unverified_citations 是未通过位置的
-纯文字列表；正文将对应 `[path:line]` 改为不可点击的“未核实位置”标记，保留解释。
-同一句混合有效/无效引用时整体按未核实说明处理，合法位置仍可单独查看，不给整句事实资格。
+纯文字列表；无效引用不成为可点击入口，相关问题保存在详情，解释保留。
+范围不能拼接不同来源版本；多版本有歧义时不任意选择。有效位置供查阅，不给整句语义认证。
 
 `abstained/reason` 等旧字段保持兼容；前端不能因为 abstained 为真隐藏正文，或要求用户先点开
 才能阅读解释。核查细节和生成原文默认折叠。旧记录没有 raw_text 时不补造原文。
@@ -1259,9 +1269,10 @@ checks 随本轮已有工具预算产生，元素 `{tool,status,target}`；statu
 无前文且无明确阅读目标时简短澄清。首版保守识别明确的“听不懂/换种说法/举个例子”等请求，
 不声称覆盖所有自然语言指代。
 
-未核实历史注入模型时标明不可直接当作项目事实；未核实回合不写入可靠探索脉络。
-部分有据的回答也仅将实际显示且能对应到已校验事实的要点写入。原有索引、历史与 schema 4 保留，
-本次不新增数据库列、不重建用户索引、不追溯恢复过去已覆盖且未保存的生成原文。
+历史仅作讨论来路，不统一添加“未完全核实”前缀；来源需重新读取，不能充当新版项目事实。
+探索脉络记录成功完整回合中已展示的要点，不以 `evidence_review` 旧状态筛选资格，
+也不表示用户已经掌握。失败、中断和未完成的半轮不作为完整问答注入。
+请求 0013 当时未新增列；当前集成 schema 为 6，不追溯恢复过去已覆盖且未保存的生成原文。
 
 ## 15. 左栏项目移除（请求 0014，ADR 0031）
 
@@ -1382,15 +1393,15 @@ index_running；完成或放弃后才能移除，避免删除任务记录后遗�
 ## 源码快照与运行版本（请求 0024 / ADR 0041，2026-10-27）
 
 - `GET /`、`GET /health` 增加可选 `runtime_revision: string`（启动时加载的后端代码指纹）、`restart_required: boolean`。指纹不含密钥、配置值或用户源码；旧客户端可忽略。新版启动器不静默复用缺少指纹或版本不匹配的已有服务。
-- `GET /projects/{id}/code` 保持最多200行，新增可选 `index_epoch`、`head_commit`、`content_sha256` 查询参数。缺省读取当前索引快照；指定历史版本时必须核对项目/路径/版本归属，缺少快照明确报错，不静默切新版。返回原字段及可选 `index_epoch`、`workspace_changed`（按需检测本地文件实质变化，非实时扫描）。
-- 答案 citations 及代码阅读目标可携带可选 `index_epoch`。材料页签、URL、分页与来源点击保留该值，历史快照不因重建索引而被替换；旧记录缺少版本时不能补造身份。选区提问仍检查当前索引身份，旧选区需重新选择。
+- `GET /projects/{id}/code` 保持最多200行，支持可选 `index_epoch`、`head_commit`、`content_sha256` 查询参数。未指定版本的默认阅读现按请求0025读取工作区；指定历史版本时核对项目/路径/版本归属，缺少快照明确报错，不静默切新版。返回原字段及可选 `index_epoch`、`workspace_changed`（按需检测本地文件实质变化，非实时扫描）。
+- 答案 citations 及代码阅读目标可携带可选 `index_epoch`。材料页签、URL、分页与来源点击保留对应来源身份，历史快照不因重建索引而被替换；旧记录缺少版本时不能补造身份。索引选区核对索引版本，工作区选区按请求0025核对已登记内容哈希，不受无关索引更新影响。
 - 内容哈希保持原始字节身份；换行转换只是恢复原始字节的候选，最后仍须完全命中原哈希。AI、代码 API 与代码选区共用同一读取服务。
 - `file_snapshot` 复用现有结构，内部 `commit_sha` 的 `source:<hash>` / `epoch:<n>` 命名空间分别记录项目归属及版本映射，不参与 Git 提交或过期率比较，不迁移 schema。字节快照按哈希去重并保留，不自动清理。
 - 工具确定失败按本回合文件版本记忆；连续三轮无新材料后，以 tools=[] / tool_choice=none 调用一次整理回答，未遵守工具关闭的 Provider 不继续执行工具。有新材料的分析保持总轮次不限。模型故障与取消仍走原 error/done 流程，不能把工具失败包装为项目不存在。
 
 ## 当前工作区优先（请求0025 / ADR0042，2026-10-28）
 
-本节替代0024中“缺省读取当前索引”和“只能读取已索引文件”的规定；旧索引链接仍可用，无schema迁移。
+本节确定默认阅读当前工作区并允许未索引文件；0024的历史索引链接仍可用，无schema迁移。
 
 - `GET /projects/{id}/code` 未指定版本时读取当前工作区，不要求文件入索引或Git提交。增加可选 `source_kind=workspace|index`；显式epoch/commit或仅hash且未指定source_kind的旧请求仍按index解释。workspace历史请求使用source_kind=workspace和content_sha256，必须已登记本项目/路径的读取归属。响应增加source_kind；workspace返回head_commit=null、无index_epoch，content_sha256为真实原始字节哈希。
 - Citation和CodeReadingContext增加可选source_kind、content_sha256；索引来源保留index_epoch/head_commit，工作区来源不得由整回合索引状态补造版本。SSE和非流式来源、完整回合存储保持相同身份。旧字段source_head_commit和evidence_review.source_version仍指索引基线，不代表workspace材料的版本。

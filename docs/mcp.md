@@ -53,6 +53,7 @@ uv run ci mcp --project tapestry     # stdio
 | `get_changes` | 最近一次索引更新的变更、影响范围、过期设计说明 |
 | `list_concepts` / `explain_concept` / `find_concept_instances` | 项目里的技术概念与三级解释 |
 | `search_knowledge` / `read_knowledge_topic` | 内置教材（**不是**项目证据） |
+| `propose_exploration` | 整理本轮可选流程、要点与最多三个动作；不执行动作 |
 | `list_projects` | 已索引项目与当前绑定（服务多项目实例时用） |
 
 ## 返回形状
@@ -60,8 +61,10 @@ uv run ci mcp --project tapestry     # stdio
 每次调用返回两部分：
 
 - `content`：给模型读的中文文本（可能被截断）；
-- `structured_content`：结构化数据，**引用在 `citations[]` 里**
-  （`{path, lineno, end_lineno, qualname}`）。正文被截断也不会丢引用。
+- `structured_content`：结构化数据，**引用在 `citations[]` 里**。
+  位置字段为 `path/lineno/end_lineno/qualname`，可附完整 `target`，以及
+  `source_kind/content_sha256/index_epoch/head_commit`。跨调用恢复原来源时优先使用完整
+  `target`，不能只凭路径和旧行号打开当前文件。正文被截断也不会丢结构化来源。
 
 工具失败（找不到符号、路径不存在）返回 `is_error: true` + 可读原因，
 不抛异常——外部 agent 能据此换策略，而不是整个会话崩掉。
@@ -76,9 +79,14 @@ uv run ci mcp --project tapestry     # stdio
   （ADR 0008 修订 / ADR 0035）：对话内识别开发任务后由 CodeInsight 驱动
   外部 agent 在隔离分支上干活，经双重审批合入；MCP 工具本身保持只读。
 
-## 已验证
+## 工具数量与验证记录
 
-用官方 `mcp` Python 客户端的 `stdio_client` + `ClientSession` 真机跑过：
+当前注册表有 15 个基础工具；正常加载随包教材后增加 2 个知识工具，MCP 再增加
+`list_projects`，共 **18 个**。实际目录以当前进程的 `list_tools` 为准。
+`propose_exploration` 为只读附加结果提交工具，不执行提问或代码操作；
+仅有请求内短编号不足以恢复跨调用材料。
+
+早期版本曾用官方 `mcp` Python 客户端的 `stdio_client` + `ClientSession` 真机跑过：
 
 ```
 initialize          → codeinsight 0.1.0
@@ -87,6 +95,9 @@ call_tool search_code → 文本 + structured_content.citations（3 条）
 call_tool list_projects → 已索引项目与绑定标记
 ```
 
+这是当时 15 个工具的记录，不代表当前目录数量。当前离线回归覆盖 MCP 默认调用的
+新文件读取、显式旧快照和并发读取隔离；最近整体验证见
+[工程报告](reports/2026-10-28-debug-core-consistency.md)，未在该轮启动真实外部 agent。
 
 ## 来源与读取生命周期（ADR0043）
 
